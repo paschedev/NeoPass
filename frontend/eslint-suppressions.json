@@ -51,14 +51,8 @@
     }
   },
   "src/app/panel/page.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 5
-    },
     "react-hooks/set-state-in-effect": {
       "count": 1
-    },
-    "react/no-unescaped-entities": {
-      "count": 2
     }
   },
   "src/app/panel/rpp/[eventId]/page.tsx": {
