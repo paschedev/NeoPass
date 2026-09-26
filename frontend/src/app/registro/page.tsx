@@ -1,29 +1,17 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { UserPlus, ChevronDown } from 'lucide-react';
+import { UserPlus } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { toE164Phone } from '@/utils/phone';
-import { AsYouType, CountryCode } from 'libphonenumber-js';
+import PhoneInput from '@/components/forms/PhoneInput';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-
-const prefixes = [
-  { code: '+54', country: 'ar', label: 'AR' },
-  { code: '+598', country: 'uy', label: 'UY' },
-  { code: '+56', country: 'cl', label: 'CL' },
-  { code: '+55', country: 'br', label: 'BR' },
-  { code: '+51', country: 'pe', label: 'PE' },
-  { code: '+52', country: 'mx', label: 'MX' },
-  { code: '+57', country: 'co', label: 'CO' },
-  { code: '+34', country: 'es', label: 'ES' },
-  { code: '+1', country: 'us', label: 'US' },
-];
 
 const registerSchema = z
   .object({
@@ -83,10 +71,7 @@ export default function RegistroPage() {
   const [success, setSuccess] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string>('');
   const [captchaError, setCaptchaError] = useState(false);
-  const [isPhoneDropdownOpen, setIsPhoneDropdownOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-
-  const phoneDropdownRef = useRef<HTMLDivElement>(null);
 
   const {
     control,
@@ -112,21 +97,9 @@ export default function RegistroPage() {
 
   const isOrganizer = watch('isOrganizer');
   const phonePrefix = watch('phonePrefix');
-  const selectedPrefix =
-    prefixes.find((p) => p.code === phonePrefix) || prefixes[0];
 
   useEffect(() => {
     setMounted(true);
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        phoneDropdownRef.current &&
-        !phoneDropdownRef.current.contains(event.target as Node)
-      ) {
-        setIsPhoneDropdownOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -378,91 +351,24 @@ export default function RegistroPage() {
                   <label className="block text-sm font-medium text-neutral-400 mb-1">
                     Teléfono Móvil / WhatsApp
                   </label>
-                  <div
-                    className={`flex bg-white/5 border ${errors.phoneNumber ? 'border-red-500' : 'border-white/10'} rounded-xl focus-within:border-indigo-500 focus-within:bg-white/10 transition-all shadow-inner relative`}
-                  >
-                    <div
-                      className="w-[120px] border-r border-white/10 flex-shrink-0 bg-transparent relative"
-                      ref={phoneDropdownRef}
-                    >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setIsPhoneDropdownOpen(!isPhoneDropdownOpen)
+                  <Controller
+                    name="phoneNumber"
+                    control={control}
+                    render={({ field }) => (
+                      <PhoneInput
+                        prefix={phonePrefix}
+                        onPrefixChange={(code) =>
+                          setValue('phonePrefix', code, {
+                            shouldValidate: true,
+                          })
                         }
-                        className="w-full h-full min-h-[48px] flex items-center justify-between px-3 py-3 bg-transparent text-sm text-white focus:outline-none cursor-pointer hover:bg-white/5 rounded-l-xl"
-                      >
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={`https://flagcdn.com/w20/${selectedPrefix.country}.png`}
-                            alt={selectedPrefix.label}
-                            className="w-5 h-auto rounded-[2px]"
-                          />
-                          <span>{selectedPrefix.code}</span>
-                        </div>
-                        <ChevronDown
-                          className={`w-3 h-3 text-neutral-400 transition-transform ${isPhoneDropdownOpen ? 'rotate-180' : ''}`}
-                        />
-                      </button>
-
-                      {isPhoneDropdownOpen && (
-                        <div className="absolute top-full left-0 mt-1 w-48 bg-neutral-900 border border-white/10 rounded-xl shadow-2xl z-50 py-2 max-h-48 overflow-y-auto custom-scrollbar">
-                          {prefixes.map((pref) => (
-                            <button
-                              key={pref.code}
-                              type="button"
-                              onClick={() => {
-                                setValue('phonePrefix', pref.code, {
-                                  shouldValidate: true,
-                                });
-                                setIsPhoneDropdownOpen(false);
-                              }}
-                              className={`w-full text-left px-4 py-2 text-sm flex items-center gap-3 transition-colors ${
-                                phonePrefix === pref.code
-                                  ? 'bg-indigo-600 text-white'
-                                  : 'text-neutral-300 hover:bg-white/5 hover:text-white'
-                              }`}
-                            >
-                              <img
-                                src={`https://flagcdn.com/w20/${pref.country}.png`}
-                                alt={pref.label}
-                                className="w-5 h-auto rounded-[2px]"
-                              />
-                              <span className="w-8 text-neutral-400">
-                                {pref.label}
-                              </span>
-                              <span className="font-medium">{pref.code}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    <Controller
-                      name="phoneNumber"
-                      control={control}
-                      render={({ field }) => (
-                        <input
-                          {...field}
-                          type="tel"
-                          maxLength={18}
-                          onChange={(e) => {
-                            if (!e.target.value) {
-                              field.onChange('');
-                              return;
-                            }
-                            const formatter = new AsYouType(
-                              selectedPrefix.country.toUpperCase() as CountryCode,
-                            );
-                            const formatted = formatter.input(e.target.value);
-                            field.onChange(formatted);
-                          }}
-                          className="w-full bg-transparent px-4 py-3 text-white focus:outline-none placeholder-neutral-500 rounded-r-xl"
-                          placeholder="11 2345 6789"
-                        />
-                      )}
-                    />
-                  </div>
+                        value={field.value ?? ''}
+                        onChange={field.onChange}
+                        onBlur={field.onBlur}
+                        invalid={!!errors.phoneNumber}
+                      />
+                    )}
+                  />
                   {errors.phoneNumber && (
                     <span className="text-red-400 text-xs mt-1 block">
                       {errors.phoneNumber.message}
