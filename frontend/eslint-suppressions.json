@@ -1,9 +1,4 @@
 {
-  "src/app/eventos/[id]/comprar/page.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 5
-    }
-  },
   "src/app/eventos/[id]/page.tsx": {
     "@typescript-eslint/no-explicit-any": {
       "count": 5
