@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toE164Phone } from './phone';
+import { formatPhoneInput, toE164Phone } from './phone';
 
 describe('toE164Phone', () => {
   it('pasa un número argentino con espacios y guiones a formato internacional', () => {
@@ -16,5 +16,15 @@ describe('toE164Phone', () => {
 
   it('devuelve null si el número no es válido', () => {
     expect(toE164Phone('+54', '123')).toBeNull();
+  });
+});
+
+describe('formatPhoneInput', () => {
+  it('formatea el número mientras se escribe, según el país del prefijo', () => {
+    expect(formatPhoneInput('1123456789', '+54')).toBe('11 2345-6789');
+  });
+
+  it('un campo vacío queda vacío', () => {
+    expect(formatPhoneInput('', '+54')).toBe('');
   });
 });
