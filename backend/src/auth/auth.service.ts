@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  ConflictException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { UserRepository } from './repositories/user.repository';
 import { MailService } from '../mail/mail.service';
@@ -12,12 +17,13 @@ export class AuthService {
   constructor(
     private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService,
-    private readonly mailService: MailService
+    private readonly mailService: MailService,
+    private readonly config: ConfigService,
   ) {}
 
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.userRepository.findByEmail(email);
-    if (user && await bcrypt.compare(pass, user.passwordHash)) {
+    if (user && (await bcrypt.compare(pass, user.passwordHash))) {
       const { passwordHash, ...result } = user;
       return result;
     }
@@ -27,7 +33,8 @@ export class AuthService {
   async login(user: any) {
     const payload = { email: user.email, sub: user.id, role: user.role };
     const hasBeenRpp = await this.userRepository.checkHasBeenRpp(user.id);
-    const isCurrentlyScanner = await this.userRepository.checkIsCurrentlyScanner(user.id);
+    const isCurrentlyScanner =
+      await this.userRepository.checkIsCurrentlyScanner(user.id);
     return {
       access_token: this.jwtService.sign(payload),
       user: {
@@ -37,17 +44,18 @@ export class AuthService {
         role: user.role,
         hasLinkedMp: !!user.mercadoPagoAccessToken,
         hasBeenRpp,
-        isCurrentlyScanner
-      }
+        isCurrentlyScanner,
+      },
     };
   }
 
   async getProfile(userId: string) {
     const user = await this.userRepository.findById(userId);
     if (!user) throw new UnauthorizedException();
-    
+
     const hasBeenRpp = await this.userRepository.checkHasBeenRpp(user.id);
-    const isCurrentlyScanner = await this.userRepository.checkIsCurrentlyScanner(user.id);
+    const isCurrentlyScanner =
+      await this.userRepository.checkIsCurrentlyScanner(user.id);
 
     return {
       id: user.id,
@@ -56,7 +64,7 @@ export class AuthService {
       role: user.role,
       hasLinkedMp: !!user.mercadoPagoAccessToken,
       hasBeenRpp,
-      isCurrentlyScanner
+      isCurrentlyScanner,
     };
   }
 
@@ -65,8 +73,6 @@ export class AuthService {
     if (existingUser) {
       throw new ConflictException('El correo electrónico ya existe');
     }
-
-
 
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(data.password, salt);
@@ -83,14 +89,14 @@ export class AuthService {
         create: {
           phone: data.phone,
           companyName: data.companyName,
-        }
+        },
       };
-      
+
       userCreateInput.ticketPresets = {
         create: [
-          { name: 'General', price: 5000 },
-          { name: 'VIP', price: 15000 }
-        ]
+          { name: 'General', price: 0 },
+          { name: 'VIP', price: 0 },
+        ],
       };
     }
 
@@ -101,7 +107,7 @@ export class AuthService {
       ...result,
       hasBeenRpp: false,
       isCurrentlyScanner: false,
-      hasLinkedMp: false
+      hasLinkedMp: false,
     };
   }
 
@@ -126,7 +132,10 @@ export class AuthService {
     const user = await this.userRepository.findByEmail(email);
     if (!user) {
       // Return success even if not found for security reasons
-      return { message: 'Si el correo existe, se ha enviado un enlace de recuperación.' };
+      return {
+        message:
+          'Si el correo existe, se ha enviado un enlace de recuperación.',
+      };
     }
 
     const resetToken = crypto.randomBytes(32).toString('hex');
@@ -134,14 +143,20 @@ export class AuthService {
 
     await this.userRepository.update(user.id, {
       passwordResetToken: resetToken,
-      passwordResetExpires: resetTokenExpires
+      passwordResetExpires: resetTokenExpires,
     });
 
-    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/panel/configuracion?token=${resetToken}`;
+    const resetLink = `${this.config.getOrThrow<string>('FRONTEND_URL')}/panel/configuracion?token=${resetToken}`;
 
-    await this.mailService.sendPasswordResetEmail(user.email, user.name, resetLink);
+    await this.mailService.queuePasswordResetEmail({
+      to: user.email,
+      name: user.name,
+      resetLink,
+    });
 
-    return { message: 'Si el correo existe, se ha enviado un enlace de recuperación.' };
+    return {
+      message: 'Si el correo existe, se ha enviado un enlace de recuperación.',
+    };
   }
 
   async resetPassword(token: string, newPass: string) {
@@ -157,7 +172,7 @@ export class AuthService {
     await this.userRepository.update(user.id, {
       passwordHash: newHash,
       passwordResetToken: null,
-      passwordResetExpires: null
+      passwordResetExpires: null,
     });
 
     return { message: 'Contraseña restablecida con éxito' };

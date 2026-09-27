@@ -1,0 +1,5 @@
+# Commits de solo formato que git blame debe saltear.
+# Local: git config blame.ignoreRevsFile .git-blame-ignore-revs (GitHub lo aplica solo).
+
+# style: formatear backend y frontend con prettier
+7210bf46cb21aa6ec5a87b83fead6e9b945ea253

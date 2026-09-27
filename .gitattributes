@@ -1,0 +1,2 @@
+# Las migraciones van con LF en cualquier sistema: Prisma guarda su checksum al aplicarlas.
+backend/prisma/migrations/**/*.sql text eol=lf

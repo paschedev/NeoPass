@@ -12,20 +12,20 @@ export class BatchCronService {
   @Cron(CronExpression.EVERY_MINUTE)
   async handleScheduledBatches() {
     this.logger.debug('Checking for scheduled ticket batches to publish...');
-    
+
     try {
       const now = new Date();
-      
+
       const updated = await this.prisma.ticketBatch.updateMany({
         where: {
           status: BatchStatus.SCHEDULED,
-          publishAt: { lte: now }
+          publishAt: { lte: now },
         },
         data: {
-          status: BatchStatus.PUBLISHED
-        }
+          status: BatchStatus.PUBLISHED,
+        },
       });
-      
+
       if (updated.count > 0) {
         this.logger.log(`Auto-published ${updated.count} scheduled batches.`);
       }
@@ -34,11 +34,11 @@ export class BatchCronService {
       const ended = await this.prisma.ticketBatch.updateMany({
         where: {
           status: BatchStatus.PUBLISHED,
-          closeAt: { lte: now }
+          closeAt: { lte: now },
         },
         data: {
-          status: BatchStatus.ENDED
-        }
+          status: BatchStatus.ENDED,
+        },
       });
 
       if (ended.count > 0) {

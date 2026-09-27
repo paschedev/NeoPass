@@ -19,7 +19,11 @@ export class TicketsRepository {
     });
   }
 
-  async createTicketsTransaction(orderId: string, ticketData: Prisma.TicketCreateManyInput[], tx?: Prisma.TransactionClient) {
+  async createTicketsTransaction(
+    orderId: string,
+    ticketData: Prisma.TicketCreateManyInput[],
+    tx?: Prisma.TransactionClient,
+  ) {
     const createTicketsFn = async (client: any) => {
       await client.ticket.createMany({
         data: ticketData,
@@ -45,11 +49,11 @@ export class TicketsRepository {
       include: {
         ticketType: {
           include: {
-            event: true
-          }
-        }
+            event: true,
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -58,78 +62,99 @@ export class TicketsRepository {
       where: { qrCode },
       include: {
         ticketType: {
-          include: { event: true }
+          include: { event: true },
         },
         user: true,
-      }
+      },
     });
   }
 
-  async findTicketById(ticketId: string) {
+  async findTicketWithEvent(ticketId: string) {
     return this.prisma.ticket.findUnique({
-      where: { id: ticketId }
-    });
-  }
-
-  async markTicketAsUsed(ticketId: string) {
-    return this.prisma.ticket.update({
       where: { id: ticketId },
-      data: { status: 'USED', usedAt: new Date() }
+      include: {
+        ticketType: {
+          select: {
+            name: true,
+            event: { select: { id: true, title: true, status: true } },
+          },
+        },
+      },
     });
   }
 
-  async processCheckInTransaction(ticketId: string, scannerId: string, userAgent: string) {
-    return this.prisma.$transaction([
-      this.prisma.ticket.update({
-        where: { id: ticketId },
+  async findOrderTicketsForMail(orderId: string) {
+    return this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        user: { select: { email: true, name: true } },
+        tickets: {
+          select: {
+            id: true,
+            qrCode: true,
+            ticketType: {
+              select: { name: true, event: { select: { title: true } } },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async processCheckInTransaction(
+    ticketId: string,
+    scannerId: string,
+    userAgent: string,
+  ) {
+    // Conditional on VALID: of two simultaneous scans only one marks the
+    // ticket as used. Returns false if it was already used.
+    return this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.ticket.updateMany({
+        where: { id: ticketId, status: 'VALID' },
         data: { status: 'USED', usedAt: new Date() },
-      }),
-      this.prisma.checkIn.create({
+      });
+      if (count === 0) return false;
+
+      await tx.checkIn.create({
         data: {
           ticketId: ticketId,
           scannerId: scannerId,
           deviceInfo: userAgent || 'Unknown Device',
-        }
-      })
-    ]);
+        },
+      });
+      return true;
+    });
   }
 
-  async findEventStaff(eventId: string, userId: string, role: import('@prisma/client').StaffRole) {
+  async findEventStaff(
+    eventId: string,
+    userId: string,
+    role: import('@prisma/client').StaffRole,
+  ) {
     return this.prisma.eventStaff.findUnique({
       where: {
-        eventId_userId_role: { eventId, userId, role }
-      }
+        eventId_userId_role: { eventId, userId, role },
+      },
     });
   }
 
-  async transferTicket(ticketId: string, newUserId: string) {
-    return this.prisma.ticket.update({
-      where: { id: ticketId },
-      data: { userId: newUserId }
+  // Moves a still-valid ticket to its new owner with a fresh QR, so the one the
+  // previous owner has (mail, screenshots) stops working. Conditional on owner
+  // and status: returns false if the ticket changed in the meantime.
+  async transferTicket(
+    ticketId: string,
+    currentUserId: string,
+    newUserId: string,
+    newQrCode: string,
+  ) {
+    const { count } = await this.prisma.ticket.updateMany({
+      where: { id: ticketId, userId: currentUserId, status: 'VALID' },
+      data: { userId: newUserId, qrCode: newQrCode },
     });
-  }
-
-  async findEvent(eventId: string) {
-    return this.prisma.event.findUnique({ where: { id: eventId } });
-  }
-
-  async findTicketType(ticketTypeId: string) {
-    return this.prisma.ticketType.findUnique({ where: { id: ticketTypeId } });
-  }
-
-  async findUserByEmail(email: string) {
-    return this.prisma.user.findUnique({ where: { email } });
+    return count === 1;
   }
 
   async findUserById(id: string) {
     return this.prisma.user.findUnique({ where: { id } });
-  }
-
-  async createUser(data: Prisma.UserCreateInput) {
-    return this.prisma.user.create({ data });
-  }
-
-  async createTicket(data: Prisma.TicketUncheckedCreateInput) {
-    return this.prisma.ticket.create({ data });
   }
 }

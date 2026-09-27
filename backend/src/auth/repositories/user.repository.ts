@@ -10,7 +10,6 @@ export class UserRepository {
     return this.prisma.user.findUnique({ where: { email } });
   }
 
-
   async findById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { id } });
   }
@@ -19,8 +18,8 @@ export class UserRepository {
     return this.prisma.user.findFirst({
       where: {
         passwordResetToken: token,
-        passwordResetExpires: { gt: new Date() }
-      }
+        passwordResetExpires: { gt: new Date() },
+      },
     });
   }
 
@@ -31,7 +30,7 @@ export class UserRepository {
   async update(id: string, data: Prisma.UserUpdateInput): Promise<User> {
     return this.prisma.user.update({
       where: { id },
-      data
+      data,
     });
   }
 
@@ -44,7 +43,7 @@ export class UserRepository {
       OR: [
         { name: { contains: query, mode: 'insensitive' } },
         { email: { contains: query, mode: 'insensitive' } },
-      ]
+      ],
     };
 
     if (excludeUserId) {
@@ -53,22 +52,23 @@ export class UserRepository {
 
     const users = await this.prisma.user.findMany({
       where: whereClause,
-      select: { id: true, name: true, email: true, role: true },
-      take: 10
+      select: { id: true, name: true, email: true },
+      take: 10,
     });
 
-    return users.map(user => {
+    return users.map((user) => {
       let maskedEmail = user.email;
       const [local, domain] = user.email.split('@');
       if (domain) {
-        const maskedLocal = local.length > 2
-          ? local[0] + '*'.repeat(local.length - 2) + local[local.length - 1]
-          : local[0] + '***';
+        const maskedLocal =
+          local.length > 2
+            ? local[0] + '*'.repeat(local.length - 2) + local[local.length - 1]
+            : local[0] + '***';
         maskedEmail = `${maskedLocal}@${domain}`;
       }
       return {
         ...user,
-        email: maskedEmail
+        email: maskedEmail,
       };
     });
   }
@@ -78,8 +78,8 @@ export class UserRepository {
       where: {
         userId,
         role: 'PROMOTER',
-        status: 'ACCEPTED'
-      }
+        status: 'ACCEPTED',
+      },
     });
     return count > 0;
   }
@@ -91,9 +91,9 @@ export class UserRepository {
         role: 'SCANNER',
         status: 'ACCEPTED',
         event: {
-          status: { notIn: ['FINISHED', 'CANCELLED'] }
-        }
-      }
+          status: { notIn: ['FINISHED', 'CANCELLED'] },
+        },
+      },
     });
     return count > 0;
   }

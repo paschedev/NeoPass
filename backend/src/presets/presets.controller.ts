@@ -1,4 +1,14 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { PresetsService } from './presets.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -22,12 +32,13 @@ export class PresetsController {
   }
 
   @Put(':id')
-  update(
-    @Param('id') id: string,
-    @Req() req: any,
-    @Body() body: PresetDto,
-  ) {
-    return this.presetsService.update(id, req.user.userId, body.name, body.price);
+  update(@Param('id') id: string, @Req() req: any, @Body() body: PresetDto) {
+    return this.presetsService.update(
+      id,
+      req.user.userId,
+      body.name,
+      body.price,
+    );
   }
 
   @Delete(':id')

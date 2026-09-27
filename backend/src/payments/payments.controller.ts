@@ -1,23 +1,57 @@
-import { Controller, Post, Body, Req, Headers, Get, Query, Res, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Req,
+  Headers,
+  Get,
+  Query,
+  Res,
+  UseGuards,
+  HttpCode,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '@prisma/client';
-import { SaveManualTokenDto } from './dto/save-manual-token.dto';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+
+// Signed with the session secret: `purpose` keeps a login token from being used as state.
+type OAuthState = { sub?: string; purpose?: string };
 
 @Controller('payments')
 export class PaymentsController {
-  constructor(private readonly paymentsService: PaymentsService) {}
+  constructor(
+    private readonly paymentsService: PaymentsService,
+    private readonly jwtService: JwtService,
+    private readonly config: ConfigService,
+  ) {}
 
+  // The signature covers data.id from the query, not the body: the body is only
+  // used to pick the seller's token when reading the payment.
   @Post('webhook')
+  @HttpCode(200)
   async handleWebhook(
-    @Body() body: any,
-    @Headers('x-signature') signature: string,
+    @Headers('x-signature') signature: string | undefined,
+    @Headers('x-request-id') requestId: string | undefined,
+    @Query('data.id') dataId: string | undefined,
+    @Query('type') type: string | undefined,
+    @Body() body: Record<string, unknown>,
   ) {
-    // Acknowledge webhook immediately
-    this.paymentsService.handleWebhook(body, signature);
+    const userId = body?.user_id;
+    await this.paymentsService.enqueueNotification({
+      signature,
+      requestId,
+      dataId,
+      type,
+      mpUserId:
+        typeof userId === 'number' || typeof userId === 'string'
+          ? String(userId)
+          : undefined,
+    });
     return { status: 'received' };
   }
 
@@ -25,24 +59,24 @@ export class PaymentsController {
   async oauthCallback(
     @Query('code') code: string,
     @Query('state') stateToken: string,
-    @Res() res: Response
+    @Res() res: Response,
   ) {
+    const frontendUrl = this.config.getOrThrow<string>('FRONTEND_URL');
     if (!code || !stateToken) {
-      return res.redirect(`${process.env.FRONTEND_URL}/panel?mp_error=missing_params`);
+      return res.redirect(`${frontendUrl}/panel?mp_error=missing_params`);
     }
 
     try {
-      const jwt = require('jsonwebtoken');
-      const payload = jwt.verify(stateToken, process.env.JWT_SECRET || 'super-secret-jwt-key');
+      const payload = this.jwtService.verify<OAuthState>(stateToken);
       if (payload.purpose !== 'oauth_state' || !payload.sub) {
         throw new Error('Invalid state token purpose');
       }
 
       await this.paymentsService.exchangeOAuthCode(payload.sub, code);
       // Redirect to frontend dashboard with success flag
-      return res.redirect(`${process.env.FRONTEND_URL}/panel?mp_success=true`);
+      return res.redirect(`${frontendUrl}/panel?mp_success=true`);
     } catch (error) {
-      return res.redirect(`${process.env.FRONTEND_URL}/panel?mp_error=true`);
+      return res.redirect(`${frontendUrl}/panel?mp_error=true`);
     }
   }
 
@@ -50,25 +84,13 @@ export class PaymentsController {
   @Roles(UserRole.ORGANIZER)
   @Get('oauth/link')
   async getOauthLink(@Req() req: any) {
-    const jwt = require('jsonwebtoken');
-    const stateToken = jwt.sign(
-      { sub: req.user.userId, purpose: 'oauth_state' }, 
-      process.env.JWT_SECRET || 'super-secret-jwt-key', 
-      { expiresIn: '15m' }
-    );
-    
-    const clientId = process.env.MERCADOPAGO_CLIENT_ID;
-    const redirectUri = `${process.env.BACKEND_URL || 'http://localhost:3001'}/payments/oauth/callback`;
-    const url = `https://auth.mercadopago.com/authorization?client_id=${clientId}&response_type=code&platform_id=mp&redirect_uri=${redirectUri}&state=${stateToken}`;
-    
-    return { url };
-  }
+    const state: OAuthState = { sub: req.user.userId, purpose: 'oauth_state' };
+    const stateToken = this.jwtService.sign(state, { expiresIn: '15m' });
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ORGANIZER)
-  @Post('oauth/manual')
-  async manualToken(@Req() req: any, @Body() body: SaveManualTokenDto) {
-    await this.paymentsService.saveManualToken(req.user.userId, body.token);
-    return { success: true };
+    const clientId = this.config.getOrThrow<string>('MERCADOPAGO_CLIENT_ID');
+    const redirectUri = `${this.config.getOrThrow<string>('BACKEND_URL')}/payments/oauth/callback`;
+    const url = `https://auth.mercadopago.com/authorization?client_id=${clientId}&response_type=code&platform_id=mp&redirect_uri=${redirectUri}&state=${stateToken}`;
+
+    return { url };
   }
 }

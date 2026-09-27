@@ -1,29 +1,40 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { App } from 'supertest/types';
-import { AppModule } from './../src/app.module';
+import { createTestApp, TestApp } from './utils/test-app';
+import { testEnv } from './setup/test-env';
 
-describe('AppController (e2e)', () => {
-  let app: INestApplication<App>;
+describe('App configurada como en producción (e2e)', () => {
+  let t: TestApp;
 
-  beforeEach(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
+  beforeAll(async () => {
+    t = await createTestApp();
   });
 
-  it('/ (GET)', () => {
-    return request(app.getHttpServer())
+  afterAll(() => t.close());
+
+  it('rechaza con 400 un body que no cumple el DTO', async () => {
+    await request(t.app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: 'no-es-un-email', password: 'clave-de-prueba' })
+      .expect(400);
+  });
+
+  it('responde con los headers de seguridad de helmet', async () => {
+    const res = await request(t.app.getHttpServer()).get('/').expect(200);
+
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+  });
+
+  it('habilita CORS para el frontend configurado y no para otros orígenes', async () => {
+    const allowed = await request(t.app.getHttpServer())
       .get('/')
-      .expect(200)
-      .expect('Hello World!');
-  });
+      .set('Origin', testEnv.FRONTEND_URL);
+    const blocked = await request(t.app.getHttpServer())
+      .get('/')
+      .set('Origin', 'https://otro-sitio.example');
 
-  afterEach(async () => {
-    await app.close();
+    expect(allowed.headers['access-control-allow-origin']).toBe(
+      testEnv.FRONTEND_URL,
+    );
+    expect(blocked.headers['access-control-allow-origin']).toBeUndefined();
   });
 });

@@ -1,4 +1,11 @@
-import { IsString, IsOptional, IsDateString, IsIn, ValidateNested, IsArray } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsDateString,
+  IsIn,
+  ValidateNested,
+  IsArray,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { BatchDto } from './batch.dto';
 

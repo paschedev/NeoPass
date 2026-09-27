@@ -18,32 +18,33 @@ export class BatchesCronService {
       const publishedResult = await this.prisma.ticketBatch.updateMany({
         where: {
           status: 'SCHEDULED',
-          publishAt: { lte: new Date() }
+          publishAt: { lte: new Date() },
         },
         data: {
-          status: 'PUBLISHED'
-        }
+          status: 'PUBLISHED',
+        },
       });
 
       if (publishedResult.count > 0) {
-        this.logger.log(`Published ${publishedResult.count} scheduled batches.`);
+        this.logger.log(
+          `Published ${publishedResult.count} scheduled batches.`,
+        );
       }
 
       // 2. End PUBLISHED batches whose closeAt time has arrived
       const endedResult = await this.prisma.ticketBatch.updateMany({
         where: {
           status: 'PUBLISHED',
-          closeAt: { lte: new Date() }
+          closeAt: { lte: new Date() },
         },
         data: {
-          status: 'ENDED'
-        }
+          status: 'ENDED',
+        },
       });
 
       if (endedResult.count > 0) {
         this.logger.log(`Ended ${endedResult.count} published batches.`);
       }
-
     } catch (error) {
       this.logger.error('Error running batch status cron', error);
     }

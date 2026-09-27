@@ -5,5 +5,14 @@
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
-  }
+  },
+  "globalSetup": "<rootDir>/setup/global-setup.ts",
+  "setupFiles": ["<rootDir>/setup/load-test-env.ts"],
+  "setupFilesAfterEnv": ["<rootDir>/setup/external-services.ts"],
+  "moduleNameMapper": {
+    "^mercadopago$": "<rootDir>/mocks/mercadopago.ts",
+    "^resend$": "<rootDir>/mocks/resend.ts"
+  },
+  "clearMocks": true,
+  "testTimeout": 30000
 }

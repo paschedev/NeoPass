@@ -1,3 +1,4 @@
+import { EventsLifecycleService } from './events-lifecycle.service';
 import { Module } from '@nestjs/common';
 import { EventsController } from './events.controller';
 import { EventsService } from './events.service';
@@ -10,6 +11,11 @@ import { NotificationsModule } from '../notifications/notifications.module';
 @Module({
   imports: [PrismaModule, AuthModule, NotificationsModule],
   controllers: [EventsController],
-  providers: [EventsService, BatchCronService, EventsRepository]
+  providers: [
+    EventsLifecycleService,
+    EventsService,
+    BatchCronService,
+    EventsRepository,
+  ],
 })
 export class EventsModule {}

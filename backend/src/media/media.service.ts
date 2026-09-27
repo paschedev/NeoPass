@@ -7,7 +7,7 @@ export class MediaService {
     try {
       const timestamp = Math.round(new Date().getTime() / 1000);
       const config = cloudinary.config();
-      
+
       // Cloudinary requiere firmar los parametros que enviemos.
       // Firmamos con el timestamp y el preset usando el api_secret cargado de CLOUDINARY_URL.
       const signature = cloudinary.utils.api_sign_request(
@@ -15,7 +15,7 @@ export class MediaService {
           timestamp: timestamp,
           upload_preset: 'neopass_flyers',
         },
-        config.api_secret as string
+        config.api_secret as string,
       );
 
       return {
@@ -26,7 +26,9 @@ export class MediaService {
         uploadPreset: 'neopass_flyers',
       };
     } catch (error) {
-      throw new InternalServerErrorException('Error generando la firma de Cloudinary');
+      throw new InternalServerErrorException(
+        'Error generando la firma de Cloudinary',
+      );
     }
   }
 }

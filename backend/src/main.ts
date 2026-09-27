@@ -1,28 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe, Logger } from '@nestjs/common';
-import { PrismaService } from './prisma/prisma.service';
-import helmet from 'helmet';
+import { configureApp } from './configure-app';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.use(helmet());
-  app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  app.enableCors({
-    origin: [
-      frontendUrl, 
-      'https://neopass.com', 
-      'https://www.neopass.com',
-      'https://ventipass.com',
-      'https://www.ventipass.com',
-      'https://venti-pass.vercel.app',
-      'http://localhost:3000', 
-      'http://127.0.0.1:3000'
-    ],
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
-  });
+  configureApp(app);
+  // Con SIGTERM (deploy de Railway) cierra Prisma y los workers de BullMQ.
+  app.enableShutdownHooks();
   await app.listen(process.env.PORT ?? 3001, '0.0.0.0');
 }
 bootstrap();

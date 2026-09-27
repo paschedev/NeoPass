@@ -11,20 +11,25 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
   } else if (!baseUrl) {
     baseUrl = 'http://localhost:3001';
   }
-  
+
   const finalUrl = isRelativeUrl ? `${baseUrl}${url}` : url;
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  
+  const token =
+    typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
   const headers = new Headers(options.headers || {});
-  
+
   // Inyectar Token de autorización si existe
   if (token && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${token}`);
   }
 
   // Manejar Content-Type automáticamente si hay body y no es FormData
-  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
+  if (
+    options.body &&
+    !(options.body instanceof FormData) &&
+    !headers.has('Content-Type')
+  ) {
     headers.set('Content-Type', 'application/json');
   }
 
@@ -34,7 +39,11 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
     headers,
   });
 
-  if (response.status === 401 && !url.includes('/auth/login') && !url.includes('/auth/register')) {
+  if (
+    response.status === 401 &&
+    !url.includes('/auth/login') &&
+    !url.includes('/auth/register')
+  ) {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
       localStorage.removeItem('user');

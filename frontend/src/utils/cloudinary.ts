@@ -3,7 +3,10 @@
  * Adds auto format (f_auto) for WebP/AVIF delivery and auto quality (q_auto).
  * Optionally forces a 16:9 aspect ratio crop.
  */
-export const optimizeCloudinaryUrl = (rawUrl: string, applyCrop: boolean = false): string => {
+export const optimizeCloudinaryUrl = (
+  rawUrl: string,
+  applyCrop: boolean = false,
+): string => {
   if (!rawUrl || !rawUrl.includes('cloudinary.com')) return rawUrl;
 
   const urlParts = rawUrl.split('/upload/');

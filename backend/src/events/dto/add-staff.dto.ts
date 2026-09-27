@@ -9,12 +9,12 @@ export class AddStaffDto {
   @IsIn(['MANAGER', 'SCANNER', 'PROMOTER'])
   role: StaffRole;
 
-  @ValidateIf(o => o.role === 'PROMOTER')
+  @ValidateIf((o) => o.role === 'PROMOTER')
   @IsString({ message: 'El tipo de comisión es requerido para RPPs' })
   @IsIn(['PERCENTAGE', 'FIXED'])
   commissionType?: CommissionType;
 
-  @ValidateIf(o => o.role === 'PROMOTER')
+  @ValidateIf((o) => o.role === 'PROMOTER')
   @IsNumber({}, { message: 'El valor de la comisión es requerido para RPPs' })
   commissionValue?: number;
 }

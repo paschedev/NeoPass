@@ -23,7 +23,9 @@ export class NotificationsService {
         message: data.message,
         eventId: data.eventId,
         actionUrl: data.actionUrl,
-        metadata: data.metadata ? (data.metadata as Prisma.InputJsonValue) : Prisma.JsonNull,
+        metadata: data.metadata
+          ? (data.metadata as Prisma.InputJsonValue)
+          : Prisma.JsonNull,
       },
     });
   }
@@ -56,16 +58,20 @@ export class NotificationsService {
     });
   }
 
-  async updateStaffInviteStatus(userId: string, eventStaffId: string, status: 'ACCEPTED' | 'REJECTED') {
+  async updateStaffInviteStatus(
+    userId: string,
+    eventStaffId: string,
+    status: 'ACCEPTED' | 'REJECTED',
+  ) {
     const notifications = await this.prisma.notification.findMany({
-      where: { userId, type: 'STAFF_INVITE' }
+      where: { userId, type: 'STAFF_INVITE' },
     });
     for (const n of notifications) {
       if (n.metadata && (n.metadata as any).eventStaffId === eventStaffId) {
         const updatedMetadata = { ...(n.metadata as any), status };
         await this.prisma.notification.update({
           where: { id: n.id },
-          data: { metadata: updatedMetadata, isRead: true }
+          data: { metadata: updatedMetadata, isRead: true },
         });
       }
     }

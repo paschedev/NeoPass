@@ -14,34 +14,26 @@ export class OrdersProcessor extends WorkerHost {
   async process(job: Job<any, any, string>): Promise<any> {
     if (job.name === 'expire-order') {
       const { orderId } = job.data;
-      
+
       try {
         await this.prisma.$transaction(async (tx) => {
-          const order = await tx.order.findUnique({
-            where: { id: orderId },
-            include: { orderItems: true },
+          // Conditional on PENDING: a payment or a concurrent job that already
+          // moved the order makes this a no-op, so the reservation is released once.
+          const { count } = await tx.order.updateMany({
+            where: { id: orderId, status: 'PENDING' },
+            data: { status: 'EXPIRED' },
           });
+          if (count === 0) return;
 
-          if (!order) return;
-
-          if (order.status === 'PENDING') {
-            this.logger.log(`Expiring order ${orderId} due to timeout`);
-            
-            // Mark order as expired
-            await tx.order.update({
-              where: { id: orderId },
-              data: { status: 'EXPIRED' },
+          this.logger.log(`Expiring order ${orderId} due to timeout`);
+          const items = await tx.orderItem.findMany({ where: { orderId } });
+          for (const item of items) {
+            await tx.ticketType.update({
+              where: { id: item.ticketTypeId },
+              data: {
+                reserved: { decrement: item.quantity },
+              },
             });
-
-            // Release reserved stock
-            for (const item of order.orderItems) {
-              await tx.ticketType.update({
-                where: { id: item.ticketTypeId },
-                data: {
-                  reserved: { decrement: item.quantity },
-                },
-              });
-            }
           }
         });
       } catch (error) {
