@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, Order } from '@prisma/client';
 
@@ -99,6 +103,14 @@ export class OrdersRepository {
 
       // items is never empty (DTO), so the event is always set here.
       const event = orderEvent!;
+      // The organizer collects with their own Mercado Pago account; the
+      // platform account never collects a sale.
+      const sellerToken = event.organizer.mercadoPagoAccessToken;
+      if (!sellerToken) {
+        throw new ConflictException(
+          'El organizador de este evento todavía no puede cobrar entradas.',
+        );
+      }
       const serviceFee = ticketAmount
         .mul(event.neoPassFeePercentage)
         .div(100)
@@ -151,7 +163,7 @@ export class OrdersRepository {
         },
       });
 
-      return { order, mpItems, serviceFee, organizer: event.organizer };
+      return { order, mpItems, serviceFee, sellerToken };
     });
   }
 
