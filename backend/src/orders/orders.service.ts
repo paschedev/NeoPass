@@ -28,7 +28,7 @@ export class OrdersService {
     }
 
     // 1. Transaction to reserve stock and create order in PENDING status
-    let order, mpItems, serviceFee, organizer;
+    let order, mpItems, serviceFee, sellerToken;
     try {
       const result = await this.ordersRepository.createCheckoutOrderTransaction(
         userId,
@@ -38,7 +38,7 @@ export class OrdersService {
       order = result.order;
       mpItems = result.mpItems;
       serviceFee = result.serviceFee;
-      organizer = result.organizer;
+      sellerToken = result.sellerToken;
     } catch (error: any) {
       if (
         error.code === 'P2010' ||
@@ -65,7 +65,7 @@ export class OrdersService {
         order.id,
         mpItems,
         serviceFee.toNumber(),
-        organizer.mercadoPagoAccessToken || undefined,
+        sellerToken,
       );
       initPoint = res.initPoint || '';
     } catch (error) {

@@ -68,6 +68,60 @@ describe('Checkout', () => {
     expect(fee?.unit_price).toBe(50);
   });
 
+  it('cobra con la cuenta del organizador y le pasa a NeoPass su comisión', async () => {
+    const { event, ticketType } = await createOrganizerWithEvent(t.prisma, {
+      price: 1000,
+    });
+    await t.prisma.event.update({
+      where: { id: event.id },
+      data: { neoPassFeePercentage: 10 },
+    });
+    const buyer = await createUser(t.prisma);
+
+    await checkout(buyer, {
+      items: [{ ticketTypeId: ticketType.id, quantity: 2 }],
+    }).expect(201);
+
+    const [preference, accessToken] = mercadoPagoMock.preferenceCreate.mock
+      .calls[0] as [{ body: { marketplace_fee?: number } }, string];
+    expect(accessToken).toBe('TEST-organizer-access-token');
+    expect(preference.body.marketplace_fee).toBe(200);
+  });
+
+  it('pide a Mercado Pago solo notificaciones firmadas', async () => {
+    const { ticketType } = await createOrganizerWithEvent(t.prisma);
+    const buyer = await createUser(t.prisma);
+
+    await checkout(buyer, {
+      items: [{ ticketTypeId: ticketType.id, quantity: 1 }],
+    }).expect(201);
+
+    const [preference] = mercadoPagoMock.preferenceCreate.mock.calls[0] as [
+      { body: { notification_url?: string } },
+      string,
+    ];
+    expect(preference.body.notification_url).toBe(
+      'https://api.neopass.test/payments/webhook?source_news=webhooks',
+    );
+  });
+
+  it('si el organizador no vinculó Mercado Pago, no se vende nada', async () => {
+    const { organizer, ticketType } = await createOrganizerWithEvent(t.prisma);
+    await t.prisma.user.update({
+      where: { id: organizer.id },
+      data: { mercadoPagoAccessToken: null },
+    });
+    const buyer = await createUser(t.prisma);
+
+    await checkout(buyer, {
+      items: [{ ticketTypeId: ticketType.id, quantity: 1 }],
+    }).expect(409);
+
+    expect(await reservedTotal()).toBe(0);
+    expect(await t.prisma.order.count()).toBe(0);
+    expect(mercadoPagoMock.preferenceCreate).not.toHaveBeenCalled();
+  });
+
   it('una orden sin entradas se rechaza', async () => {
     const buyer = await createUser(t.prisma);
 

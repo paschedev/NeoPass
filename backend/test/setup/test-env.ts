@@ -10,7 +10,7 @@ export const testEnv = {
   DIRECT_URL: TEST_DATABASE_URL,
   JWT_SECRET: 'test-jwt-secret',
   FRONTEND_URL: 'https://app.neopass.test',
-  BACKEND_URL: 'http://localhost:3001',
+  BACKEND_URL: 'https://api.neopass.test',
   // BullMQ nunca se conecta: las colas están simuladas en createTestApp().
   REDIS_URL: 'redis://localhost:6379',
   MERCADOPAGO_ACCESS_TOKEN: 'TEST-platform-access-token',
