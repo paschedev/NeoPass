@@ -11,6 +11,7 @@ import { Prisma, StaffRole, CommissionType } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { buildRevenueChart } from './revenue-chart';
 import { getBatchSaleStatus } from './batch-sale-status';
+import { getEventPhase } from './event-phase';
 
 type EventDates = { startDate: string; endDate: string };
 
@@ -18,6 +19,62 @@ function assertEndAfterStart(startDate: Date, endDate: Date) {
   if (endDate <= startDate) {
     throw new BadRequestException(
       'La fecha de fin tiene que ser posterior a la de inicio',
+    );
+  }
+}
+
+type EventForEdit = {
+  status: string;
+  startDate: Date;
+  endDate: Date;
+  venueName: string | null;
+  venueAddress: string | null;
+};
+type EventChanges = Partial<EventDates> & {
+  venueName?: string;
+  venueAddress?: string;
+  status?: string;
+  batches?: unknown[];
+};
+
+// Finished and cancelled events are read only; an event whose end already
+// passed counts as finished even before the cron marks it.
+function assertEditable(event: EventForEdit, now: Date) {
+  const phase = getEventPhase(event, now);
+  if (phase === 'CLOSED') {
+    throw new ConflictException(
+      event.status === 'CANCELLED'
+        ? 'Un evento cancelado no se puede editar'
+        : 'Un evento finalizado no se puede editar',
+    );
+  }
+  return phase;
+}
+
+const BATCHES_LOCKED_MESSAGE =
+  'El evento ya empezó: las tandas no se pueden cambiar (la venta sigue)';
+
+// Once the event starts, buyers already hold tickets for its start and venue:
+// only texts and the image change, the end can only move later and the
+// batches stay as they are while they keep selling. Unchanged values are fine.
+function assertInProgressChanges(event: EventForEdit, changes: EventChanges) {
+  const changesStart =
+    changes.startDate !== undefined &&
+    new Date(changes.startDate).getTime() !== event.startDate.getTime();
+  const changesVenue =
+    (changes.venueName !== undefined &&
+      changes.venueName !== event.venueName) ||
+    (changes.venueAddress !== undefined &&
+      changes.venueAddress !== event.venueAddress);
+  if (changesStart || changesVenue) {
+    throw new ConflictException(
+      'El evento ya empezó: el inicio y el lugar no se pueden cambiar',
+    );
+  }
+  if (changes.batches) throw new ConflictException(BATCHES_LOCKED_MESSAGE);
+  if (changes.endDate && new Date(changes.endDate) < event.endDate) {
+    throw new BadRequestException(
+      'El evento ya empezó: el fin solo se puede extender',
     );
   }
 }
@@ -198,22 +255,39 @@ export class EventsService {
     if (!event || event.organizerId !== organizerId) {
       throw new ForbiddenException('No tienes permiso para editar este evento');
     }
-    if (event.status === 'FINISHED') {
-      throw new ConflictException('Un evento finalizado no se puede editar');
+    const now = new Date();
+    const changes = data as EventChanges;
+    const phase = assertEditable(event, now);
+    const startDate = changes.startDate
+      ? new Date(changes.startDate)
+      : event.startDate;
+    if (phase === 'IN_PROGRESS') {
+      assertInProgressChanges(event, changes);
+    } else if (
+      startDate.getTime() !== event.startDate.getTime() &&
+      startDate <= now
+    ) {
+      throw new BadRequestException('La fecha de inicio tiene que ser futura');
     }
-    const dates = data as Partial<EventDates>;
-    const endDate = dates.endDate ? new Date(dates.endDate) : event.endDate;
-    assertEndAfterStart(
-      dates.startDate ? new Date(dates.startDate) : event.startDate,
-      endDate,
+    const endDate = changes.endDate ? new Date(changes.endDate) : event.endDate;
+    assertEndAfterStart(startDate, endDate);
+
+    const backToDraft = changes.status === 'DRAFT' && event.status !== 'DRAFT';
+    const hasTicketsTaken = event.ticketTypes.some(
+      (ticketType) => ticketType.sold + ticketType.reserved > 0,
     );
+    if (backToDraft && hasTicketsTaken) {
+      throw new ConflictException(
+        'Un evento con entradas vendidas o reservadas no puede volver a borrador',
+      );
+    }
     assertOwnBatchIds(event.ticketBatches, batches);
     // Without batches in the body, the stored ones still have to fit the event.
     assertBatchWindows(
       batches ?? event.ticketBatches,
       event.ticketBatches,
       endDate,
-      new Date(),
+      now,
     );
     if (!batches) return this.eventsRepository.update(id, eventData);
 
@@ -240,12 +314,16 @@ export class EventsService {
     if (!eventContext || eventContext.organizerId !== organizerId) {
       throw new ForbiddenException('No tienes permiso sobre este evento');
     }
+    const now = new Date();
+    if (assertEditable(eventContext, now) === 'IN_PROGRESS') {
+      throw new ConflictException(BATCHES_LOCKED_MESSAGE);
+    }
     assertOwnBatchIds(eventContext.ticketBatches, batchesData);
     assertBatchWindows(
       batchesData,
       eventContext.ticketBatches,
       eventContext.endDate,
-      new Date(),
+      now,
     );
     await this.assertBatchChangesAllowed(
       eventContext.ticketBatches,
