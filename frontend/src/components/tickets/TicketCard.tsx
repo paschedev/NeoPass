@@ -1,5 +1,5 @@
 import { ArrowRightLeft, Calendar, MapPin } from 'lucide-react';
-import { formatEventDate, type MyTicket } from './types';
+import { formatEventDate, isVoidTicket, type MyTicket } from './types';
 
 export default function TicketCard({
   ticket,
@@ -25,6 +25,10 @@ export default function TicketCard({
           {ticket.status === 'VALID' ? (
             <div className="bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/20">
               VÁLIDA
+            </div>
+          ) : isVoidTicket(ticket.status) ? (
+            <div className="bg-white/5 text-neutral-400 px-3 py-1 rounded-full text-xs font-bold border border-white/10">
+              ANULADA
             </div>
           ) : (
             <div className="bg-red-500/10 text-red-400 px-3 py-1 rounded-full text-xs font-bold border border-red-500/20">
