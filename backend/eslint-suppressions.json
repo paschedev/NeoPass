@@ -9,10 +9,10 @@
   },
   "src/auth/auth.service.ts": {
     "@typescript-eslint/no-unsafe-assignment": {
-      "count": 8
+      "count": 5
     },
     "@typescript-eslint/no-unsafe-member-access": {
-      "count": 10
+      "count": 7
     },
     "@typescript-eslint/no-unused-vars": {
       "count": 2
@@ -32,14 +32,6 @@
   "src/auth/dto/register-user.dto.ts": {
     "@typescript-eslint/no-unsafe-member-access": {
       "count": 2
-    }
-  },
-  "src/auth/jwt.strategy.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 3
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 3
     }
   },
   "src/auth/roles.guard.ts": {
