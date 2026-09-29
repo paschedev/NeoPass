@@ -1,4 +1,13 @@
-import { IsString, IsOptional, IsDateString, IsIn } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsDateString,
+  IsIn,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+import { BatchDto } from './batch.dto';
 
 export class UpdateEventDto {
   @IsOptional()
@@ -37,4 +46,10 @@ export class UpdateEventDto {
   @IsString()
   @IsIn(['DRAFT', 'PUBLISHED', 'CANCELLED', 'FINISHED'])
   status?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BatchDto)
+  batches?: BatchDto[];
 }
