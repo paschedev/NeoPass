@@ -1,5 +1,6 @@
 import {
   Injectable,
+  BadRequestException,
   UnauthorizedException,
   ConflictException,
 } from '@nestjs/common';
@@ -11,6 +12,10 @@ import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { RegisterUserDto } from './dto/register-user.dto';
+
+function hashResetToken(token: string) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
 
 @Injectable()
 export class AuthService {
@@ -30,13 +35,20 @@ export class AuthService {
     return null;
   }
 
+  private signToken(user: { id: string; email: string; role: string }) {
+    return this.jwtService.sign({
+      email: user.email,
+      sub: user.id,
+      role: user.role,
+    });
+  }
+
   async login(user: any) {
-    const payload = { email: user.email, sub: user.id, role: user.role };
     const hasBeenRpp = await this.userRepository.checkHasBeenRpp(user.id);
     const isCurrentlyScanner =
       await this.userRepository.checkIsCurrentlyScanner(user.id);
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: this.signToken(user),
       user: {
         id: user.id,
         email: user.email,
@@ -116,16 +128,24 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('Usuario no encontrado');
 
     const isValid = await bcrypt.compare(oldPass, user.passwordHash);
+    // 400 and not 401: the front treats a 401 as an expired session.
     if (!isValid) {
-      throw new UnauthorizedException('La contraseña actual es incorrecta');
+      throw new BadRequestException('La contraseña actual es incorrecta');
     }
 
     const salt = await bcrypt.genSalt();
     const newHash = await bcrypt.hash(newPass, salt);
 
-    await this.userRepository.update(userId, { passwordHash: newHash });
+    // Closes every other session; this one continues with a new token.
+    await this.userRepository.update(userId, {
+      passwordHash: newHash,
+      passwordChangedAt: new Date(),
+    });
 
-    return { message: 'Contraseña actualizada con éxito' };
+    return {
+      message: 'Contraseña actualizada con éxito',
+      access_token: this.signToken(user),
+    };
   }
 
   async forgotPassword(email: string) {
@@ -141,12 +161,13 @@ export class AuthService {
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetTokenExpires = new Date(Date.now() + 3600000); // 1 hour
 
+    // Only the hash is stored: a database leak doesn't expose usable links.
     await this.userRepository.update(user.id, {
-      passwordResetToken: resetToken,
+      passwordResetToken: hashResetToken(resetToken),
       passwordResetExpires: resetTokenExpires,
     });
 
-    const resetLink = `${this.config.getOrThrow<string>('FRONTEND_URL')}/panel/configuracion?token=${resetToken}`;
+    const resetLink = `${this.config.getOrThrow<string>('FRONTEND_URL')}/reset-password?token=${resetToken}`;
 
     await this.mailService.queuePasswordResetEmail({
       to: user.email,
@@ -160,19 +181,25 @@ export class AuthService {
   }
 
   async resetPassword(token: string, newPass: string) {
-    const user = await this.userRepository.findByResetToken(token);
+    const user = await this.userRepository.findByResetToken(
+      hashResetToken(token),
+    );
 
     if (!user) {
-      throw new UnauthorizedException('El token es inválido o ha expirado');
+      throw new BadRequestException(
+        'El link para cambiar la contraseña no es válido o venció',
+      );
     }
 
     const salt = await bcrypt.genSalt();
     const newHash = await bcrypt.hash(newPass, salt);
 
+    // Whoever had the old password loses their open sessions too.
     await this.userRepository.update(user.id, {
       passwordHash: newHash,
       passwordResetToken: null,
       passwordResetExpires: null,
+      passwordChangedAt: new Date(),
     });
 
     return { message: 'Contraseña restablecida con éxito' };

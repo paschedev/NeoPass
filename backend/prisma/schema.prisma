@@ -98,9 +98,11 @@ model User {
   mercadoPagoPublicKey   String?
   mercadoPagoUserId      String?
 
-  // Password Reset
+  // Password Reset (the token is stored as a SHA-256 hash)
   passwordResetToken   String?   @unique
   passwordResetExpires DateTime?
+  // Sessions issued before this moment are no longer valid
+  passwordChangedAt    DateTime?
 
   // Relations
   orders           Order[]
