@@ -49,11 +49,14 @@ export class EventsRepository {
         venueAddress: true,
         status: true,
         neoPassFeePercentage: true,
+        // Hidden batches never leave the database on the public endpoint.
         ticketBatches: {
+          where: { isVisible: true },
+          orderBy: { createdAt: 'asc' },
           select: {
             id: true,
             name: true,
-            status: true,
+            isVisible: true,
             publishAt: true,
             closeAt: true,
             ticketTypes: {
@@ -183,22 +186,13 @@ export class EventsRepository {
       await tx.ticketBatch.delete({ where: { id: b.id } });
     }
     for (const batch of batchesData) {
-      let status = batch.status || 'DRAFT';
-      if (
-        batch.publishAt &&
-        new Date(batch.publishAt) > new Date() &&
-        status !== 'DRAFT'
-      ) {
-        status = 'SCHEDULED';
-      }
-
       let savedBatch;
       if (batch.id) {
         savedBatch = await tx.ticketBatch.update({
           where: { id: batch.id, eventId },
           data: {
             name: batch.name,
-            status: status,
+            isVisible: batch.isVisible,
             publishAt: batch.publishAt ? new Date(batch.publishAt) : null,
             closeAt: batch.closeAt ? new Date(batch.closeAt) : null,
             publishWhenPreviousSoldOut:
@@ -210,7 +204,7 @@ export class EventsRepository {
           data: {
             eventId,
             name: batch.name,
-            status: status,
+            isVisible: batch.isVisible,
             publishAt: batch.publishAt ? new Date(batch.publishAt) : null,
             closeAt: batch.closeAt ? new Date(batch.closeAt) : null,
             publishWhenPreviousSoldOut:
@@ -242,8 +236,6 @@ export class EventsRepository {
               name: tType.name,
               price: tType.price,
               stock: tType.stock,
-              saleStart: savedBatch.publishAt || new Date(),
-              saleEnd: savedBatch.closeAt || new Date(Date.now() + 31536000000),
             },
           });
         } else {
@@ -254,8 +246,6 @@ export class EventsRepository {
               name: tType.name,
               price: tType.price,
               stock: tType.stock,
-              saleStart: savedBatch.publishAt || new Date(),
-              saleEnd: savedBatch.closeAt || new Date(Date.now() + 31536000000),
             },
           });
         }

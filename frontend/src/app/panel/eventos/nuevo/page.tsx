@@ -29,17 +29,6 @@ export default function CrearEventoPage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    // Validate batches
-    const invalidBatch = batches.find(
-      (b) => b.status === 'SCHEDULED' && !b.publishAt,
-    );
-    if (invalidBatch) {
-      toast.error(
-        'Las tandas programadas deben tener una fecha de inicio de venta.',
-      );
-      return;
-    }
-
     // Validate image
     if (!imageUrl) {
       toast.error('La imagen (Flyer) del evento es obligatoria.');

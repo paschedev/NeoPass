@@ -38,7 +38,7 @@ describe('Editar un evento guarda sus tandas', () => {
         {
           id: batch.id,
           name: 'Preventa',
-          status: 'PUBLISHED',
+          isVisible: true,
           ticketTypes: [
             { id: ticketType.id, name: 'General', price: 1000, stock },
           ],
@@ -56,7 +56,7 @@ describe('Editar un evento guarda sus tandas', () => {
         {
           id: batch.id,
           name: 'Preventa',
-          status: 'PUBLISHED',
+          isVisible: true,
           ticketTypes: [
             { id: ticketType.id, name: 'General', price: 2500, stock: 80 },
           ],
@@ -96,7 +96,7 @@ describe('Editar un evento guarda sus tandas', () => {
   it('agrega una tanda nueva y borra una que no tiene órdenes', async () => {
     const { organizer, event, batch, ticketType } = await setup();
     const unused = await t.prisma.ticketBatch.create({
-      data: { eventId: event.id, name: 'Tanda vieja', status: 'DRAFT' },
+      data: { eventId: event.id, name: 'Tanda vieja', isVisible: false },
     });
 
     await putEvent(organizer, event.id, {
@@ -104,14 +104,14 @@ describe('Editar un evento guarda sus tandas', () => {
         {
           id: batch.id,
           name: 'Preventa',
-          status: 'PUBLISHED',
+          isVisible: true,
           ticketTypes: [
             { id: ticketType.id, name: 'General', price: 1000, stock: 100 },
           ],
         },
         {
           name: 'Tanda 2',
-          status: 'DRAFT',
+          isVisible: false,
           ticketTypes: [{ name: 'VIP', price: 5000, stock: 20 }],
         },
       ],
@@ -188,7 +188,7 @@ describe('Editar un evento guarda sus tandas', () => {
         {
           id: batch.id,
           name: 'Preventa',
-          status: 'PUBLISHED',
+          isVisible: true,
           ticketTypes: [],
         },
       ],

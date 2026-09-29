@@ -21,7 +21,7 @@ function eventBody(overrides: Record<string, unknown> = {}) {
     batches: [
       {
         name: 'Preventa',
-        status: 'PUBLISHED',
+        isVisible: true,
         ticketTypes: [{ name: 'General', price: 1000, stock: 100 }],
       },
     ],
@@ -149,7 +149,7 @@ describe('Eventos del organizador', () => {
           batches: [
             {
               name: 'Preventa',
-              status: 'PUBLISHED',
+              isVisible: true,
               // Excede la precisión de la columna: la base rechaza la entrada.
               ticketTypes: [
                 { name: 'General', price: 999_999_999_999, stock: 1 },

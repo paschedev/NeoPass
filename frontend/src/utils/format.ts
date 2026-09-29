@@ -42,6 +42,13 @@ export function formatRelativeDate(value: string, now = new Date()): string {
   return `${date.getDate()} ${MONTHS[date.getMonth()]}`;
 }
 
+// "12/10 20:05", en la hora local del navegador.
+export function formatShortDateTime(value: string): string {
+  const date = new Date(value);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getDate()}/${date.getMonth() + 1} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 // Para los ejes de los gráficos: 1.500 → "1,5k", 2.000.000 → "2M".
 export function formatCompactNumber(value: number): string {
   const compact = (n: number, suffix: string) =>

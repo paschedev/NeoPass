@@ -47,7 +47,7 @@ describe('Tandas y entradas: cada organizador toca solo las suyas', () => {
       {
         id: mine.batch.id,
         name: 'Preventa 2',
-        status: 'PUBLISHED',
+        isVisible: true,
         ticketTypes: [
           { id: mine.ticketType.id, name: 'General', price: 2000, stock: 50 },
         ],
@@ -69,7 +69,7 @@ describe('Tandas y entradas: cada organizador toca solo las suyas', () => {
       {
         id: other.batch.id,
         name: 'Tanda ajena',
-        status: 'PUBLISHED',
+        isVisible: true,
         ticketTypes: [],
       },
     ]).expect(403);
@@ -85,7 +85,7 @@ describe('Tandas y entradas: cada organizador toca solo las suyas', () => {
       {
         id: other.batch.id,
         name: 'Tanda ajena',
-        status: 'PUBLISHED',
+        isVisible: true,
         ticketTypes: [],
       },
     ]).expect(403);
@@ -101,7 +101,7 @@ describe('Tandas y entradas: cada organizador toca solo las suyas', () => {
       {
         id: mine.batch.id,
         name: 'Preventa',
-        status: 'PUBLISHED',
+        isVisible: true,
         ticketTypes: [
           { id: other.ticketType.id, name: 'Regalada', price: 1, stock: 999 },
         ],
@@ -124,7 +124,7 @@ describe('Tandas y entradas: cada organizador toca solo las suyas', () => {
           {
             id: other.batch.id,
             name: 'Tanda ajena',
-            status: 'PUBLISHED',
+            isVisible: true,
             ticketTypes: [],
           },
         ],
@@ -156,7 +156,7 @@ describe('Tandas y entradas: cada organizador toca solo las suyas', () => {
           {
             id: other.batch.id,
             name: 'Tanda ajena',
-            status: 'PUBLISHED',
+            isVisible: true,
             ticketTypes: [
               {
                 id: other.ticketType.id,

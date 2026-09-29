@@ -42,13 +42,7 @@ export default function EditarEventoPage() {
         setEventData(data);
         if (data.imageUrl) setImageUrl(data.imageUrl);
         if (data.startDate) setStartDate(toDateTimeLocalInput(data.startDate));
-        if (data.ticketBatches) {
-          const mappedBatches = data.ticketBatches.map((b: any) => ({
-            ...b,
-            status: b.status === 'SCHEDULED' ? 'PUBLISHED' : b.status,
-          }));
-          setBatches(mappedBatches);
-        }
+        if (data.ticketBatches) setBatches(data.ticketBatches);
         setFetching(false);
       })
       .catch((err) => {

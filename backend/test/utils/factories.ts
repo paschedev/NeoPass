@@ -25,10 +25,21 @@ export function createUser(
   });
 }
 
+type BatchWindow = Partial<
+  Pick<
+    Prisma.TicketBatchUncheckedCreateInput,
+    'isVisible' | 'publishAt' | 'closeAt'
+  >
+>;
+
 // Organizador con Mercado Pago vinculado y un evento publicado con una tanda en venta.
 export async function createOrganizerWithEvent(
   prisma: PrismaClient,
-  { price = 1000, stock = 100 }: { price?: number; stock?: number } = {},
+  {
+    price = 1000,
+    stock = 100,
+    batch = {},
+  }: { price?: number; stock?: number; batch?: BatchWindow } = {},
 ) {
   const now = Date.now();
   const organizer = await createUser(prisma, {
@@ -45,21 +56,41 @@ export async function createOrganizerWithEvent(
       organizerId: organizer.id,
     },
   });
+  const created = await createBatch(prisma, {
+    eventId: event.id,
+    name: 'Preventa',
+    price,
+    stock,
+    ...batch,
+  });
+  return { organizer, event, ...created };
+}
+
+// Tanda con una entrada "General"; por defecto visible y sin fechas (a la venta).
+export async function createBatch(
+  prisma: PrismaClient,
+  {
+    eventId,
+    name,
+    price = 1000,
+    stock = 100,
+    sold = 0,
+    ...window
+  }: BatchWindow & {
+    eventId: string;
+    name: string;
+    price?: number;
+    stock?: number;
+    sold?: number;
+  },
+) {
   const batch = await prisma.ticketBatch.create({
-    data: { eventId: event.id, name: 'Preventa', status: 'PUBLISHED' },
+    data: { eventId, name, isVisible: true, ...window },
   });
   const ticketType = await prisma.ticketType.create({
-    data: {
-      eventId: event.id,
-      batchId: batch.id,
-      name: 'General',
-      price,
-      stock,
-      saleStart: new Date(now - HOUR_MS),
-      saleEnd: new Date(now + 24 * HOUR_MS),
-    },
+    data: { eventId, batchId: batch.id, name: 'General', price, stock, sold },
   });
-  return { organizer, event, batch, ticketType };
+  return { batch, ticketType };
 }
 
 // Orden de un solo tipo de entrada que mueve el stock como el flujo real:
