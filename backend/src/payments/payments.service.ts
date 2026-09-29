@@ -166,7 +166,9 @@ export class PaymentsService {
       : this.client;
 
     const paymentData = await new Payment(client).get({ id: paymentId });
-    if (paymentData.status !== 'approved') return;
+    if (paymentData.status !== 'approved') {
+      return this.handleNotApprovedPayment(paymentId, paymentData);
+    }
 
     const orderId = paymentData.external_reference;
     if (!orderId) {
@@ -196,7 +198,8 @@ export class PaymentsService {
           amount,
         });
       }
-      if (order.status === 'PAID') {
+      // A cancelled order can also have a payment: it was refunded.
+      if (order.status === 'PAID' || order.payment) {
         return this.reportPaymentIssue(order, paymentId, 'DUPLICATE_PAYMENT');
       }
 
@@ -225,6 +228,31 @@ export class PaymentsService {
     );
   }
 
+  // Leaves a trace of every payment that is not approved, and reverses the
+  // order if the payment had paid it and was then refunded or charged back.
+  private async handleNotApprovedPayment(
+    paymentId: string,
+    payment: MercadoPagoPayment,
+  ) {
+    this.logger.warn(
+      `Payment ${paymentId} for order ${payment.external_reference ?? '-'} is ${payment.status} (${payment.status_detail ?? '-'})`,
+    );
+    if (
+      !payment.status ||
+      !REVERSED_PAYMENT_STATUSES.includes(payment.status)
+    ) {
+      return;
+    }
+
+    const orderId =
+      await this.paymentsRepository.refundPaymentTransaction(paymentId);
+    if (orderId) {
+      this.logger.log(
+        `Order ${orderId} cancelled and its tickets voided: payment ${paymentId} is ${payment.status}`,
+      );
+    }
+  }
+
   // A payment Mercado Pago approved but that cannot be turned into tickets:
   // it is logged and the organizer gets a notification to refund it by hand.
   private async reportPaymentIssue(
@@ -251,6 +279,11 @@ export class PaymentsService {
   }
 }
 
+type MercadoPagoPayment = Awaited<ReturnType<Payment['get']>>;
+
+// Statuses that undo money Mercado Pago had approved.
+const REVERSED_PAYMENT_STATUSES = ['refunded', 'charged_back', 'cancelled'];
+
 type PaymentIssueReason =
   | 'AMOUNT_MISMATCH'
   | 'DUPLICATE_PAYMENT'
@@ -266,7 +299,7 @@ const PAYMENT_ISSUE_MESSAGES: Record<
   }),
   DUPLICATE_PAYMENT: (paymentId) => ({
     title: 'Pago duplicado',
-    message: `La orden ya estaba pagada y Mercado Pago aprobó otro pago (${paymentId}). Reembolsalo desde tu cuenta de Mercado Pago.`,
+    message: `La orden ya tenía un pago registrado y Mercado Pago aprobó otro (${paymentId}). No se emitieron entradas nuevas: reembolsalo desde tu cuenta de Mercado Pago.`,
   }),
   OUT_OF_STOCK: (paymentId) => ({
     title: 'Pago sin entradas disponibles',

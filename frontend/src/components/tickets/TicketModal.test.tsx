@@ -51,6 +51,16 @@ describe('TicketModal', () => {
     ).toBeInTheDocument();
   });
 
+  it('una entrada anulada por una devolución no muestra el QR ni se puede transferir', () => {
+    renderModal({ ...TICKET, status: 'REFUNDED' });
+
+    expect(screen.getByText(/Entrada anulada/)).toBeInTheDocument();
+    expect(screen.queryByText('Toca para revelar')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Transferir/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it('una entrada usada no se puede transferir', () => {
     renderModal({ ...TICKET, status: 'USED' });
 

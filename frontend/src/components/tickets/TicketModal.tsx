@@ -6,7 +6,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import Modal from '@/components/ui/Modal';
 import type { UserSearchResult } from '@/hooks/useUserSearch';
 import TransferPanel from './TransferPanel';
-import { formatEventDate, type MyTicket } from './types';
+import { formatEventDate, isVoidTicket, type MyTicket } from './types';
 
 // Entrada abierta: QR oculto hasta tocarlo y transferencia si sigue válida.
 export default function TicketModal({
@@ -80,46 +80,55 @@ function TicketDetail({
           </p>
         </div>
 
-        <div className="bg-white rounded-[2rem] p-6 mb-8 mx-auto w-64 relative group">
-          <div
-            className={`transition-all duration-500 ${!qrRevealed ? 'blur-md brightness-50' : ''}`}
-          >
-            <QRCodeSVG
-              value={ticket.qrCode}
-              size={208}
-              level="H"
-              includeMargin={false}
-              className="w-full h-auto"
-            />
-          </div>
+        {isVoidTicket(ticket.status) ? (
+          <p className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-8 text-center text-sm text-neutral-300">
+            Entrada anulada: el pago se devolvió y el QR ya no sirve para
+            entrar.
+          </p>
+        ) : (
+          <>
+            <div className="bg-white rounded-[2rem] p-6 mb-8 mx-auto w-64 relative group">
+              <div
+                className={`transition-all duration-500 ${!qrRevealed ? 'blur-md brightness-50' : ''}`}
+              >
+                <QRCodeSVG
+                  value={ticket.qrCode}
+                  size={208}
+                  level="H"
+                  includeMargin={false}
+                  className="w-full h-auto"
+                />
+              </div>
 
-          {!qrRevealed && (
-            <button
-              type="button"
-              className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer text-neutral-900 hover:scale-105 transition-transform"
-              onClick={() => setQrRevealed(true)}
-            >
-              <Eye className="w-10 h-10 mb-2 drop-shadow-md" />
-              <span className="font-bold text-sm drop-shadow-md bg-white/80 px-3 py-1 rounded-full">
-                Toca para revelar
-              </span>
-            </button>
-          )}
+              {!qrRevealed && (
+                <button
+                  type="button"
+                  className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer text-neutral-900 hover:scale-105 transition-transform"
+                  onClick={() => setQrRevealed(true)}
+                >
+                  <Eye className="w-10 h-10 mb-2 drop-shadow-md" />
+                  <span className="font-bold text-sm drop-shadow-md bg-white/80 px-3 py-1 rounded-full">
+                    Toca para revelar
+                  </span>
+                </button>
+              )}
 
-          {qrRevealed && (
-            <button
-              onClick={() => setQrRevealed(false)}
-              aria-label="Ocultar QR"
-              className="absolute -bottom-4 -right-4 bg-neutral-900 text-white p-3 rounded-full border border-white/10 shadow-xl hover:bg-neutral-800 transition-colors"
-            >
-              <EyeOff className="w-5 h-5" />
-            </button>
-          )}
-        </div>
+              {qrRevealed && (
+                <button
+                  onClick={() => setQrRevealed(false)}
+                  aria-label="Ocultar QR"
+                  className="absolute -bottom-4 -right-4 bg-neutral-900 text-white p-3 rounded-full border border-white/10 shadow-xl hover:bg-neutral-800 transition-colors"
+                >
+                  <EyeOff className="w-5 h-5" />
+                </button>
+              )}
+            </div>
 
-        <div className="text-center font-mono text-neutral-500 text-sm tracking-widest mb-8">
-          {ticket.qrCode.split('-')[0].toUpperCase()}
-        </div>
+            <div className="text-center font-mono text-neutral-500 text-sm tracking-widest mb-8">
+              {ticket.qrCode.split('-')[0].toUpperCase()}
+            </div>
+          </>
+        )}
 
         {ticket.status === 'VALID' && (
           <div className="border-t border-white/10 pt-6">
