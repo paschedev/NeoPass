@@ -77,14 +77,13 @@ export class PaymentsService {
     orderId: string,
     items: any[],
     feeAmount: number,
-    organizerToken?: string,
+    sellerToken: string,
   ) {
-    // If the organizer linked their MP account, we use their token. Otherwise fallback to the platform's test token.
-    const client = organizerToken
-      ? new MercadoPagoConfig({ accessToken: organizerToken })
-      : this.client;
-
-    const preference = new Preference(client);
+    // Marketplace: the sale is collected with the organizer's OAuth token and
+    // NeoPass keeps its service fee through marketplace_fee.
+    const preference = new Preference(
+      new MercadoPagoConfig({ accessToken: sellerToken }),
+    );
 
     try {
       const frontendUrl = this.config.getOrThrow<string>('FRONTEND_URL');
@@ -98,16 +97,13 @@ export class PaymentsService {
           pending: `${frontendUrl}/checkout/pending`,
         },
         auto_return: 'approved',
-        notification_url: `${backendUrl}/payments/webhook`,
+        // Webhooks only: without source_news Mercado Pago also sends IPN
+        // notifications, which carry no signature and get rejected.
+        notification_url: `${backendUrl}/payments/webhook?source_news=webhooks`,
       };
 
-      if (organizerToken && feeAmount > 0) {
-        // Podemos detectarlos si la app está en desarrollo o si no pasamos validaciones estrictas.
-        const isTestToken =
-          organizerToken.includes('test') || organizerToken.startsWith('TEST');
-        if (!isTestToken && !backendUrl.includes('localhost')) {
-          bodyParams.marketplace_fee = feeAmount;
-        }
+      if (feeAmount > 0) {
+        bodyParams.marketplace_fee = feeAmount;
       }
 
       // MP bloquea webhooks a localhost, lo omitimos en desarrollo local

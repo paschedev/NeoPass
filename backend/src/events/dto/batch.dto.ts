@@ -4,6 +4,7 @@ import {
   IsDateString,
   IsIn,
   IsNumber,
+  IsInt,
   Min,
   IsArray,
   ValidateNested,
@@ -23,11 +24,13 @@ export class TicketTypeDto {
   @IsString({ message: 'El nombre del ticket debe ser texto' })
   name: string;
 
+  // The edit screen sends prices back as the API returns them: Decimal strings.
+  @Type(() => Number)
   @IsNumber({}, { message: 'El precio debe ser un número' })
   @Min(0)
   price: number;
 
-  @IsNumber({}, { message: 'El stock debe ser un número mayor a 0' })
+  @IsInt({ message: 'El stock debe ser un número entero mayor a 0' })
   @Min(1)
   stock: number;
 }

@@ -9,10 +9,10 @@
   },
   "src/auth/auth.service.ts": {
     "@typescript-eslint/no-unsafe-assignment": {
-      "count": 8
+      "count": 5
     },
     "@typescript-eslint/no-unsafe-member-access": {
-      "count": 10
+      "count": 7
     },
     "@typescript-eslint/no-unused-vars": {
       "count": 2
@@ -32,14 +32,6 @@
   "src/auth/dto/register-user.dto.ts": {
     "@typescript-eslint/no-unsafe-member-access": {
       "count": 2
-    }
-  },
-  "src/auth/jwt.strategy.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 3
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 3
     }
   },
   "src/auth/roles.guard.ts": {
@@ -73,16 +65,16 @@
   },
   "src/events/repositories/events.repository.ts": {
     "@typescript-eslint/no-unsafe-assignment": {
-      "count": 23
+      "count": 22
     },
     "@typescript-eslint/no-unsafe-call": {
-      "count": 7
+      "count": 6
     },
     "@typescript-eslint/no-unsafe-member-access": {
-      "count": 50
+      "count": 45
     },
     "@typescript-eslint/no-unsafe-return": {
-      "count": 4
+      "count": 3
     },
     "@typescript-eslint/no-unused-vars": {
       "count": 2

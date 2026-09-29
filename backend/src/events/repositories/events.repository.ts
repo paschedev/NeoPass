@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, StaffRole, CommissionType } from '@prisma/client';
 
@@ -128,6 +128,32 @@ export class EventsRepository {
     });
   }
 
+  // Event fields and batches in one transaction: a failed batch leaves the
+  // event as it was, instead of half edited.
+  async updateWithBatches(
+    id: string,
+    data: Prisma.EventUpdateInput,
+    batchesData: any[],
+    eventContext: any,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const event = await tx.event.update({ where: { id }, data });
+      await this.applyBatches(tx, id, batchesData, eventContext);
+      return event;
+    });
+  }
+
+  // Ticket types that orders or tickets point to (even expired ones).
+  async findTicketTypesInUse(ids: string[]) {
+    return this.prisma.ticketType.findMany({
+      where: {
+        id: { in: ids },
+        OR: [{ orderItems: { some: {} } }, { tickets: { some: {} } }],
+      },
+      select: { id: true, name: true },
+    });
+  }
+
   // Event and batches in one transaction: if a batch fails, no half-created
   // event is left behind (and retrying doesn't duplicate it).
   async createWithBatches(
@@ -153,15 +179,6 @@ export class EventsRepository {
       (b: any) => !incomingBatchIds.includes(b.id),
     );
     for (const b of batchesToDelete) {
-      const totalSold = b.ticketTypes.reduce(
-        (acc: number, tt: any) => acc + tt.sold,
-        0,
-      );
-      if (totalSold > 0) {
-        throw new BadRequestException(
-          `No puedes eliminar la tanda "${b.name}" porque ya tiene entradas vendidas. Pausa su venta en su lugar.`,
-        );
-      }
       await tx.ticketType.deleteMany({ where: { batchId: b.id } });
       await tx.ticketBatch.delete({ where: { id: b.id } });
     }
@@ -214,11 +231,6 @@ export class EventsRepository {
       );
 
       for (const t of typesToDelete) {
-        if (t.sold > 0) {
-          throw new BadRequestException(
-            `No puedes eliminar el ticket "${t.name}" porque ya tiene ventas. Pon su stock en 0 en su lugar.`,
-          );
-        }
         await tx.ticketType.delete({ where: { id: t.id } });
       }
 

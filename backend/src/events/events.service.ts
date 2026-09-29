@@ -23,6 +23,12 @@ function assertEndAfterStart(startDate: Date, endDate: Date) {
 
 type ExistingBatch = { id: string; ticketTypes: { id: string }[] };
 type IncomingBatch = { id?: string; ticketTypes?: { id?: string }[] };
+type ExistingBatchWithSales = {
+  ticketTypes: { id: string; name: string; sold: number; reserved: number }[];
+};
+type IncomingBatchWithStock = {
+  ticketTypes?: { id?: string; stock: number }[];
+};
 
 // Batch and ticket type IDs come from the client: each one has to belong to the
 // event being edited (and each ticket type to its batch) before anything is written.
@@ -144,13 +150,15 @@ export class EventsService {
       dates.endDate ? new Date(dates.endDate) : event.endDate,
     );
     assertOwnBatchIds(event.ticketBatches, batches);
+    if (!batches) return this.eventsRepository.update(id, eventData);
 
-    const updatedEvent = await this.eventsRepository.update(id, eventData);
-
-    if (batches) {
-      await this.updateBatches(id, organizerId, batches);
-    }
-    return updatedEvent;
+    await this.assertBatchChangesAllowed(event.ticketBatches, batches);
+    return this.eventsRepository.updateWithBatches(
+      id,
+      eventData,
+      batches,
+      event,
+    );
   }
 
   async findByOrganizer(userId: string) {
@@ -168,12 +176,54 @@ export class EventsService {
       throw new ForbiddenException('No tienes permiso sobre este evento');
     }
     assertOwnBatchIds(eventContext.ticketBatches, batchesData);
+    await this.assertBatchChangesAllowed(
+      eventContext.ticketBatches,
+      batchesData,
+    );
 
     return this.eventsRepository.updateBatchesTransaction(
       eventId,
       batchesData,
       eventContext,
     );
+  }
+
+  // Sold and reserved tickets keep their place in the stock, and a ticket type
+  // with orders or tickets can't be deleted: they still point to it.
+  private async assertBatchChangesAllowed(
+    existing: ExistingBatchWithSales[],
+    incoming: IncomingBatchWithStock[],
+  ) {
+    const incomingStock = new Map<string, number>();
+    for (const batch of incoming) {
+      for (const ticketType of batch.ticketTypes ?? []) {
+        if (ticketType.id) incomingStock.set(ticketType.id, ticketType.stock);
+      }
+    }
+    const existingTypes = existing.flatMap((batch) => batch.ticketTypes);
+
+    for (const ticketType of existingTypes) {
+      const taken = ticketType.sold + ticketType.reserved;
+      const stock = incomingStock.get(ticketType.id);
+      if (stock !== undefined && stock < taken) {
+        throw new ConflictException(
+          `El stock de "${ticketType.name}" no puede ser menor a sus ${taken} entradas vendidas o reservadas`,
+        );
+      }
+    }
+
+    const removedIds = existingTypes
+      .filter((ticketType) => !incomingStock.has(ticketType.id))
+      .map((ticketType) => ticketType.id);
+    if (removedIds.length === 0) return;
+
+    const inUse = await this.eventsRepository.findTicketTypesInUse(removedIds);
+    if (inUse.length > 0) {
+      const names = inUse.map((ticketType) => `"${ticketType.name}"`);
+      throw new ConflictException(
+        `No se pueden borrar entradas que ya tienen órdenes (${names.join(', ')}). Podés ocultar o finalizar su tanda.`,
+      );
+    }
   }
 
   async getOrganizerStats(userId: string) {
