@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { TicketType } from '@prisma/client';
 import { OrdersProcessor } from '../src/orders/orders.processor';
@@ -34,22 +35,27 @@ describe('Estados de la orden al pagar y al vencer', () => {
     return { organizer, ticketType, buyer };
   }
 
+  // Notificación de MP: el pago se lee con el estado que tiene ahora.
+  function notify(paymentId: string, payment: Record<string, unknown>) {
+    mercadoPagoMock.paymentGet.mockResolvedValueOnce(payment);
+    const processor = new PaymentsProcessor(t.app.get(PaymentsService));
+    return processor.process({
+      name: 'process-payment',
+      data: { paymentId },
+    } as Job);
+  }
+
   function pay(
     paymentId: string,
     orderId: string,
     amount: number,
     status = 'approved',
   ) {
-    mercadoPagoMock.paymentGet.mockResolvedValueOnce({
+    return notify(paymentId, {
       status,
       external_reference: orderId,
       transaction_amount: amount,
     });
-    const processor = new PaymentsProcessor(t.app.get(PaymentsService));
-    return processor.process({
-      name: 'process-payment',
-      data: { paymentId },
-    } as Job);
   }
 
   function expire(orderId: string) {
@@ -245,6 +251,151 @@ describe('Estados de la orden al pagar y al vencer', () => {
       sold: 2,
       tickets: 2,
       payments: 1,
+    });
+  });
+
+  describe('pagos no aprobados y devoluciones', () => {
+    async function paidOrder() {
+      const context = await setup();
+      const order = await createOrder(t.prisma, {
+        user: context.buyer,
+        ticketType: context.ticketType,
+        quantity: 2,
+      });
+      await pay('pago-1', order.id, 2 * PRICE);
+      return { ...context, order };
+    }
+
+    async function ticketStatuses(orderId: string) {
+      const tickets = await t.prisma.ticket.findMany({ where: { orderId } });
+      return tickets.map((ticket) => ticket.status);
+    }
+
+    async function paymentStatus(orderId: string) {
+      const payment = await t.prisma.payment.findUniqueOrThrow({
+        where: { orderId },
+      });
+      return payment.status;
+    }
+
+    it.each(['refunded', 'charged_back', 'cancelled'])(
+      'un pago aprobado que pasa a %s anula la orden y las entradas, y el lugar vuelve a la venta',
+      async (status) => {
+        const { order, ticketType } = await paidOrder();
+
+        await pay('pago-1', order.id, 2 * PRICE, status);
+
+        expect(await state(order.id, ticketType)).toEqual({
+          status: 'CANCELLED',
+          reserved: 0,
+          sold: 0,
+          tickets: 2,
+          payments: 1,
+        });
+        expect(await ticketStatuses(order.id)).toEqual([
+          'REFUNDED',
+          'REFUNDED',
+        ]);
+        expect(await paymentStatus(order.id)).toBe('REFUNDED');
+      },
+    );
+
+    it('una entrada ya usada también queda anulada por la devolución', async () => {
+      const { order } = await paidOrder();
+      const [used] = await t.prisma.ticket.findMany({
+        where: { orderId: order.id },
+      });
+      await t.prisma.ticket.update({
+        where: { id: used.id },
+        data: { status: 'USED' },
+      });
+
+      await pay('pago-1', order.id, 2 * PRICE, 'refunded');
+
+      expect(await ticketStatuses(order.id)).toEqual(['REFUNDED', 'REFUNDED']);
+    });
+
+    it('la misma devolución notificada varias veces libera el lugar una sola vez', async () => {
+      const { order, ticketType } = await paidOrder();
+
+      await Promise.all([
+        pay('pago-1', order.id, 2 * PRICE, 'refunded'),
+        pay('pago-1', order.id, 2 * PRICE, 'refunded'),
+      ]);
+      await pay('pago-1', order.id, 2 * PRICE, 'refunded');
+
+      expect(await state(order.id, ticketType)).toMatchObject({
+        status: 'CANCELLED',
+        reserved: 0,
+        sold: 0,
+      });
+    });
+
+    it('la devolución de un pago que nunca se registró no toca la orden', async () => {
+      const { ticketType, buyer } = await setup();
+      const order = await createOrder(t.prisma, {
+        user: buyer,
+        ticketType,
+        quantity: 2,
+      });
+
+      await pay('pago-x', order.id, 2 * PRICE, 'refunded');
+
+      expect(await state(order.id, ticketType)).toEqual({
+        status: 'PENDING',
+        reserved: 2,
+        sold: 0,
+        tickets: 0,
+        payments: 0,
+      });
+    });
+
+    it('un pago nuevo sobre una orden anulada por devolución no la revive y se avisa al organizador', async () => {
+      const { organizer, order, ticketType } = await paidOrder();
+      await pay('pago-1', order.id, 2 * PRICE, 'refunded');
+
+      await pay('pago-2', order.id, 2 * PRICE);
+
+      expect(await state(order.id, ticketType)).toMatchObject({
+        status: 'CANCELLED',
+        sold: 0,
+        payments: 1,
+      });
+      expect(await ticketStatuses(order.id)).toEqual(['REFUNDED', 'REFUNDED']);
+      expect(await issues(organizer.id)).toEqual(['DUPLICATE_PAYMENT']);
+    });
+
+    it('un pago rechazado deja registro con su estado y el motivo, y la orden sigue pendiente', async () => {
+      const { ticketType, buyer } = await setup();
+      const order = await createOrder(t.prisma, {
+        user: buyer,
+        ticketType,
+        quantity: 2,
+      });
+      const warn = jest
+        .spyOn(Logger.prototype, 'warn')
+        .mockImplementation(() => undefined);
+
+      try {
+        await notify('pago-1', {
+          status: 'rejected',
+          status_detail: 'cc_rejected_insufficient_amount',
+          external_reference: order.id,
+          transaction_amount: 2 * PRICE,
+        });
+
+        expect(warn).toHaveBeenCalledWith(
+          expect.stringMatching(
+            /pago-1.*rejected.*cc_rejected_insufficient_amount/,
+          ),
+        );
+      } finally {
+        warn.mockRestore();
+      }
+      expect(await state(order.id, ticketType)).toMatchObject({
+        status: 'PENDING',
+        reserved: 2,
+      });
     });
   });
 

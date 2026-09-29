@@ -41,6 +41,7 @@ export class PaymentsRepository {
         id: true,
         status: true,
         totalAmount: true,
+        payment: { select: { id: true } },
         orderItems: {
           take: 1,
           select: {
@@ -133,6 +134,45 @@ export class PaymentsRepository {
       }
 
       return true;
+    });
+  }
+
+  // Reverses the order paid by a payment that Mercado Pago refunded, charged
+  // back or cancelled: the order is cancelled, its tickets are voided and they
+  // go back on sale. Conditional on PAID so it applies only once. Returns the
+  // order id, or null if there was nothing to reverse.
+  async refundPaymentTransaction(providerPaymentId: string) {
+    return this.prisma.$transaction(async (tx) => {
+      const payment = await tx.payment.findFirst({
+        where: { providerPaymentId, status: 'APPROVED' },
+        select: { id: true, orderId: true },
+      });
+      if (!payment) return null;
+
+      const { count } = await tx.order.updateMany({
+        where: { id: payment.orderId, status: 'PAID' },
+        data: { status: 'CANCELLED' },
+      });
+      if (count === 0) return null;
+
+      await tx.payment.update({
+        where: { id: payment.id },
+        data: { status: 'REFUNDED' },
+      });
+      await tx.ticket.updateMany({
+        where: { orderId: payment.orderId },
+        data: { status: 'REFUNDED' },
+      });
+      const items = await tx.orderItem.findMany({
+        where: { orderId: payment.orderId },
+      });
+      for (const item of items) {
+        await tx.ticketType.update({
+          where: { id: item.ticketTypeId },
+          data: { sold: { decrement: item.quantity } },
+        });
+      }
+      return payment.orderId;
     });
   }
 }
