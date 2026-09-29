@@ -9,6 +9,10 @@ export interface MyTicket {
   };
 }
 
+// Anulada porque el pago se devolvió o tuvo un contracargo.
+export const isVoidTicket = (status: string) =>
+  status === 'REFUNDED' || status === 'CANCELLED';
+
 export const formatEventDate = (startDate: string) =>
   new Date(startDate).toLocaleDateString('es-AR', {
     weekday: 'long',
