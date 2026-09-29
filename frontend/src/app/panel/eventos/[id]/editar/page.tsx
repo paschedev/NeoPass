@@ -18,6 +18,12 @@ import toast from 'react-hot-toast';
 import TandasManager from '@/components/TandasManager';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
+import {
+  buildEventUpdate,
+  closedEventLabel,
+  getEventPhase,
+  type EventPhase,
+} from '@/utils/event-edit';
 import { toDateTimeLocalInput } from '@/utils/format';
 
 export default function EditarEventoPage() {
@@ -30,6 +36,8 @@ export default function EditarEventoPage() {
   const [eventData, setEventData] = useState<any>(null);
   const [batches, setBatches] = useState<any[]>([]);
   const [startDate, setStartDate] = useState('');
+  const [phase, setPhase] = useState<EventPhase>('NOT_STARTED');
+  const inProgress = phase === 'IN_PROGRESS';
 
   useEffect(() => {
     apiFetch(`/events/organizer/${id}`)
@@ -39,6 +47,15 @@ export default function EditarEventoPage() {
         return data;
       })
       .then((data) => {
+        const loadedPhase = getEventPhase(data, new Date());
+        if (loadedPhase === 'CLOSED') {
+          toast.error(
+            `${closedEventLabel(data.status)}: ya no se puede editar`,
+          );
+          router.replace('/panel?tab=events');
+          return;
+        }
+        setPhase(loadedPhase);
         setEventData(data);
         if (data.imageUrl) setImageUrl(data.imageUrl);
         if (data.startDate) setStartDate(toDateTimeLocalInput(data.startDate));
@@ -50,7 +67,7 @@ export default function EditarEventoPage() {
         toast.error('Error al cargar el evento');
         setFetching(false);
       });
-  }, [id]);
+  }, [id, router]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -63,17 +80,20 @@ export default function EditarEventoPage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const data = {
-      title: formData.get('title'),
-      description: formData.get('description'),
-      imageUrl: imageUrl,
-      youtubeLink: formData.get('youtubeLink') || null,
-      startDate: new Date(formData.get('startDate') as string).toISOString(),
-      endDate: new Date(formData.get('endDate') as string).toISOString(),
-      venueName: formData.get('venueName'),
-      venueAddress: formData.get('venueAddress'),
-      batches: batches, // Send batches to backend
-    };
+    const data = buildEventUpdate(
+      {
+        title: formData.get('title') as string,
+        description: formData.get('description') as string,
+        imageUrl: imageUrl,
+        youtubeLink: (formData.get('youtubeLink') as string) || null,
+        startDate: new Date(startDate).toISOString(),
+        endDate: new Date(formData.get('endDate') as string).toISOString(),
+        venueName: formData.get('venueName') as string,
+        venueAddress: formData.get('venueAddress') as string,
+        batches: batches,
+      },
+      phase,
+    );
 
     try {
       const response = await apiFetch(`/events/${id}`, {
@@ -188,6 +208,16 @@ export default function EditarEventoPage() {
       </h1>
 
       <form onSubmit={handleSubmit} className="space-y-8">
+        {inProgress && (
+          <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-4 text-sm text-indigo-200 flex gap-3">
+            <Info className="w-5 h-5 shrink-0 text-indigo-400" />
+            <p>
+              El evento está en curso: podés cambiar los textos, la imagen y
+              extender el fin. El inicio, el lugar y las tandas quedan fijos, y
+              la venta sigue.
+            </p>
+          </div>
+        )}
         <div className="bg-black/40 border border-white/10 rounded-2xl p-6 md:p-8">
           <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
             <Info className="text-indigo-400 w-5 h-5" /> Información General
@@ -282,10 +312,15 @@ export default function EditarEventoPage() {
                 name="startDate"
                 required
                 type="datetime-local"
-                min={toDateTimeLocalInput(new Date().toISOString())}
+                readOnly={inProgress}
+                min={
+                  inProgress
+                    ? undefined
+                    : toDateTimeLocalInput(new Date().toISOString())
+                }
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full max-w-full bg-white/5 border border-white/10 rounded-xl px-2 md:px-4 py-3 text-sm md:text-base text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark] block"
+                className="w-full max-w-full bg-white/5 border border-white/10 rounded-xl px-2 md:px-4 py-3 text-sm md:text-base text-white focus:outline-none focus:border-indigo-500 transition-colors [color-scheme:dark] block read-only:opacity-60"
               />
             </div>
             <div>
@@ -297,7 +332,10 @@ export default function EditarEventoPage() {
                 required
                 type="datetime-local"
                 min={
-                  startDate || toDateTimeLocalInput(new Date().toISOString())
+                  inProgress
+                    ? toDateTimeLocalInput(eventData.endDate)
+                    : startDate ||
+                      toDateTimeLocalInput(new Date().toISOString())
                 }
                 defaultValue={
                   eventData.endDate
@@ -323,8 +361,9 @@ export default function EditarEventoPage() {
                 name="venueName"
                 defaultValue={eventData.venueName}
                 required
+                readOnly={inProgress}
                 type="text"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors read-only:opacity-60"
               />
             </div>
             <div>
@@ -335,15 +374,21 @@ export default function EditarEventoPage() {
                 name="venueAddress"
                 defaultValue={eventData.venueAddress}
                 required
+                readOnly={inProgress}
                 type="text"
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors read-only:opacity-60"
               />
             </div>
           </div>
         </div>
 
         <div className="mt-12 pt-12 border-t border-white/10">
-          <TandasManager batches={batches} setBatches={setBatches} />
+          <fieldset
+            disabled={inProgress}
+            className="min-w-0 disabled:opacity-60"
+          >
+            <TandasManager batches={batches} setBatches={setBatches} />
+          </fieldset>
         </div>
 
         <div className="flex justify-center md:justify-end gap-4 mt-12 w-full">

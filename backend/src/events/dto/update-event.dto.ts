@@ -44,7 +44,10 @@ export class UpdateEventDto {
 
   @IsOptional()
   @IsString()
-  @IsIn(['DRAFT', 'PUBLISHED', 'CANCELLED', 'FINISHED'])
+  // FINISHED is set by the cron; cancelling needs refunds, which don't exist yet.
+  @IsIn(['DRAFT', 'PUBLISHED'], {
+    message: 'El estado tiene que ser borrador o publicado',
+  })
   status?: string;
 
   @IsOptional()
