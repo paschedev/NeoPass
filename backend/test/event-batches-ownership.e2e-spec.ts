@@ -128,7 +128,8 @@ describe('Tandas y entradas: cada organizador toca solo las suyas', () => {
             ticketTypes: [],
           },
         ],
-      });
+      })
+      .expect(403);
 
     expect(await reload()).toEqual(before);
   });
