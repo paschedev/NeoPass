@@ -1,7 +1,7 @@
 {
   "src/app/eventos/[id]/page.tsx": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 5
+      "count": 4
     }
   },
   "src/app/eventos/page.tsx": {
@@ -29,7 +29,7 @@
   },
   "src/app/panel/eventos/[id]/editar/page.tsx": {
     "@typescript-eslint/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "src/app/panel/eventos/nuevo/page.tsx": {

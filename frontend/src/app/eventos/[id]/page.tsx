@@ -17,7 +17,7 @@ import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { optimizeCloudinaryUrl } from '@/utils/cloudinary';
-import { formatCurrency } from '@/utils/format';
+import { formatCurrency, formatShortDateTime } from '@/utils/format';
 import {
   MAX_TICKETS_PER_ORDER,
   calculateCheckoutTotals,
@@ -270,26 +270,10 @@ function EventContent() {
 
               <div className="space-y-4">
                 {(() => {
-                  const activeBatches = (event.ticketBatches || []).filter(
-                    (b: any) => {
-                      if (b.status === 'PUBLISHED') {
-                        if (b.publishAt && new Date(b.publishAt) > new Date())
-                          return false;
-                        if (b.closeAt && new Date(b.closeAt) < new Date())
-                          return false;
-                        return true;
-                      }
-                      if (
-                        b.status === 'SCHEDULED' &&
-                        b.publishAt &&
-                        new Date(b.publishAt) <= new Date()
-                      )
-                        return true;
-                      return false;
-                    },
-                  );
+                  // The API only sends upcoming, on sale and sold out batches.
+                  const saleBatches = event.ticketBatches || [];
 
-                  if (activeBatches.length === 0) {
+                  if (saleBatches.length === 0) {
                     return (
                       <div className="text-center text-neutral-500 py-4">
                         No hay entradas a la venta actualmente
@@ -297,75 +281,87 @@ function EventContent() {
                     );
                   }
 
-                  return activeBatches.map((batch: any) => (
+                  return saleBatches.map((batch: any) => (
                     <div key={batch.id} className="mb-6 last:mb-0">
                       <h4 className="text-white font-bold mb-3 uppercase tracking-wide text-xs">
                         {batch.name}
                       </h4>
                       <div className="bg-black/40 border border-white/10 rounded-xl flex flex-col divide-y divide-white/5">
-                        {batch.ticketTypes?.map((ticket: any) => {
-                          const available: number = ticket.available;
-                          const qty = cart[ticket.id] || 0;
-                          return (
-                            <div
-                              key={ticket.id}
-                              className="p-4 flex flex-col gap-3 hover:bg-white/[0.02] transition-colors first:rounded-t-xl last:rounded-b-xl"
-                            >
-                              <div className="flex justify-between items-start gap-4">
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-medium text-white break-words">
-                                    {ticket.name}
+                        {batch.saleStatus === 'UPCOMING' && (
+                          <div className="p-4 text-sm text-neutral-400">
+                            Próximamente · desde{' '}
+                            {formatShortDateTime(batch.publishAt)} hs
+                          </div>
+                        )}
+                        {batch.saleStatus === 'SOLD_OUT' && (
+                          <div className="p-4 text-sm font-medium text-amber-400">
+                            Agotada
+                          </div>
+                        )}
+                        {batch.saleStatus === 'ON_SALE' &&
+                          batch.ticketTypes?.map((ticket: any) => {
+                            const available: number = ticket.available;
+                            const qty = cart[ticket.id] || 0;
+                            return (
+                              <div
+                                key={ticket.id}
+                                className="p-4 flex flex-col gap-3 hover:bg-white/[0.02] transition-colors first:rounded-t-xl last:rounded-b-xl"
+                              >
+                                <div className="flex justify-between items-start gap-4">
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-white break-words">
+                                      {ticket.name}
+                                    </div>
+                                    <div className="text-xs text-neutral-500">
+                                      Disponibles: {available}
+                                    </div>
                                   </div>
-                                  <div className="text-xs text-neutral-500">
-                                    Disponibles: {available}
+                                  <div className="font-bold text-lg text-emerald-400 shrink-0">
+                                    {formatCurrency(ticket.price)}
                                   </div>
                                 </div>
-                                <div className="font-bold text-lg text-emerald-400 shrink-0">
-                                  {formatCurrency(ticket.price)}
+                                <div className="flex items-center justify-between mt-1">
+                                  <div className="text-sm font-medium text-neutral-400">
+                                    Cantidad
+                                  </div>
+                                  <div className="flex items-center gap-3 bg-white/5 rounded-lg p-1">
+                                    <button
+                                      onClick={() =>
+                                        handleQuantityChange(
+                                          ticket.id,
+                                          -1,
+                                          available,
+                                        )
+                                      }
+                                      className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-md transition-colors disabled:opacity-50"
+                                      disabled={qty <= 0}
+                                    >
+                                      -
+                                    </button>
+                                    <span className="w-6 text-center text-white font-bold">
+                                      {qty}
+                                    </span>
+                                    <button
+                                      onClick={() =>
+                                        handleQuantityChange(
+                                          ticket.id,
+                                          1,
+                                          available,
+                                        )
+                                      }
+                                      className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-md transition-colors disabled:opacity-50"
+                                      disabled={
+                                        qty >= available ||
+                                        totals.tickets >= MAX_TICKETS_PER_ORDER
+                                      }
+                                    >
+                                      +
+                                    </button>
+                                  </div>
                                 </div>
                               </div>
-                              <div className="flex items-center justify-between mt-1">
-                                <div className="text-sm font-medium text-neutral-400">
-                                  Cantidad
-                                </div>
-                                <div className="flex items-center gap-3 bg-white/5 rounded-lg p-1">
-                                  <button
-                                    onClick={() =>
-                                      handleQuantityChange(
-                                        ticket.id,
-                                        -1,
-                                        available,
-                                      )
-                                    }
-                                    className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-md transition-colors disabled:opacity-50"
-                                    disabled={qty <= 0}
-                                  >
-                                    -
-                                  </button>
-                                  <span className="w-6 text-center text-white font-bold">
-                                    {qty}
-                                  </span>
-                                  <button
-                                    onClick={() =>
-                                      handleQuantityChange(
-                                        ticket.id,
-                                        1,
-                                        available,
-                                      )
-                                    }
-                                    className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-md transition-colors disabled:opacity-50"
-                                    disabled={
-                                      qty >= available ||
-                                      totals.tickets >= MAX_TICKETS_PER_ORDER
-                                    }
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
                       </div>
                     </div>
                   ));

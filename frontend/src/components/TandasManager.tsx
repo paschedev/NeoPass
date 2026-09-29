@@ -6,6 +6,33 @@ import toast from 'react-hot-toast';
 import CustomSelect from '@/components/CustomSelect';
 import { apiFetch } from '@/utils/api';
 import { fromDateTimeLocalInput, toDateTimeLocalInput } from '@/utils/format';
+import {
+  BATCH_STATUS_BADGES,
+  BatchSaleStatus,
+  defaultSaleEnd,
+  defaultSaleStart,
+  endBatchSaleNow,
+  getBatchSaleStatus,
+} from '@/utils/batches';
+
+type BatchForStatus = Parameters<typeof getBatchSaleStatus>[0];
+
+const ENDABLE_STATUSES: BatchSaleStatus[] = ['UPCOMING', 'ON_SALE', 'SOLD_OUT'];
+
+function canEndSale(batch: BatchForStatus) {
+  return ENDABLE_STATUSES.includes(getBatchSaleStatus(batch, new Date()));
+}
+
+function SaleStatusBadge({ batch }: { batch: BatchForStatus }) {
+  const badge = BATCH_STATUS_BADGES[getBatchSaleStatus(batch, new Date())];
+  return (
+    <span
+      className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${badge.className}`}
+    >
+      {badge.label}
+    </span>
+  );
+}
 
 export default function TandasManager({
   batches,
@@ -43,7 +70,7 @@ export default function TandasManager({
       {
         tempId: Date.now().toString(),
         name: `Tanda ${batches.length + 1}`,
-        status: 'DRAFT',
+        isVisible: false,
         publishAt: null,
         closeAt: null,
         publishWhenPreviousSoldOut: false,
@@ -82,7 +109,7 @@ export default function TandasManager({
     const hasSold = batch.ticketTypes?.some((t: any) => t.sold > 0);
     if (hasSold) {
       toast.error(
-        'No puedes eliminar una tanda que ya tiene ventas. Pásala a estado ENDED o DRAFT.',
+        'No podés eliminar una tanda que ya tiene ventas. Ocultala o finalizá su venta.',
       );
       return;
     }
@@ -108,6 +135,16 @@ export default function TandasManager({
     const newBatches = [...batches];
     newBatches[batchIndex][field] = value;
     setBatches(newBatches);
+  };
+
+  const endSaleNow = (batchIndex: number) => {
+    const newBatches = [...batches];
+    newBatches[batchIndex] = endBatchSaleNow(
+      newBatches[batchIndex],
+      new Date(),
+    );
+    setBatches(newBatches);
+    toast.success('La venta de la tanda termina al guardar los cambios.');
   };
 
   const updateTicket = (
@@ -177,9 +214,12 @@ export default function TandasManager({
               {/* Batch Header */}
               <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
                 <div className="flex-1 w-full md:w-auto md:min-w-[200px]">
-                  <label className="text-xs text-neutral-500 uppercase font-bold mb-1 block">
-                    Nombre de Tanda
-                  </label>
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="text-xs text-neutral-500 uppercase font-bold">
+                      Nombre de Tanda
+                    </label>
+                    <SaleStatusBadge batch={batch} />
+                  </div>
                   <input
                     type="text"
                     value={batch.name}
@@ -190,21 +230,31 @@ export default function TandasManager({
 
                 <div className="w-full md:w-auto">
                   <label className="text-xs text-neutral-500 uppercase font-bold mb-1 block">
-                    Estado
+                    Visibilidad
                   </label>
                   <CustomSelect
-                    value={batch.status}
-                    onChange={(val) => updateBatch(bIdx, 'status', val)}
+                    value={batch.isVisible ? 'visible' : 'hidden'}
+                    onChange={(val) =>
+                      updateBatch(bIdx, 'isVisible', val === 'visible')
+                    }
                     options={[
-                      { value: 'DRAFT', label: 'Oculta' },
-                      { value: 'PUBLISHED', label: 'Pública' },
-                      { value: 'ENDED', label: 'Finalizada' },
+                      { value: 'visible', label: 'Visible' },
+                      { value: 'hidden', label: 'Oculta' },
                     ]}
                   />
+                  {batch.id && canEndSale(batch) && (
+                    <button
+                      type="button"
+                      onClick={() => endSaleNow(bIdx)}
+                      className="mt-2 text-xs font-medium text-red-400 hover:text-red-300 transition-colors"
+                    >
+                      Finalizar venta ya
+                    </button>
+                  )}
                 </div>
 
                 <div className="w-full md:w-auto flex flex-col gap-3">
-                  {/* Switch Programar Publicación */}
+                  {/* Switch Venta desde */}
                   <div>
                     <label className="flex items-center gap-2 cursor-pointer mb-2">
                       <div className="relative">
@@ -217,7 +267,7 @@ export default function TandasManager({
                               bIdx,
                               'publishAt',
                               e.target.checked
-                                ? new Date().toISOString()
+                                ? defaultSaleStart(new Date())
                                 : null,
                             )
                           }
@@ -230,7 +280,7 @@ export default function TandasManager({
                         ></div>
                       </div>
                       <span className="text-xs text-neutral-400 font-medium uppercase">
-                        Programar Publicación
+                        Venta desde
                       </span>
                     </label>
                     {batch.publishAt && (
@@ -254,7 +304,7 @@ export default function TandasManager({
                     )}
                   </div>
 
-                  {/* Switch Fecha Límite */}
+                  {/* Switch Venta hasta */}
                   <div>
                     <label className="flex items-center gap-2 cursor-pointer mb-2">
                       <div className="relative">
@@ -267,9 +317,7 @@ export default function TandasManager({
                               bIdx,
                               'closeAt',
                               e.target.checked
-                                ? new Date(
-                                    Date.now() + 60 * 60 * 1000,
-                                  ).toISOString()
+                                ? defaultSaleEnd(batch.publishAt, new Date())
                                 : null,
                             )
                           }
@@ -282,7 +330,7 @@ export default function TandasManager({
                         ></div>
                       </div>
                       <span className="text-xs text-neutral-400 font-medium uppercase">
-                        Fecha Límite
+                        Venta hasta
                       </span>
                     </label>
                     {batch.closeAt && (

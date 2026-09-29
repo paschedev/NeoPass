@@ -3,6 +3,7 @@ import {
   formatCompactNumber,
   formatCurrency,
   formatRelativeDate,
+  formatShortDateTime,
   fromDateTimeLocalInput,
   toDateTimeLocalInput,
 } from './format';
@@ -81,5 +82,11 @@ describe('inputs datetime-local', () => {
   it('sin valor, el input queda vacío y la fecha en null', () => {
     expect(toDateTimeLocalInput(null)).toBe('');
     expect(fromDateTimeLocalInput('')).toBeNull();
+  });
+});
+
+describe('formatShortDateTime', () => {
+  it('muestra día/mes y hora en la hora de Argentina', () => {
+    expect(formatShortDateTime('2026-10-12T23:05:00Z')).toBe('12/10 20:05');
   });
 });
