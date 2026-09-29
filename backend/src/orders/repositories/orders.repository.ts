@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, Order } from '@prisma/client';
+import { getSaleWindowStatus } from '../../events/batch-sale-status';
 
 type EventWithOrganizer = Prisma.EventGetPayload<{
   include: { organizer: true };
@@ -56,15 +57,12 @@ export class OrdersRepository {
         if (event.endDate < now) {
           throw new BadRequestException(`El evento ya ha finalizado.`);
         }
-        if (ticketType.saleStart > now || ticketType.saleEnd < now) {
+        if (
+          !ticketType.batch ||
+          getSaleWindowStatus(ticketType.batch, event.endDate, now) !== 'OPEN'
+        ) {
           throw new BadRequestException(
             `La tanda de venta para este ticket no está activa en este momento.`,
-          );
-        }
-        // If it belongs to a batch, ensure the batch is PUBLISHED
-        if (ticketType.batchId && ticketType.batch?.status !== 'PUBLISHED') {
-          throw new BadRequestException(
-            `El lote de entradas no está publicado.`,
           );
         }
 

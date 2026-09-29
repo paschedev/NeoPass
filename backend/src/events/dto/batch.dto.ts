@@ -2,7 +2,6 @@ import {
   IsString,
   IsOptional,
   IsDateString,
-  IsIn,
   IsNumber,
   IsInt,
   Min,
@@ -47,9 +46,9 @@ export class BatchDto {
   @IsString({ message: 'El nombre de la tanda debe ser texto' })
   name: string;
 
-  @IsString()
-  @IsIn(['DRAFT', 'SCHEDULED', 'PUBLISHED', 'ENDED'])
-  status: string;
+  // Hidden batches are never sold; the rest sell within publishAt-closeAt.
+  @IsBoolean()
+  isVisible: boolean;
 
   @IsOptional()
   @IsDateString()

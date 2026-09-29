@@ -72,13 +72,6 @@ enum CommissionType {
   FIXED
 }
 
-enum BatchStatus {
-  DRAFT
-  SCHEDULED
-  PUBLISHED
-  ENDED
-}
-
 enum TicketCategory {
   GENERAL
   VIP
@@ -161,9 +154,11 @@ model TicketBatch {
   eventId                    String
   event                      Event        @relation(fields: [eventId], references: [id])
   name                       String // ej: "Preventa", "Lote 1"
-  status                     BatchStatus  @default(DRAFT)
-  publishAt                  DateTime?
-  closeAt                    DateTime?
+  // Only visibility is stored: whether the batch is on sale, upcoming, sold out
+  // or ended comes from these dates and the stock (src/events/batch-sale-status.ts).
+  isVisible                  Boolean      @default(false)
+  publishAt                  DateTime? // Sale starts (null: right away)
+  closeAt                    DateTime? // Sale ends (null: when the event ends)
   publishWhenPreviousSoldOut Boolean      @default(false)
   showTimer                  Boolean      @default(false)
   createdAt                  DateTime     @default(now())
@@ -186,8 +181,6 @@ model TicketType {
   stock       Int
   sold        Int            @default(0)
   reserved    Int            @default(0)
-  saleStart   DateTime
-  saleEnd     DateTime
 
   tickets    Ticket[]
   orderItems OrderItem[]
