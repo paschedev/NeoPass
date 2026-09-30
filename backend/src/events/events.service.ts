@@ -5,17 +5,22 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { EventsRepository } from './repositories/events.repository';
+import {
+  EventsRepository,
+  InvitationAnswer,
+} from './repositories/events.repository';
 import { UserRepository } from '../auth/repositories/user.repository';
-import { Prisma, StaffRole, CommissionType } from '@prisma/client';
+import { StaffRole, CommissionType } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { buildRevenueChart } from './revenue-chart';
 import { getBatchSaleStatus } from './batch-sale-status';
 import { getEventPhase } from './event-phase';
 import { PromoterClicksService } from './promoter-clicks.service';
 import { hasUsableMercadoPagoToken } from '../payments/mercadopago-token';
-
-type EventDates = { startDate: string; endDate: string };
+import { planBatchChanges } from './batch-changes';
+import { CreateEventDto } from './dto/create-event.dto';
+import { UpdateEventDto } from './dto/update-event.dto';
+import { BatchDto } from './dto/batch.dto';
 
 function assertEndAfterStart(startDate: Date, endDate: Date) {
   if (endDate <= startDate) {
@@ -31,12 +36,6 @@ type EventForEdit = {
   endDate: Date;
   venueName: string | null;
   venueAddress: string | null;
-};
-type EventChanges = Partial<EventDates> & {
-  venueName?: string;
-  venueAddress?: string;
-  status?: string;
-  batches?: unknown[];
 };
 
 // Finished and cancelled events are read only; an event whose end already
@@ -59,7 +58,7 @@ const BATCHES_LOCKED_MESSAGE =
 // Once the event starts, buyers already hold tickets for its start and venue:
 // only texts and the image change, the end can only move later and the
 // batches stay as they are while they keep selling. Unchanged values are fine.
-function assertInProgressChanges(event: EventForEdit, changes: EventChanges) {
+function assertInProgressChanges(event: EventForEdit, changes: UpdateEventDto) {
   const changesStart =
     changes.startDate !== undefined &&
     new Date(changes.startDate).getTime() !== event.startDate.getTime();
@@ -82,12 +81,8 @@ function assertInProgressChanges(event: EventForEdit, changes: EventChanges) {
 }
 
 type ExistingBatch = { id: string; ticketTypes: { id: string }[] };
-type IncomingBatch = { id?: string; ticketTypes?: { id?: string }[] };
 type ExistingBatchWithSales = {
   ticketTypes: { id: string; name: string; sold: number; reserved: number }[];
-};
-type IncomingBatchWithStock = {
-  ticketTypes?: { id?: string; stock: number }[];
 };
 
 type BatchWindow = {
@@ -139,7 +134,7 @@ function assertBatchWindows(
 // event being edited (and each ticket type to its batch) before anything is written.
 function assertOwnBatchIds(
   existing: ExistingBatch[],
-  incoming: IncomingBatch[] = [],
+  incoming: BatchDto[] = [],
 ) {
   const typeIdsByBatch = new Map(
     existing.map((batch) => [
@@ -151,7 +146,7 @@ function assertOwnBatchIds(
     const ownTypeIds = batch.id
       ? typeIdsByBatch.get(batch.id)
       : new Set<string>();
-    const hasForeignType = batch.ticketTypes?.some(
+    const hasForeignType = batch.ticketTypes.some(
       (ticketType) => ticketType.id && !ownTypeIds?.has(ticketType.id),
     );
     if (!ownTypeIds || hasForeignType) {
@@ -214,7 +209,7 @@ export class EventsService {
     return { ...event, ticketBatches };
   }
 
-  async create(userId: string, data: any) {
+  async create(userId: string, data: CreateEventDto) {
     const { batches, ...eventData } = data;
     const user = await this.userRepository.findById(userId);
 
@@ -225,22 +220,22 @@ export class EventsService {
       );
     }
     assertOwnBatchIds([], batches);
-    const dates = data as EventDates;
-    const startDate = new Date(dates.startDate);
+    const startDate = new Date(data.startDate);
     if (startDate <= new Date()) {
       throw new BadRequestException('La fecha de inicio tiene que ser futura');
     }
-    const endDate = new Date(dates.endDate);
+    const endDate = new Date(data.endDate);
     assertEndAfterStart(startDate, endDate);
-    assertBatchWindows(batches ?? [], [], endDate, new Date());
+    assertBatchWindows(batches, [], endDate, new Date());
 
     return this.eventsRepository.createWithBatches(
       { ...eventData, organizerId: userId },
-      batches ?? [],
+      planBatchChanges([], batches),
     );
   }
 
-  // For the organizer's own screens (edit, preview): any status, owner only.
+  // For the organizer's own screens (edit, preview) and every change to the
+  // event: any status, owner only.
   async findOneForOrganizer(id: string, organizerId: string) {
     const event = await this.eventsRepository.findOne(id);
     if (!event) throw new NotFoundException('Evento no encontrado');
@@ -250,14 +245,10 @@ export class EventsService {
     return event;
   }
 
-  async update(id: string, organizerId: string, data: any) {
-    const { batches, ...eventData } = data;
-    const event = await this.eventsRepository.findOne(id);
-    if (!event || event.organizerId !== organizerId) {
-      throw new ForbiddenException('No tienes permiso para editar este evento');
-    }
+  async update(id: string, organizerId: string, changes: UpdateEventDto) {
+    const { batches, ...eventData } = changes;
+    const event = await this.findOneForOrganizer(id, organizerId);
     const now = new Date();
-    const changes = data as EventChanges;
     const phase = assertEditable(event, now);
     const startDate = changes.startDate
       ? new Date(changes.startDate)
@@ -296,8 +287,7 @@ export class EventsService {
     return this.eventsRepository.updateWithBatches(
       id,
       eventData,
-      batches,
-      event,
+      planBatchChanges(event.ticketBatches, batches),
     );
   }
 
@@ -308,13 +298,9 @@ export class EventsService {
   async updateBatches(
     eventId: string,
     organizerId: string,
-    batchesData: any[],
+    batchesData: BatchDto[],
   ) {
-    const eventContext = await this.eventsRepository.findOne(eventId);
-
-    if (!eventContext || eventContext.organizerId !== organizerId) {
-      throw new ForbiddenException('No tienes permiso sobre este evento');
-    }
+    const eventContext = await this.findOneForOrganizer(eventId, organizerId);
     const now = new Date();
     if (assertEditable(eventContext, now) === 'IN_PROGRESS') {
       throw new ConflictException(BATCHES_LOCKED_MESSAGE);
@@ -333,8 +319,7 @@ export class EventsService {
 
     return this.eventsRepository.updateBatchesTransaction(
       eventId,
-      batchesData,
-      eventContext,
+      planBatchChanges(eventContext.ticketBatches, batchesData),
     );
   }
 
@@ -342,11 +327,11 @@ export class EventsService {
   // with orders or tickets can't be deleted: they still point to it.
   private async assertBatchChangesAllowed(
     existing: ExistingBatchWithSales[],
-    incoming: IncomingBatchWithStock[],
+    incoming: BatchDto[],
   ) {
     const incomingStock = new Map<string, number>();
     for (const batch of incoming) {
-      for (const ticketType of batch.ticketTypes ?? []) {
+      for (const ticketType of batch.ticketTypes) {
         if (ticketType.id) incomingStock.set(ticketType.id, ticketType.stock);
       }
     }
@@ -436,75 +421,43 @@ export class EventsService {
     commissionType?: CommissionType,
     commissionValue?: number,
   ) {
-    const event = await this.eventsRepository.findOne(eventId);
-    if (!event || event.organizerId !== organizerId) {
-      throw new BadRequestException('No tienes permiso sobre este evento');
-    }
+    const event = await this.findOneForOrganizer(eventId, organizerId);
 
     const user = await this.userRepository.findById(inviteeId);
     if (!user) {
-      throw new BadRequestException(
-        'Usuario no registrado. Pídele que se registre en NeoPass primero.',
+      throw new NotFoundException(
+        'Usuario no registrado. Pedile que se registre en NeoPass primero.',
       );
     }
 
-    // Verificar si ya existe para este rol específico
+    // One invitation per role: someone who rejected it can be invited again.
     const existing = await this.eventsRepository.findEventStaff(
       eventId,
       user.id,
       role,
     );
-
-    if (existing) {
-      if (existing.status === 'PENDING') {
-        throw new BadRequestException(
-          `El usuario ya tiene una invitación pendiente para el rol de ${role} en este evento.`,
-        );
-      }
-      if (existing.status === 'ACCEPTED') {
-        throw new BadRequestException(
-          `El usuario ya es ${role} de este evento.`,
-        );
-      }
-      if (existing.status === 'REJECTED') {
-        // Re-invitar: pasar a PENDING y despachar notificación
-        const staff = await this.eventsRepository.updateEventStaff(
-          existing.id,
-          { status: 'PENDING', commissionType, commissionValue },
-        );
-        let commString = '';
-        if (role === 'PROMOTER' && commissionType && commissionValue) {
-          commString =
-            commissionType === 'PERCENTAGE'
-              ? ` (${commissionValue}% por ticket)`
-              : ` ($${commissionValue} por ticket)`;
-        }
-
-        await this.notificationsService.create({
-          userId: user.id,
-          type: 'STAFF_INVITE',
-          title: `Nueva invitación de Staff`,
-          message: `Has sido invitado nuevamente como ${role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} para el evento "${event.title}".${commString}`,
-          eventId: event.id,
-          metadata: {
-            eventStaffId: staff.id,
-            role,
-            commissionType,
-            commissionValue,
-            status: 'PENDING',
-          },
-        });
-        return staff;
-      }
+    if (existing?.status === 'PENDING') {
+      throw new ConflictException(
+        `El usuario ya tiene una invitación pendiente para el rol de ${role} en este evento.`,
+      );
+    }
+    if (existing?.status === 'ACCEPTED') {
+      throw new ConflictException(`El usuario ya es ${role} de este evento.`);
     }
 
-    const staff = await this.eventsRepository.createEventStaff({
-      event: { connect: { id: eventId } },
-      user: { connect: { id: user.id } },
-      role,
-      commissionType,
-      commissionValue,
-    });
+    const staff = existing
+      ? await this.eventsRepository.updateEventStaff(existing.id, {
+          status: 'PENDING',
+          commissionType,
+          commissionValue,
+        })
+      : await this.eventsRepository.createEventStaff({
+          event: { connect: { id: eventId } },
+          user: { connect: { id: user.id } },
+          role,
+          commissionType,
+          commissionValue,
+        });
 
     let commString = '';
     if (role === 'PROMOTER' && commissionType && commissionValue) {
@@ -518,7 +471,7 @@ export class EventsService {
       userId: user.id,
       type: 'STAFF_INVITE',
       title: `Nueva invitación de Staff`,
-      message: `Has sido invitado como ${role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} para el evento "${event.title}".${commString}`,
+      message: `Has sido invitado${existing ? ' nuevamente' : ''} como ${role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} para el evento "${event.title}".${commString}`,
       eventId: event.id,
       metadata: {
         eventStaffId: staff.id,
@@ -533,15 +486,19 @@ export class EventsService {
   }
 
   async getEventStaff(eventId: string, organizerId: string) {
-    const event = await this.eventsRepository.findOne(eventId);
-    if (!event || event.organizerId !== organizerId) {
-      throw new BadRequestException('No tienes permiso sobre este evento');
-    }
+    await this.findOneForOrganizer(eventId, organizerId);
     return this.eventsRepository.getEventStaffByEvent(eventId);
   }
 
   async getMyPromoterStats(userId: string) {
-    const assignments = await this.eventsRepository.getPromoterStats(userId);
+    const assignments = (
+      await this.eventsRepository.findAcceptedPromoterAssignments(userId)
+    ).map(({ orders, ...assignment }) => ({
+      ...assignment,
+      totalTicketsSold: orders
+        .flatMap((order) => order.orderItems)
+        .reduce((sum, item) => sum + item.quantity, 0),
+    }));
 
     const totalEarned = assignments.reduce(
       (acc, curr) => acc + Number(curr.totalEarned),
@@ -622,64 +579,46 @@ export class EventsService {
   }
 
   async acceptInvitation(eventStaffId: string, userId: string) {
-    const staff = await this.eventsRepository.findEventStaffById(eventStaffId);
-    if (!staff || staff.userId !== userId) {
-      throw new BadRequestException(
-        'Invitación no encontrada o no tienes permiso.',
-      );
-    }
-    if (staff.status !== 'PENDING') {
-      throw new BadRequestException('Esta invitación ya fue procesada.');
-    }
-
-    await this.eventsRepository.updateEventStaff(eventStaffId, {
-      status: 'ACCEPTED',
-    });
-    await this.notificationsService.updateStaffInviteStatus(
-      userId,
-      eventStaffId,
-      'ACCEPTED',
-    );
-
-    await this.notificationsService.create({
-      userId: staff.event.organizerId,
-      type: 'SYSTEM',
-      title: 'Invitación Aceptada',
-      message: `${staff.user.name} ha aceptado tu invitación para ser ${staff.role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} en "${staff.event.title}".`,
-      eventId: staff.event.id,
-    });
-
+    await this.respondToInvitation(eventStaffId, userId, 'ACCEPTED');
     return { success: true, message: 'Invitación aceptada correctamente' };
   }
 
   async rejectInvitation(eventStaffId: string, userId: string) {
+    await this.respondToInvitation(eventStaffId, userId, 'REJECTED');
+    return { success: true, message: 'Invitación rechazada correctamente' };
+  }
+
+  // Only the invitee answers, and only once: the answer is a conditional update
+  // on PENDING, so two answers at the same time can't both go through.
+  private async respondToInvitation(
+    eventStaffId: string,
+    userId: string,
+    status: InvitationAnswer,
+  ) {
     const staff = await this.eventsRepository.findEventStaffById(eventStaffId);
     if (!staff || staff.userId !== userId) {
-      throw new BadRequestException(
-        'Invitación no encontrada o no tienes permiso.',
-      );
+      throw new NotFoundException('Invitación no encontrada');
     }
-    if (staff.status !== 'PENDING') {
-      throw new BadRequestException('Esta invitación ya fue procesada.');
+    const answered = await this.eventsRepository.answerPendingInvitation(
+      eventStaffId,
+      status,
+    );
+    if (!answered) {
+      throw new ConflictException('Esta invitación ya fue procesada.');
     }
 
-    await this.eventsRepository.updateEventStaff(eventStaffId, {
-      status: 'REJECTED',
-    });
     await this.notificationsService.updateStaffInviteStatus(
       userId,
       eventStaffId,
-      'REJECTED',
+      status,
     );
-
+    const accepted = status === 'ACCEPTED';
     await this.notificationsService.create({
       userId: staff.event.organizerId,
       type: 'SYSTEM',
-      title: 'Invitación Rechazada',
-      message: `${staff.user.name} ha rechazado tu invitación para ser ${staff.role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} en "${staff.event.title}".`,
+      title: accepted ? 'Invitación Aceptada' : 'Invitación Rechazada',
+      message: `${staff.user.name} ha ${accepted ? 'aceptado' : 'rechazado'} tu invitación para ser ${staff.role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} en "${staff.event.title}".`,
       eventId: staff.event.id,
     });
-
-    return { success: true, message: 'Invitación rechazada correctamente' };
   }
 }

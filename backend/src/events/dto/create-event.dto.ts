@@ -40,7 +40,7 @@ export class CreateEventDto {
   @IsIn(['DRAFT', 'PUBLISHED'], {
     message: 'El estado tiene que ser borrador o publicado',
   })
-  status: string;
+  status: 'DRAFT' | 'PUBLISHED';
 
   @IsArray()
   @ValidateNested({ each: true })
