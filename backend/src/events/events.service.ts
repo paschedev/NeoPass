@@ -5,7 +5,10 @@ import {
   ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
-import { EventsRepository } from './repositories/events.repository';
+import {
+  EventsRepository,
+  InvitationAnswer,
+} from './repositories/events.repository';
 import { UserRepository } from '../auth/repositories/user.repository';
 import { StaffRole, CommissionType } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -231,7 +234,8 @@ export class EventsService {
     );
   }
 
-  // For the organizer's own screens (edit, preview): any status, owner only.
+  // For the organizer's own screens (edit, preview) and every change to the
+  // event: any status, owner only.
   async findOneForOrganizer(id: string, organizerId: string) {
     const event = await this.eventsRepository.findOne(id);
     if (!event) throw new NotFoundException('Evento no encontrado');
@@ -243,10 +247,7 @@ export class EventsService {
 
   async update(id: string, organizerId: string, changes: UpdateEventDto) {
     const { batches, ...eventData } = changes;
-    const event = await this.eventsRepository.findOne(id);
-    if (!event || event.organizerId !== organizerId) {
-      throw new ForbiddenException('No tienes permiso para editar este evento');
-    }
+    const event = await this.findOneForOrganizer(id, organizerId);
     const now = new Date();
     const phase = assertEditable(event, now);
     const startDate = changes.startDate
@@ -299,11 +300,7 @@ export class EventsService {
     organizerId: string,
     batchesData: BatchDto[],
   ) {
-    const eventContext = await this.eventsRepository.findOne(eventId);
-
-    if (!eventContext || eventContext.organizerId !== organizerId) {
-      throw new ForbiddenException('No tienes permiso sobre este evento');
-    }
+    const eventContext = await this.findOneForOrganizer(eventId, organizerId);
     const now = new Date();
     if (assertEditable(eventContext, now) === 'IN_PROGRESS') {
       throw new ConflictException(BATCHES_LOCKED_MESSAGE);
@@ -424,75 +421,43 @@ export class EventsService {
     commissionType?: CommissionType,
     commissionValue?: number,
   ) {
-    const event = await this.eventsRepository.findOne(eventId);
-    if (!event || event.organizerId !== organizerId) {
-      throw new BadRequestException('No tienes permiso sobre este evento');
-    }
+    const event = await this.findOneForOrganizer(eventId, organizerId);
 
     const user = await this.userRepository.findById(inviteeId);
     if (!user) {
-      throw new BadRequestException(
-        'Usuario no registrado. Pídele que se registre en NeoPass primero.',
+      throw new NotFoundException(
+        'Usuario no registrado. Pedile que se registre en NeoPass primero.',
       );
     }
 
-    // Verificar si ya existe para este rol específico
+    // One invitation per role: someone who rejected it can be invited again.
     const existing = await this.eventsRepository.findEventStaff(
       eventId,
       user.id,
       role,
     );
-
-    if (existing) {
-      if (existing.status === 'PENDING') {
-        throw new BadRequestException(
-          `El usuario ya tiene una invitación pendiente para el rol de ${role} en este evento.`,
-        );
-      }
-      if (existing.status === 'ACCEPTED') {
-        throw new BadRequestException(
-          `El usuario ya es ${role} de este evento.`,
-        );
-      }
-      if (existing.status === 'REJECTED') {
-        // Re-invitar: pasar a PENDING y despachar notificación
-        const staff = await this.eventsRepository.updateEventStaff(
-          existing.id,
-          { status: 'PENDING', commissionType, commissionValue },
-        );
-        let commString = '';
-        if (role === 'PROMOTER' && commissionType && commissionValue) {
-          commString =
-            commissionType === 'PERCENTAGE'
-              ? ` (${commissionValue}% por ticket)`
-              : ` ($${commissionValue} por ticket)`;
-        }
-
-        await this.notificationsService.create({
-          userId: user.id,
-          type: 'STAFF_INVITE',
-          title: `Nueva invitación de Staff`,
-          message: `Has sido invitado nuevamente como ${role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} para el evento "${event.title}".${commString}`,
-          eventId: event.id,
-          metadata: {
-            eventStaffId: staff.id,
-            role,
-            commissionType,
-            commissionValue,
-            status: 'PENDING',
-          },
-        });
-        return staff;
-      }
+    if (existing?.status === 'PENDING') {
+      throw new ConflictException(
+        `El usuario ya tiene una invitación pendiente para el rol de ${role} en este evento.`,
+      );
+    }
+    if (existing?.status === 'ACCEPTED') {
+      throw new ConflictException(`El usuario ya es ${role} de este evento.`);
     }
 
-    const staff = await this.eventsRepository.createEventStaff({
-      event: { connect: { id: eventId } },
-      user: { connect: { id: user.id } },
-      role,
-      commissionType,
-      commissionValue,
-    });
+    const staff = existing
+      ? await this.eventsRepository.updateEventStaff(existing.id, {
+          status: 'PENDING',
+          commissionType,
+          commissionValue,
+        })
+      : await this.eventsRepository.createEventStaff({
+          event: { connect: { id: eventId } },
+          user: { connect: { id: user.id } },
+          role,
+          commissionType,
+          commissionValue,
+        });
 
     let commString = '';
     if (role === 'PROMOTER' && commissionType && commissionValue) {
@@ -506,7 +471,7 @@ export class EventsService {
       userId: user.id,
       type: 'STAFF_INVITE',
       title: `Nueva invitación de Staff`,
-      message: `Has sido invitado como ${role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} para el evento "${event.title}".${commString}`,
+      message: `Has sido invitado${existing ? ' nuevamente' : ''} como ${role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} para el evento "${event.title}".${commString}`,
       eventId: event.id,
       metadata: {
         eventStaffId: staff.id,
@@ -521,10 +486,7 @@ export class EventsService {
   }
 
   async getEventStaff(eventId: string, organizerId: string) {
-    const event = await this.eventsRepository.findOne(eventId);
-    if (!event || event.organizerId !== organizerId) {
-      throw new BadRequestException('No tienes permiso sobre este evento');
-    }
+    await this.findOneForOrganizer(eventId, organizerId);
     return this.eventsRepository.getEventStaffByEvent(eventId);
   }
 
@@ -617,64 +579,46 @@ export class EventsService {
   }
 
   async acceptInvitation(eventStaffId: string, userId: string) {
-    const staff = await this.eventsRepository.findEventStaffById(eventStaffId);
-    if (!staff || staff.userId !== userId) {
-      throw new BadRequestException(
-        'Invitación no encontrada o no tienes permiso.',
-      );
-    }
-    if (staff.status !== 'PENDING') {
-      throw new BadRequestException('Esta invitación ya fue procesada.');
-    }
-
-    await this.eventsRepository.updateEventStaff(eventStaffId, {
-      status: 'ACCEPTED',
-    });
-    await this.notificationsService.updateStaffInviteStatus(
-      userId,
-      eventStaffId,
-      'ACCEPTED',
-    );
-
-    await this.notificationsService.create({
-      userId: staff.event.organizerId,
-      type: 'SYSTEM',
-      title: 'Invitación Aceptada',
-      message: `${staff.user.name} ha aceptado tu invitación para ser ${staff.role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} en "${staff.event.title}".`,
-      eventId: staff.event.id,
-    });
-
+    await this.respondToInvitation(eventStaffId, userId, 'ACCEPTED');
     return { success: true, message: 'Invitación aceptada correctamente' };
   }
 
   async rejectInvitation(eventStaffId: string, userId: string) {
+    await this.respondToInvitation(eventStaffId, userId, 'REJECTED');
+    return { success: true, message: 'Invitación rechazada correctamente' };
+  }
+
+  // Only the invitee answers, and only once: the answer is a conditional update
+  // on PENDING, so two answers at the same time can't both go through.
+  private async respondToInvitation(
+    eventStaffId: string,
+    userId: string,
+    status: InvitationAnswer,
+  ) {
     const staff = await this.eventsRepository.findEventStaffById(eventStaffId);
     if (!staff || staff.userId !== userId) {
-      throw new BadRequestException(
-        'Invitación no encontrada o no tienes permiso.',
-      );
+      throw new NotFoundException('Invitación no encontrada');
     }
-    if (staff.status !== 'PENDING') {
-      throw new BadRequestException('Esta invitación ya fue procesada.');
+    const answered = await this.eventsRepository.answerPendingInvitation(
+      eventStaffId,
+      status,
+    );
+    if (!answered) {
+      throw new ConflictException('Esta invitación ya fue procesada.');
     }
 
-    await this.eventsRepository.updateEventStaff(eventStaffId, {
-      status: 'REJECTED',
-    });
     await this.notificationsService.updateStaffInviteStatus(
       userId,
       eventStaffId,
-      'REJECTED',
+      status,
     );
-
+    const accepted = status === 'ACCEPTED';
     await this.notificationsService.create({
       userId: staff.event.organizerId,
       type: 'SYSTEM',
-      title: 'Invitación Rechazada',
-      message: `${staff.user.name} ha rechazado tu invitación para ser ${staff.role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} en "${staff.event.title}".`,
+      title: accepted ? 'Invitación Aceptada' : 'Invitación Rechazada',
+      message: `${staff.user.name} ha ${accepted ? 'aceptado' : 'rechazado'} tu invitación para ser ${staff.role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} en "${staff.event.title}".`,
       eventId: staff.event.id,
     });
-
-    return { success: true, message: 'Invitación rechazada correctamente' };
   }
 }

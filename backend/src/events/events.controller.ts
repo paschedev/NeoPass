@@ -6,12 +6,10 @@ import {
   Body,
   Param,
   UseGuards,
-  Req,
   Query,
   Ip,
 } from '@nestjs/common';
 import { EventsService } from './events.service';
-import { Prisma, StaffRole, CommissionType } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -34,22 +32,22 @@ export class EventsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ORGANIZER', 'ADMIN')
   @Get('organizer/me')
-  findMyEvents(@Req() req: any) {
-    return this.eventsService.findByOrganizer(req.user.userId);
+  findMyEvents(@CurrentUser('userId') userId: string) {
+    return this.eventsService.findByOrganizer(userId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ORGANIZER', 'ADMIN')
   @Get('organizer/staff')
-  getOrganizerStaff(@Req() req: any) {
-    return this.eventsService.getOrganizerStaff(req.user.userId);
+  getOrganizerStaff(@CurrentUser('userId') userId: string) {
+    return this.eventsService.getOrganizerStaff(userId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ORGANIZER', 'ADMIN')
   @Get('organizer/stats')
-  getOrganizerStats(@Req() req: any) {
-    return this.eventsService.getOrganizerStats(req.user.userId);
+  getOrganizerStats(@CurrentUser('userId') userId: string) {
+    return this.eventsService.getOrganizerStats(userId);
   }
 
   // After the fixed organizer/* routes so it doesn't swallow them.
@@ -80,8 +78,8 @@ export class EventsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ORGANIZER', 'ADMIN')
   @Post()
-  create(@Body() body: CreateEventDto, @Req() req: any) {
-    return this.eventsService.create(req.user.userId, body);
+  create(@Body() body: CreateEventDto, @CurrentUser('userId') userId: string) {
+    return this.eventsService.create(userId, body);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -90,9 +88,9 @@ export class EventsController {
   update(
     @Param('id') id: string,
     @Body() body: UpdateEventDto,
-    @Req() req: any,
+    @CurrentUser('userId') userId: string,
   ) {
-    return this.eventsService.update(id, req.user.userId, body);
+    return this.eventsService.update(id, userId, body);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -101,27 +99,26 @@ export class EventsController {
   updateBatches(
     @Param('id') eventId: string,
     @Body() body: UpdateBatchesDto,
-    @Req() req: any,
+    @CurrentUser('userId') userId: string,
   ) {
-    return this.eventsService.updateBatches(
-      eventId,
-      req.user.userId,
-      body.batches,
-    );
+    return this.eventsService.updateBatches(eventId, userId, body.batches);
   }
 
   // --- STAFF ENDPOINTS ---
 
   @UseGuards(JwtAuthGuard)
   @Get('promoter/me')
-  getMyPromoterStats(@Req() req: any) {
-    return this.eventsService.getMyPromoterStats(req.user.userId);
+  getMyPromoterStats(@CurrentUser('userId') userId: string) {
+    return this.eventsService.getMyPromoterStats(userId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('promoter/me/:eventId/stats')
-  getPromoterEventStats(@Param('eventId') eventId: string, @Req() req: any) {
-    return this.eventsService.getPromoterEventStats(req.user.userId, eventId);
+  getPromoterEventStats(
+    @Param('eventId') eventId: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.eventsService.getPromoterEventStats(userId, eventId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -130,11 +127,11 @@ export class EventsController {
   addStaff(
     @Param('id') eventId: string,
     @Body() body: AddStaffDto,
-    @Req() req: any,
+    @CurrentUser('userId') userId: string,
   ) {
     return this.eventsService.addStaff(
       eventId,
-      req.user.userId,
+      userId,
       body.userId,
       body.role,
       body.commissionType,
@@ -145,25 +142,28 @@ export class EventsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ORGANIZER', 'ADMIN')
   @Get(':id/staff')
-  getStaff(@Param('id') eventId: string, @Req() req: any) {
-    return this.eventsService.getEventStaff(eventId, req.user.userId);
+  getStaff(
+    @Param('id') eventId: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.eventsService.getEventStaff(eventId, userId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Put('staff/:eventStaffId/accept')
   acceptInvitation(
     @Param('eventStaffId') eventStaffId: string,
-    @Req() req: any,
+    @CurrentUser('userId') userId: string,
   ) {
-    return this.eventsService.acceptInvitation(eventStaffId, req.user.userId);
+    return this.eventsService.acceptInvitation(eventStaffId, userId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Put('staff/:eventStaffId/reject')
   rejectInvitation(
     @Param('eventStaffId') eventStaffId: string,
-    @Req() req: any,
+    @CurrentUser('userId') userId: string,
   ) {
-    return this.eventsService.rejectInvitation(eventStaffId, req.user.userId);
+    return this.eventsService.rejectInvitation(eventStaffId, userId);
   }
 }

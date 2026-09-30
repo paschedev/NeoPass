@@ -48,7 +48,7 @@ describe('useStaffInvitation', () => {
     vi.mocked(apiFetch).mockResolvedValue(
       Response.json(
         { message: 'La invitación ya fue procesada' },
-        { status: 400 },
+        { status: 409 },
       ),
     );
     const { result } = renderHook(() => useStaffInvitation());

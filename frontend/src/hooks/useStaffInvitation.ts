@@ -40,9 +40,8 @@ export function useStaffInvitation() {
           'Hubo un error procesando la invitación',
         );
         toast.error(message);
-        return res.status === 400 && message.includes('procesada')
-          ? 'already-processed'
-          : 'failed';
+        // 409: ya estaba aceptada o rechazada
+        return res.status === 409 ? 'already-processed' : 'failed';
       }
       // Aceptar suma el rol de RPP o scanner: la navegación lo muestra al instante
       if (action === 'accept') await refresh();
