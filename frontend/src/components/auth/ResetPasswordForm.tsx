@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
+import PasswordInput from '@/components/forms/PasswordInput';
 
 const resetSchema = z
   .object({
@@ -24,7 +25,7 @@ type ResetFormValues = z.infer<typeof resetSchema>;
 const cardClass =
   'max-w-md mx-4 md:mx-auto mt-20 bg-white/5 border border-white/10 p-8 rounded-3xl';
 const inputClass =
-  'w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors text-sm';
+  'w-full bg-black/50 border border-white/10 rounded-xl pl-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors text-sm';
 const linkButtonClass =
   'inline-block bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-xl font-medium transition-colors';
 
@@ -113,9 +114,8 @@ export default function ResetPasswordForm({ token }: { token: string | null }) {
           >
             Nueva contraseña
           </label>
-          <input
+          <PasswordInput
             id="newPassword"
-            type="password"
             autoComplete="new-password"
             className={inputClass}
             {...register('newPassword')}
@@ -133,9 +133,8 @@ export default function ResetPasswordForm({ token }: { token: string | null }) {
           >
             Repetí la contraseña
           </label>
-          <input
+          <PasswordInput
             id="confirmPassword"
-            type="password"
             autoComplete="new-password"
             className={inputClass}
             {...register('confirmPassword')}

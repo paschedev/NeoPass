@@ -8,6 +8,7 @@ import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { saveSession, useCurrentUser } from '@/hooks/useCurrentUser';
 import { isOrganizer } from '@/utils/roles';
+import PasswordInput from '@/components/forms/PasswordInput';
 
 export default function ConfiguracionPage() {
   const [loadingMp, setLoadingMp] = useState(false);
@@ -142,12 +143,11 @@ export default function ConfiguracionPage() {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Lock className="h-4 w-4 text-neutral-500" />
                   </div>
-                  <input
-                    type="password"
+                  <PasswordInput
                     value={oldPassword}
                     onChange={(e) => setOldPassword(e.target.value)}
                     required
-                    className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors text-sm"
+                    className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors text-sm"
                     placeholder="••••••••"
                   />
                 </div>
@@ -160,12 +160,11 @@ export default function ConfiguracionPage() {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Key className="h-4 w-4 text-neutral-500" />
                   </div>
-                  <input
-                    type="password"
+                  <PasswordInput
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
-                    className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors text-sm"
+                    className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors text-sm"
                     placeholder="••••••••"
                   />
                 </div>
@@ -178,12 +177,11 @@ export default function ConfiguracionPage() {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Key className="h-4 w-4 text-neutral-500" />
                   </div>
-                  <input
-                    type="password"
+                  <PasswordInput
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
-                    className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors text-sm"
+                    className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors text-sm"
                     placeholder="••••••••"
                   />
                 </div>

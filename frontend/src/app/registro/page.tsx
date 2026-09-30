@@ -9,6 +9,7 @@ import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { toE164Phone } from '@/utils/phone';
 import PhoneInput from '@/components/forms/PhoneInput';
+import PasswordInput from '@/components/forms/PasswordInput';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -281,11 +282,10 @@ export default function RegistroPage() {
               name="password"
               control={control}
               render={({ field }) => (
-                <input
+                <PasswordInput
                   {...field}
-                  type="password"
                   maxLength={32}
-                  className={`w-full bg-white/5 border ${errors.password ? 'border-red-500' : 'border-white/10'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors`}
+                  className={`w-full bg-white/5 border ${errors.password ? 'border-red-500' : 'border-white/10'} rounded-xl pl-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors`}
                   placeholder="••••••••"
                 />
               )}
@@ -305,11 +305,10 @@ export default function RegistroPage() {
               name="confirmPassword"
               control={control}
               render={({ field }) => (
-                <input
+                <PasswordInput
                   {...field}
-                  type="password"
                   maxLength={32}
-                  className={`w-full bg-white/5 border ${errors.confirmPassword ? 'border-red-500' : 'border-white/10'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors`}
+                  className={`w-full bg-white/5 border ${errors.confirmPassword ? 'border-red-500' : 'border-white/10'} rounded-xl pl-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors`}
                   placeholder="••••••••"
                 />
               )}
