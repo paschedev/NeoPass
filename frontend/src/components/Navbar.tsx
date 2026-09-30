@@ -15,6 +15,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useStaffInvitation } from '@/hooks/useStaffInvitation';
 
+const SUPPORT_EMAIL = 'soporte@neopass.ar';
+
 export default function Navbar() {
   const { user, logout } = useCurrentUser();
   const isLoggedIn = !!user;
@@ -305,7 +307,7 @@ export default function Navbar() {
                       <div className="h-px w-full bg-white/5 my-1" />
 
                       <a
-                        href="mailto:paschedev@gmail.com"
+                        href={`mailto:${SUPPORT_EMAIL}`}
                         className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors w-full text-left"
                       >
                         <HelpCircle className="w-4 h-4" /> Soporte

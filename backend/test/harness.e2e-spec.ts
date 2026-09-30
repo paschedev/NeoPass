@@ -50,7 +50,7 @@ describe('Base de tests e2e', () => {
   });
 
   it('los helpers que borran datos se niegan a correr fuera de una base *_test', () => {
-    expect(() => assertTestDatabaseName('entrypass')).toThrow();
+    expect(() => assertTestDatabaseName('neopass')).toThrow();
     expect(() => assertTestDatabaseName('neopass_test')).not.toThrow();
   });
 

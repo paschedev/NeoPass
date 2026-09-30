@@ -1,6 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
 import request from 'supertest';
+import { testEnv } from './setup/test-env';
 import { authHeader } from './utils/auth';
 import { createUser } from './utils/factories';
 import { createTestApp, TestApp } from './utils/test-app';
@@ -18,6 +19,33 @@ describe('Endurecimientos', () => {
   beforeEach(() => resetDb(t.prisma));
 
   afterAll(() => t.close());
+
+  describe('CORS', () => {
+    function allowedOrigin(origin: string) {
+      return request(t.app.getHttpServer())
+        .get('/events')
+        .set('Origin', origin)
+        .expect(200)
+        .then((res) => res.headers['access-control-allow-origin']);
+    }
+
+    it.each([
+      'https://neopass.ar',
+      'https://www.neopass.ar',
+      testEnv.FRONTEND_URL,
+      'http://localhost:3000',
+    ])('acepta pedidos desde %s', async (origin) => {
+      expect(await allowedOrigin(origin)).toBe(origin);
+    });
+
+    it.each([
+      'https://ventipass.com',
+      'https://neopass.com',
+      'https://venti-pass.vercel.app',
+    ])('no acepta pedidos desde %s', async (origin) => {
+      expect(await allowedOrigin(origin)).toBeUndefined();
+    });
+  });
 
   describe('firma para subir imágenes', () => {
     it('un cliente no la puede pedir', async () => {

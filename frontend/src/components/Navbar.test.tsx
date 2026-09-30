@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { apiFetch } from '@/utils/api';
 import Navbar from './Navbar';
 
@@ -32,6 +32,22 @@ describe('Navbar', () => {
     expect(screen.queryByRole('link', { name: 'Ingresar' })).toBeNull();
     await waitFor(() =>
       expect(apiFetch).toHaveBeenCalledWith('/notifications'),
+    );
+  });
+
+  it('el link de soporte del menú abre un mail a soporte@neopass.ar', async () => {
+    localStorage.setItem(
+      'user',
+      JSON.stringify({ name: 'Ana Gómez', email: 'ana@neopass.test' }),
+    );
+    vi.mocked(apiFetch).mockResolvedValue(Response.json([]));
+
+    render(<Navbar />);
+    fireEvent.click(screen.getByText('Ana'));
+
+    expect(await screen.findByRole('link', { name: 'Soporte' })).toHaveAttribute(
+      'href',
+      'mailto:soporte@neopass.ar',
     );
   });
 });
