@@ -8,12 +8,20 @@ import {
   MapPin,
   X,
 } from 'lucide-react';
+import { closedEventLabel, getEventPhase } from '@/utils/event-edit';
 import { formatCurrency } from '@/utils/format';
 import type { OrganizerEvent } from './types';
 
 const STATUS_STYLES: Record<string, string> = {
   PUBLISHED: 'bg-emerald-500/10 text-emerald-400',
   DRAFT: 'bg-amber-500/10 text-amber-400',
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  PUBLISHED: 'PUBLICADO',
+  DRAFT: 'BORRADOR',
+  FINISHED: 'FINALIZADO',
+  CANCELLED: 'CANCELADO',
 };
 
 function salesSummary(event: OrganizerEvent) {
@@ -102,9 +110,7 @@ export default function EventsTab({
                       <span
                         className={`px-2.5 py-1 text-[10px] font-semibold rounded-md uppercase ${STATUS_STYLES[event.status] ?? 'bg-white/10 text-neutral-400'}`}
                       >
-                        {event.status === 'PUBLISHED'
-                          ? 'PUBLICADO'
-                          : event.status}
+                        {STATUS_LABELS[event.status] ?? event.status}
                       </span>
                       <span className="text-xs text-neutral-400">
                         {new Date(event.startDate).toLocaleDateString('es-AR', {
@@ -146,12 +152,18 @@ export default function EventsTab({
                 </div>
 
                 <div className="flex items-center gap-3 mt-6 pt-6 border-t border-white/5">
-                  <Link
-                    href={`/panel/eventos/${event.id}/editar`}
-                    className="flex-1 text-center bg-white/5 hover:bg-white/10 text-white py-2.5 rounded-xl text-sm font-medium transition-colors"
-                  >
-                    Editar Evento
-                  </Link>
+                  {getEventPhase(event, new Date()) === 'CLOSED' ? (
+                    <span className="flex-1 text-center bg-white/5 text-neutral-500 py-2.5 rounded-xl text-sm font-medium">
+                      {closedEventLabel(event.status)}
+                    </span>
+                  ) : (
+                    <Link
+                      href={`/panel/eventos/${event.id}/editar`}
+                      className="flex-1 text-center bg-white/5 hover:bg-white/10 text-white py-2.5 rounded-xl text-sm font-medium transition-colors"
+                    >
+                      Editar Evento
+                    </Link>
+                  )}
                   <Link
                     href={`/eventos/${event.id}`}
                     target="_blank"

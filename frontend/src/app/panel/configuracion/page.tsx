@@ -8,9 +8,10 @@ import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { saveSession, useCurrentUser } from '@/hooks/useCurrentUser';
 import { isOrganizer } from '@/utils/roles';
+import PasswordInput from '@/components/forms/PasswordInput';
+import ConnectMercadoPagoButton from '@/components/panel/ConnectMercadoPagoButton';
 
 export default function ConfiguracionPage() {
-  const [loadingMp, setLoadingMp] = useState(false);
   const { user } = useCurrentUser();
   const hasLinkedMp = !!user?.hasLinkedMp;
 
@@ -23,23 +24,6 @@ export default function ConfiguracionPage() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const router = useRouter();
-
-  const handleConnectMp = async () => {
-    if (!user) return;
-    try {
-      const response = await apiFetch('/payments/oauth/link');
-      const data = await response.json();
-      if (response.ok && data.url) {
-        window.location.href = data.url;
-      } else {
-        toast.error(
-          getApiErrorMessage(data, 'Error al generar link de MercadoPago'),
-        );
-      }
-    } catch (err) {
-      toast.error('Error de conexión al servidor');
-    }
-  };
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,12 +126,11 @@ export default function ConfiguracionPage() {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Lock className="h-4 w-4 text-neutral-500" />
                   </div>
-                  <input
-                    type="password"
+                  <PasswordInput
                     value={oldPassword}
                     onChange={(e) => setOldPassword(e.target.value)}
                     required
-                    className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors text-sm"
+                    className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors text-sm"
                     placeholder="••••••••"
                   />
                 </div>
@@ -160,12 +143,11 @@ export default function ConfiguracionPage() {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Key className="h-4 w-4 text-neutral-500" />
                   </div>
-                  <input
-                    type="password"
+                  <PasswordInput
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     required
-                    className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors text-sm"
+                    className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors text-sm"
                     placeholder="••••••••"
                   />
                 </div>
@@ -178,12 +160,11 @@ export default function ConfiguracionPage() {
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <Key className="h-4 w-4 text-neutral-500" />
                   </div>
-                  <input
-                    type="password"
+                  <PasswordInput
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
-                    className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors text-sm"
+                    className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 py-3 text-white focus:outline-none focus:border-purple-500 transition-colors text-sm"
                     placeholder="••••••••"
                   />
                 </div>
@@ -245,12 +226,7 @@ export default function ConfiguracionPage() {
                 <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
                 Ya tienes una cuenta de Mercado Pago vinculada.
               </p>
-              <button
-                onClick={handleConnectMp}
-                className="w-full sm:w-auto bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                Cambiar Cuenta Vinculada
-              </button>
+              <ConnectMercadoPagoButton variant="change" />
             </div>
           ) : (
             <div className="mb-6">
@@ -261,12 +237,9 @@ export default function ConfiguracionPage() {
                 descuentos. El cargo por servicio de la plataforma se le cobra
                 como un extra directamente al comprador final.
               </p>
-              <button
-                onClick={handleConnectMp}
-                className="w-full bg-[#009EE3] hover:bg-[#0089C7] text-white py-4 rounded-full font-bold transition-all shadow-lg shadow-[#009EE3]/20 flex items-center justify-center gap-2 mb-6"
-              >
-                Conectar con Mercado Pago
-              </button>
+              <div className="mb-6">
+                <ConnectMercadoPagoButton />
+              </div>
             </div>
           )}
         </div>

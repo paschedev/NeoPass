@@ -24,6 +24,7 @@ export interface OrganizerEvent {
   title: string;
   status: string;
   startDate: string;
+  endDate: string;
   venueName: string | null;
   ticketTypes: { sold: number; price: number | string }[];
 }

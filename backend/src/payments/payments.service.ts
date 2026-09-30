@@ -33,46 +33,6 @@ export class PaymentsService {
     });
   }
 
-  async exchangeOAuthCode(userId: string, code: string) {
-    const clientId = this.config.getOrThrow<string>('MERCADOPAGO_CLIENT_ID');
-    const clientSecret = this.config.getOrThrow<string>(
-      'MERCADOPAGO_CLIENT_SECRET',
-    );
-    const redirectUri = `${this.config.getOrThrow<string>('BACKEND_URL')}/payments/oauth/callback`;
-
-    try {
-      const response = await fetch('https://api.mercadopago.com/oauth/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          Authorization: `Bearer ${this.config.getOrThrow<string>('MERCADOPAGO_ACCESS_TOKEN')}`,
-        },
-        body: new URLSearchParams({
-          client_id: clientId,
-          client_secret: clientSecret,
-          code: code,
-          grant_type: 'authorization_code',
-          redirect_uri: redirectUri,
-        }).toString(),
-      });
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Error en OAuth');
-
-      // Update user with Mercado Pago credentials
-      await this.paymentsRepository.updateUserMercadoPagoCredentials(userId, {
-        accessToken: data.access_token,
-        publicKey: data.public_key,
-        userId: data.user_id.toString(),
-      });
-
-      return { success: true };
-    } catch (error) {
-      this.logger.error('Error exchanging Mercado Pago code', error);
-      throw error;
-    }
-  }
-
   async createPreference(
     orderId: string,
     items: any[],

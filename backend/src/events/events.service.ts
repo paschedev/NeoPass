@@ -10,6 +10,9 @@ import { UserRepository } from '../auth/repositories/user.repository';
 import { Prisma, StaffRole, CommissionType } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { buildRevenueChart } from './revenue-chart';
+import { getBatchSaleStatus } from './batch-sale-status';
+import { getEventPhase } from './event-phase';
+import { hasUsableMercadoPagoToken } from '../payments/mercadopago-token';
 
 type EventDates = { startDate: string; endDate: string };
 
@@ -17,6 +20,62 @@ function assertEndAfterStart(startDate: Date, endDate: Date) {
   if (endDate <= startDate) {
     throw new BadRequestException(
       'La fecha de fin tiene que ser posterior a la de inicio',
+    );
+  }
+}
+
+type EventForEdit = {
+  status: string;
+  startDate: Date;
+  endDate: Date;
+  venueName: string | null;
+  venueAddress: string | null;
+};
+type EventChanges = Partial<EventDates> & {
+  venueName?: string;
+  venueAddress?: string;
+  status?: string;
+  batches?: unknown[];
+};
+
+// Finished and cancelled events are read only; an event whose end already
+// passed counts as finished even before the cron marks it.
+function assertEditable(event: EventForEdit, now: Date) {
+  const phase = getEventPhase(event, now);
+  if (phase === 'CLOSED') {
+    throw new ConflictException(
+      event.status === 'CANCELLED'
+        ? 'Un evento cancelado no se puede editar'
+        : 'Un evento finalizado no se puede editar',
+    );
+  }
+  return phase;
+}
+
+const BATCHES_LOCKED_MESSAGE =
+  'El evento ya empezó: las tandas no se pueden cambiar (la venta sigue)';
+
+// Once the event starts, buyers already hold tickets for its start and venue:
+// only texts and the image change, the end can only move later and the
+// batches stay as they are while they keep selling. Unchanged values are fine.
+function assertInProgressChanges(event: EventForEdit, changes: EventChanges) {
+  const changesStart =
+    changes.startDate !== undefined &&
+    new Date(changes.startDate).getTime() !== event.startDate.getTime();
+  const changesVenue =
+    (changes.venueName !== undefined &&
+      changes.venueName !== event.venueName) ||
+    (changes.venueAddress !== undefined &&
+      changes.venueAddress !== event.venueAddress);
+  if (changesStart || changesVenue) {
+    throw new ConflictException(
+      'El evento ya empezó: el inicio y el lugar no se pueden cambiar',
+    );
+  }
+  if (changes.batches) throw new ConflictException(BATCHES_LOCKED_MESSAGE);
+  if (changes.endDate && new Date(changes.endDate) < event.endDate) {
+    throw new BadRequestException(
+      'El evento ya empezó: el fin solo se puede extender',
     );
   }
 }
@@ -29,6 +88,51 @@ type ExistingBatchWithSales = {
 type IncomingBatchWithStock = {
   ticketTypes?: { id?: string; stock: number }[];
 };
+
+type BatchWindow = {
+  id?: string;
+  name: string;
+  publishAt?: string | Date | null;
+  closeAt?: string | Date | null;
+};
+
+// A batch sells from publishAt to closeAt, or to the end of the event. A closeAt
+// in the past is allowed: that is how an organizer ends a sale right now. A new
+// publishAt can't be in the past, but a stored one is kept while it sells.
+function assertBatchWindows(
+  batches: BatchWindow[],
+  stored: { id: string; publishAt: Date | null }[],
+  eventEndDate: Date,
+  now: Date,
+) {
+  const storedStart = new Map(
+    stored.map((batch) => [batch.id, batch.publishAt?.getTime() ?? null]),
+  );
+  for (const batch of batches) {
+    const publishAt = batch.publishAt ? new Date(batch.publishAt) : null;
+    const closeAt = batch.closeAt ? new Date(batch.closeAt) : null;
+    if (closeAt && closeAt > eventEndDate) {
+      throw new BadRequestException(
+        `La venta de "${batch.name}" no puede terminar después del evento`,
+      );
+    }
+    if (publishAt && publishAt >= (closeAt ?? eventEndDate)) {
+      throw new BadRequestException(
+        closeAt
+          ? `En "${batch.name}", el inicio de venta tiene que ser anterior al fin de venta`
+          : `La venta de "${batch.name}" tiene que empezar antes de que termine el evento`,
+      );
+    }
+    const keepsStoredStart =
+      batch.id !== undefined &&
+      storedStart.get(batch.id) === (publishAt?.getTime() ?? null);
+    if (publishAt && publishAt < now && !keepsStoredStart) {
+      throw new BadRequestException(
+        `El inicio de venta de "${batch.name}" ya pasó`,
+      );
+    }
+  }
+}
 
 // Batch and ticket type IDs come from the client: each one has to belong to the
 // event being edited (and each ticket type to its batch) before anything is written.
@@ -86,19 +190,28 @@ export class EventsService {
     const event = await this.eventsRepository.findPublicById(id, new Date());
     if (!event) throw new NotFoundException('Evento no encontrado');
 
-    // Buyers see how many tickets are left, not the raw stock counters.
-    return {
-      ...event,
-      ticketBatches: event.ticketBatches.map((batch) => ({
+    // Buyers see upcoming, on sale and sold out batches, and how many tickets
+    // are left instead of the raw stock counters.
+    const now = new Date();
+    const ticketBatches = event.ticketBatches
+      .map(({ isVisible, ticketTypes, ...batch }) => ({
         ...batch,
-        ticketTypes: batch.ticketTypes.map(
+        saleStatus: getBatchSaleStatus(
+          { ...batch, isVisible, ticketTypes },
+          event.endDate,
+          now,
+        ),
+        ticketTypes: ticketTypes.map(
           ({ stock, sold, reserved, ...ticketType }) => ({
             ...ticketType,
             available: Math.max(0, stock - sold - reserved),
           }),
         ),
-      })),
-    };
+      }))
+      .filter(
+        ({ saleStatus }) => saleStatus !== 'HIDDEN' && saleStatus !== 'ENDED',
+      );
+    return { ...event, ticketBatches };
   }
 
   async create(userId: string, data: any) {
@@ -106,7 +219,7 @@ export class EventsService {
     const user = await this.userRepository.findById(userId);
 
     if (!user) throw new BadRequestException('Usuario no encontrado');
-    if (!user.mercadoPagoAccessToken) {
+    if (!hasUsableMercadoPagoToken(user, new Date())) {
       throw new BadRequestException(
         'Debes vincular Mercado Pago antes de crear un evento',
       );
@@ -117,7 +230,9 @@ export class EventsService {
     if (startDate <= new Date()) {
       throw new BadRequestException('La fecha de inicio tiene que ser futura');
     }
-    assertEndAfterStart(startDate, new Date(dates.endDate));
+    const endDate = new Date(dates.endDate);
+    assertEndAfterStart(startDate, endDate);
+    assertBatchWindows(batches ?? [], [], endDate, new Date());
 
     return this.eventsRepository.createWithBatches(
       { ...eventData, organizerId: userId },
@@ -141,15 +256,40 @@ export class EventsService {
     if (!event || event.organizerId !== organizerId) {
       throw new ForbiddenException('No tienes permiso para editar este evento');
     }
-    if (event.status === 'FINISHED') {
-      throw new ConflictException('Un evento finalizado no se puede editar');
+    const now = new Date();
+    const changes = data as EventChanges;
+    const phase = assertEditable(event, now);
+    const startDate = changes.startDate
+      ? new Date(changes.startDate)
+      : event.startDate;
+    if (phase === 'IN_PROGRESS') {
+      assertInProgressChanges(event, changes);
+    } else if (
+      startDate.getTime() !== event.startDate.getTime() &&
+      startDate <= now
+    ) {
+      throw new BadRequestException('La fecha de inicio tiene que ser futura');
     }
-    const dates = data as Partial<EventDates>;
-    assertEndAfterStart(
-      dates.startDate ? new Date(dates.startDate) : event.startDate,
-      dates.endDate ? new Date(dates.endDate) : event.endDate,
+    const endDate = changes.endDate ? new Date(changes.endDate) : event.endDate;
+    assertEndAfterStart(startDate, endDate);
+
+    const backToDraft = changes.status === 'DRAFT' && event.status !== 'DRAFT';
+    const hasTicketsTaken = event.ticketTypes.some(
+      (ticketType) => ticketType.sold + ticketType.reserved > 0,
     );
+    if (backToDraft && hasTicketsTaken) {
+      throw new ConflictException(
+        'Un evento con entradas vendidas o reservadas no puede volver a borrador',
+      );
+    }
     assertOwnBatchIds(event.ticketBatches, batches);
+    // Without batches in the body, the stored ones still have to fit the event.
+    assertBatchWindows(
+      batches ?? event.ticketBatches,
+      event.ticketBatches,
+      endDate,
+      now,
+    );
     if (!batches) return this.eventsRepository.update(id, eventData);
 
     await this.assertBatchChangesAllowed(event.ticketBatches, batches);
@@ -175,7 +315,17 @@ export class EventsService {
     if (!eventContext || eventContext.organizerId !== organizerId) {
       throw new ForbiddenException('No tienes permiso sobre este evento');
     }
+    const now = new Date();
+    if (assertEditable(eventContext, now) === 'IN_PROGRESS') {
+      throw new ConflictException(BATCHES_LOCKED_MESSAGE);
+    }
     assertOwnBatchIds(eventContext.ticketBatches, batchesData);
+    assertBatchWindows(
+      batchesData,
+      eventContext.ticketBatches,
+      eventContext.endDate,
+      now,
+    );
     await this.assertBatchChangesAllowed(
       eventContext.ticketBatches,
       batchesData,

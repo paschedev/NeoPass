@@ -26,8 +26,10 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${inter.variable} ${outfit.variable} dark`}
     >
+      {/* Sin corrector: marca nombres, mails y lugares. Se reactiva en textos largos. */}
       <body
         suppressHydrationWarning
+        spellCheck={false}
         className="font-inter bg-neutral-950 text-neutral-50 antialiased selection:bg-indigo-500/30"
       >
         <main className="min-h-screen flex flex-col relative">

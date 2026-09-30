@@ -15,6 +15,20 @@ body {
   color: var(--foreground);
 }
 
+/* El ojo de las contraseñas es propio (PasswordInput): se oculta el de Edge. */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
+/* Tailwind 4 dejó el cursor por defecto en los botones: vuelve la mano. */
+@layer base {
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
 /* Custom Modern Scrollbars for Desktop */
 @media (pointer: fine) {
   ::-webkit-scrollbar {

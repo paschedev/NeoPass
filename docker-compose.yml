@@ -1,9 +1,11 @@
-version: '3.8'
+# Nombre de proyecto fijo: el checkout principal y los worktrees manejan los
+# mismos contenedores y volúmenes, sin choques por container_name.
+name: neopass
 
 services:
   db:
     image: postgres:15-alpine
-    container_name: entrypass-db
+    container_name: neopass-db
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
@@ -14,8 +16,8 @@ services:
       - postgres_data:/var/lib/postgresql/data
     restart: always
 
-  # Base para los tests e2e del backend (backend/.env.test). Los datos viven en
-  # memoria: se pierden al reiniciar el contenedor.
+  # Base para los tests e2e del backend (backend/test/setup/test-env.ts). Los
+  # datos viven en memoria: se pierden al reiniciar el contenedor.
   db-test:
     image: postgres:15-alpine
     container_name: neopass-db-test
@@ -30,12 +32,21 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: entrypass-redis
+    container_name: neopass-redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
     restart: always
+
+  # Redis aparte para levantar el backend local con datos de prueba: así no
+  # consume las colas (mails) del Redis de desarrollo. Sin persistencia.
+  redis-test:
+    image: redis:7-alpine
+    container_name: neopass-redis-test
+    command: redis-server --save "" --appendonly no
+    ports:
+      - "6380:6379"
 
 volumes:
   postgres_data:

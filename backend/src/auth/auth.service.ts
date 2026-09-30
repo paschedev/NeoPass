@@ -9,6 +9,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UserRepository } from './repositories/user.repository';
 import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
+import { hasUsableMercadoPagoToken } from '../payments/mercadopago-token';
 import * as crypto from 'crypto';
 import { Prisma } from '@prisma/client';
 import { RegisterUserDto } from './dto/register-user.dto';
@@ -54,7 +55,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         role: user.role,
-        hasLinkedMp: !!user.mercadoPagoAccessToken,
+        hasLinkedMp: hasUsableMercadoPagoToken(user, new Date()),
         hasBeenRpp,
         isCurrentlyScanner,
       },
@@ -74,7 +75,7 @@ export class AuthService {
       email: user.email,
       name: user.name,
       role: user.role,
-      hasLinkedMp: !!user.mercadoPagoAccessToken,
+      hasLinkedMp: hasUsableMercadoPagoToken(user, new Date()),
       hasBeenRpp,
       isCurrentlyScanner,
     };

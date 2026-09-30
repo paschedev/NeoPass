@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OrderStatus, Prisma } from '@prisma/client';
+import type { MercadoPagoCredentials } from '../mercadopago-token';
 
 @Injectable()
 export class PaymentsRepository {
@@ -8,16 +9,44 @@ export class PaymentsRepository {
 
   async updateUserMercadoPagoCredentials(
     userId: string,
-    data: { accessToken: string; publicKey?: string; userId?: string },
+    credentials: MercadoPagoCredentials,
   ) {
     return this.prisma.user.update({
       where: { id: userId },
-      data: {
-        mercadoPagoAccessToken: data.accessToken,
-        mercadoPagoPublicKey: data.publicKey,
-        mercadoPagoUserId: data.userId,
-      },
+      data: credentials,
     });
+  }
+
+  // Oldest expiry first; the daily renewal picks up whatever is left the next day.
+  async findMercadoPagoTokensExpiringBefore(limit: Date) {
+    const organizers = await this.prisma.user.findMany({
+      where: {
+        mercadoPagoRefreshToken: { not: null },
+        mercadoPagoTokenExpiresAt: { lte: limit },
+      },
+      select: { id: true, mercadoPagoRefreshToken: true },
+      orderBy: { mercadoPagoTokenExpiresAt: 'asc' },
+      take: 100,
+    });
+    return organizers.flatMap(({ id, mercadoPagoRefreshToken }) =>
+      mercadoPagoRefreshToken
+        ? [{ id, refreshToken: mercadoPagoRefreshToken }]
+        : [],
+    );
+  }
+
+  // Only if the refresh token is still the one that was used: a concurrent
+  // renewal (or a new link) already stored newer credentials.
+  async replaceMercadoPagoCredentials(
+    userId: string,
+    usedRefreshToken: string,
+    credentials: MercadoPagoCredentials,
+  ) {
+    const { count } = await this.prisma.user.updateMany({
+      where: { id: userId, mercadoPagoRefreshToken: usedRefreshToken },
+      data: credentials,
+    });
+    return count > 0;
   }
 
   async findMercadoPagoTokenByUserId(mercadoPagoUserId: string) {
