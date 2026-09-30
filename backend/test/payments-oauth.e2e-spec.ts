@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client';
 import { MercadoPagoOAuthService } from '../src/payments/mercadopago-oauth.service';
 import { testEnv } from './setup/test-env';
 import { authHeader } from './utils/auth';
-import { createUser } from './utils/factories';
+import { createUser, mercadoPagoTokenCipher } from './utils/factories';
 import { createTestApp, TestApp } from './utils/test-app';
 import { resetDb } from './utils/test-database';
 
@@ -41,10 +41,23 @@ describe('Vinculación de Mercado Pago por OAuth', () => {
     return t.prisma.user.findUniqueOrThrow({ where: { id: userId } });
   }
 
-  function linkedOrganizer(data: Partial<Prisma.UserCreateInput> = {}) {
+  // Lo que quedó guardado en la base, descifrado.
+  function readable(stored: string | null) {
+    return stored === null ? null : mercadoPagoTokenCipher.decrypt(stored);
+  }
+
+  // Organizador vinculado: en la base los tokens están cifrados.
+  function linkedOrganizer({
+    refreshToken,
+    ...data
+  }: Partial<Prisma.UserCreateInput> & { refreshToken?: string } = {}) {
     return createUser(t.prisma, {
       role: 'ORGANIZER',
-      mercadoPagoAccessToken: 'APP_USR-current-token',
+      mercadoPagoAccessToken: mercadoPagoTokenCipher.encrypt(
+        'APP_USR-current-token',
+      ),
+      mercadoPagoRefreshToken:
+        refreshToken && mercadoPagoTokenCipher.encrypt(refreshToken),
       ...data,
     });
   }
@@ -68,7 +81,7 @@ describe('Vinculación de Mercado Pago por OAuth', () => {
     expect(new URL(url).searchParams.get('redirect_uri')).toBe(CALLBACK_URL);
   });
 
-  it('el callback vincula la cuenta y guarda el refresh token y el vencimiento', async () => {
+  it('el callback vincula la cuenta y guarda cifrados el token y el refresh token, con el vencimiento', async () => {
     const organizer = await createUser(t.prisma, { role: 'ORGANIZER' });
     const state = new URL(await authorizationLink(organizer)).searchParams.get(
       'state',
@@ -93,9 +106,15 @@ describe('Vinculación de Mercado Pago por OAuth', () => {
     expect(sentForm().get('grant_type')).toBe('authorization_code');
     expect(sentForm().get('redirect_uri')).toBe(CALLBACK_URL);
     const user = await findUser(organizer.id);
-    expect(user.mercadoPagoAccessToken).toBe('APP_USR-organizer-token');
+    expect(user.mercadoPagoAccessToken).not.toContain(
+      'APP_USR-organizer-token',
+    );
+    expect(user.mercadoPagoRefreshToken).not.toContain('TG-refresh-1');
+    expect(readable(user.mercadoPagoAccessToken)).toBe(
+      'APP_USR-organizer-token',
+    );
+    expect(readable(user.mercadoPagoRefreshToken)).toBe('TG-refresh-1');
     expect(user.mercadoPagoUserId).toBe('123456');
-    expect(user.mercadoPagoRefreshToken).toBe('TG-refresh-1');
     const expiresAt = user.mercadoPagoTokenExpiresAt!.getTime();
     expect(expiresAt).toBeGreaterThanOrEqual(before + TOKEN_TTL_S * 1000);
     expect(expiresAt).toBeLessThanOrEqual(Date.now() + TOKEN_TTL_S * 1000);
@@ -136,9 +155,9 @@ describe('Vinculación de Mercado Pago por OAuth', () => {
     const renew = () =>
       t.app.get(MercadoPagoOAuthService).refreshExpiringTokens(now);
 
-    it('renueva los tokens que vencen en los próximos 30 días y guarda el refresh token nuevo', async () => {
+    it('renueva los tokens que vencen en los próximos 30 días y guarda cifrado el refresh token nuevo', async () => {
       const organizer = await linkedOrganizer({
-        mercadoPagoRefreshToken: 'TG-old',
+        refreshToken: 'TG-old',
         mercadoPagoTokenExpiresAt: inDays(10),
       });
       mockMercadoPagoToken({
@@ -156,8 +175,9 @@ describe('Vinculación de Mercado Pago por OAuth', () => {
       expect(form.get('client_id')).toBe(testEnv.MERCADOPAGO_CLIENT_ID);
       expect(form.get('client_secret')).toBe(testEnv.MERCADOPAGO_CLIENT_SECRET);
       const user = await findUser(organizer.id);
-      expect(user.mercadoPagoAccessToken).toBe('APP_USR-new-token');
-      expect(user.mercadoPagoRefreshToken).toBe('TG-new');
+      expect(user.mercadoPagoRefreshToken).not.toContain('TG-new');
+      expect(readable(user.mercadoPagoAccessToken)).toBe('APP_USR-new-token');
+      expect(readable(user.mercadoPagoRefreshToken)).toBe('TG-new');
       expect(user.mercadoPagoTokenExpiresAt).toEqual(
         new Date(now.getTime() + TOKEN_TTL_S * 1000),
       );
@@ -165,7 +185,7 @@ describe('Vinculación de Mercado Pago por OAuth', () => {
 
     it('no toca los tokens que vencen más adelante ni los vinculados sin refresh token', async () => {
       await linkedOrganizer({
-        mercadoPagoRefreshToken: 'TG-later',
+        refreshToken: 'TG-later',
         mercadoPagoTokenExpiresAt: inDays(60),
       });
       await linkedOrganizer();
@@ -177,11 +197,11 @@ describe('Vinculación de Mercado Pago por OAuth', () => {
 
     it('si Mercado Pago rechaza una renovación, conserva ese token y sigue con los demás', async () => {
       const rejected = await linkedOrganizer({
-        mercadoPagoRefreshToken: 'TG-revoked',
+        refreshToken: 'TG-revoked',
         mercadoPagoTokenExpiresAt: inDays(5),
       });
       const renewed = await linkedOrganizer({
-        mercadoPagoRefreshToken: 'TG-valid',
+        refreshToken: 'TG-valid',
         mercadoPagoTokenExpiresAt: inDays(6),
       });
       mockMercadoPagoToken({ message: 'invalid_grant' }, 400);
@@ -194,11 +214,45 @@ describe('Vinculación de Mercado Pago por OAuth', () => {
       await renew();
 
       const kept = await findUser(rejected.id);
-      expect(kept.mercadoPagoAccessToken).toBe('APP_USR-current-token');
-      expect(kept.mercadoPagoRefreshToken).toBe('TG-revoked');
-      expect((await findUser(renewed.id)).mercadoPagoAccessToken).toBe(
-        'APP_USR-renewed',
+      expect(readable(kept.mercadoPagoAccessToken)).toBe(
+        'APP_USR-current-token',
       );
+      expect(readable(kept.mercadoPagoRefreshToken)).toBe('TG-revoked');
+      expect(
+        readable((await findUser(renewed.id)).mercadoPagoAccessToken),
+      ).toBe('APP_USR-renewed');
+    });
+  });
+
+  describe('tokens guardados antes del cifrado', () => {
+    const encryptLegacy = () =>
+      t.app.get(MercadoPagoOAuthService).encryptPlaintextTokens();
+
+    it('al arrancar, la app cifra los tokens que estaban en texto plano', async () => {
+      const organizer = await createUser(t.prisma, {
+        role: 'ORGANIZER',
+        mercadoPagoAccessToken: 'APP_USR-legacy-token',
+        mercadoPagoRefreshToken: 'TG-legacy',
+      });
+
+      await encryptLegacy();
+
+      const user = await findUser(organizer.id);
+      expect(user.mercadoPagoAccessToken).not.toContain('APP_USR-legacy-token');
+      expect(readable(user.mercadoPagoAccessToken)).toBe(
+        'APP_USR-legacy-token',
+      );
+      expect(readable(user.mercadoPagoRefreshToken)).toBe('TG-legacy');
+    });
+
+    it('los tokens ya cifrados y las cuentas sin vincular quedan como estaban', async () => {
+      const linked = await linkedOrganizer({ refreshToken: 'TG-current' });
+      const unlinked = await createUser(t.prisma, { role: 'ORGANIZER' });
+
+      await encryptLegacy();
+
+      expect(await findUser(linked.id)).toEqual(linked);
+      expect(await findUser(unlinked.id)).toEqual(unlinked);
     });
   });
 });

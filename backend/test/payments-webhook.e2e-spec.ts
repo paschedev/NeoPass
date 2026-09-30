@@ -8,6 +8,7 @@ import {
   createOrder,
   createOrganizerWithEvent,
   createUser,
+  ORGANIZER_MP_ACCESS_TOKEN,
 } from './utils/factories';
 import { signWebhook } from './utils/mercadopago-webhook';
 import { createTestApp, TestApp } from './utils/test-app';
@@ -111,7 +112,7 @@ describe('Webhook de Mercado Pago', () => {
     }
 
     it('un pago aprobado marca la orden como pagada y genera los tickets', async () => {
-      const { organizer, order } = await pendingOrder();
+      const { order } = await pendingOrder();
       mercadoPagoMock.paymentGet.mockResolvedValueOnce({
         status: 'approved',
         external_reference: order.id,
@@ -122,7 +123,7 @@ describe('Webhook de Mercado Pago', () => {
 
       expect(mercadoPagoMock.paymentGet).toHaveBeenCalledWith(
         { id: '987654' },
-        organizer.mercadoPagoAccessToken,
+        ORGANIZER_MP_ACCESS_TOKEN,
       );
       const paid = await t.prisma.order.findUniqueOrThrow({
         where: { id: order.id },

@@ -2,11 +2,20 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OrderStatus, Prisma } from '@prisma/client';
 import type { MercadoPagoCredentials } from '../mercadopago-token';
+import {
+  ENCRYPTED_TOKEN_PREFIX,
+  MercadoPagoTokenCipher,
+} from '../mercadopago-token-cipher';
 import { calculatePromoterCommission } from '../promoter-commission';
 
+// The organizers' Mercado Pago tokens are encrypted here, at the database
+// boundary: every method takes and returns them readable.
 @Injectable()
 export class PaymentsRepository {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private cipher: MercadoPagoTokenCipher,
+  ) {}
 
   async updateUserMercadoPagoCredentials(
     userId: string,
@@ -14,7 +23,7 @@ export class PaymentsRepository {
   ) {
     return this.prisma.user.update({
       where: { id: userId },
-      data: credentials,
+      data: this.encrypted(credentials),
     });
   }
 
@@ -31,21 +40,30 @@ export class PaymentsRepository {
     });
     return organizers.flatMap(({ id, mercadoPagoRefreshToken }) =>
       mercadoPagoRefreshToken
-        ? [{ id, refreshToken: mercadoPagoRefreshToken }]
+        ? [{ id, refreshToken: this.cipher.decrypt(mercadoPagoRefreshToken) }]
         : [],
     );
   }
 
   // Only if the refresh token is still the one that was used: a concurrent
-  // renewal (or a new link) already stored newer credentials.
+  // renewal (or a new link) already stored newer credentials. The update is
+  // conditional on the stored value, which is encrypted.
   async replaceMercadoPagoCredentials(
     userId: string,
     usedRefreshToken: string,
     credentials: MercadoPagoCredentials,
   ) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { mercadoPagoRefreshToken: true },
+    });
+    const stored = user?.mercadoPagoRefreshToken;
+    if (!stored || this.cipher.decrypt(stored) !== usedRefreshToken) {
+      return false;
+    }
     const { count } = await this.prisma.user.updateMany({
-      where: { id: userId, mercadoPagoRefreshToken: usedRefreshToken },
-      data: credentials,
+      where: { id: userId, mercadoPagoRefreshToken: stored },
+      data: this.encrypted(credentials),
     });
     return count > 0;
   }
@@ -55,7 +73,76 @@ export class PaymentsRepository {
       where: { mercadoPagoUserId },
       select: { mercadoPagoAccessToken: true },
     });
-    return user?.mercadoPagoAccessToken ?? null;
+    return user?.mercadoPagoAccessToken
+      ? this.cipher.decrypt(user.mercadoPagoAccessToken)
+      : null;
+  }
+
+  // Tokens stored before they were encrypted. Each update is conditional on
+  // the values that were read, so a link or renewal in between is kept.
+  // Returns how many organizers were updated.
+  async encryptPlaintextMercadoPagoTokens() {
+    const organizers = await this.prisma.user.findMany({
+      where: {
+        OR: [
+          {
+            mercadoPagoAccessToken: { not: null },
+            NOT: {
+              mercadoPagoAccessToken: { startsWith: ENCRYPTED_TOKEN_PREFIX },
+            },
+          },
+          {
+            mercadoPagoRefreshToken: { not: null },
+            NOT: {
+              mercadoPagoRefreshToken: { startsWith: ENCRYPTED_TOKEN_PREFIX },
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        mercadoPagoAccessToken: true,
+        mercadoPagoRefreshToken: true,
+      },
+    });
+    let updated = 0;
+    for (const {
+      id,
+      mercadoPagoAccessToken,
+      mercadoPagoRefreshToken,
+    } of organizers) {
+      const { count } = await this.prisma.user.updateMany({
+        where: { id, mercadoPagoAccessToken, mercadoPagoRefreshToken },
+        data: {
+          mercadoPagoAccessToken: this.encryptIfPlaintext(
+            mercadoPagoAccessToken,
+          ),
+          mercadoPagoRefreshToken: this.encryptIfPlaintext(
+            mercadoPagoRefreshToken,
+          ),
+        },
+      });
+      updated += count;
+    }
+    return updated;
+  }
+
+  private encrypted(credentials: MercadoPagoCredentials) {
+    return {
+      ...credentials,
+      mercadoPagoAccessToken: this.cipher.encrypt(
+        credentials.mercadoPagoAccessToken,
+      ),
+      mercadoPagoRefreshToken:
+        credentials.mercadoPagoRefreshToken === null
+          ? null
+          : this.cipher.encrypt(credentials.mercadoPagoRefreshToken),
+    };
+  }
+
+  private encryptIfPlaintext(token: string | null) {
+    if (token === null || this.cipher.isEncrypted(token)) return token;
+    return this.cipher.encrypt(token);
   }
 
   async findPaymentByProviderId(providerPaymentId: string) {
