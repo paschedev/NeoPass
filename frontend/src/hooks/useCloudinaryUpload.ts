@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import toast from 'react-hot-toast';
+import toast from '@/utils/toast';
 import { apiFetch } from '@/utils/api';
 import { validateImageFile } from '@/utils/cloudinary';
 

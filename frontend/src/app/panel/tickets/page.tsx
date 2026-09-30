@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Ticket as TicketIcon } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/utils/toast';
 import TicketCard from '@/components/tickets/TicketCard';
 import TicketModal from '@/components/tickets/TicketModal';
 import type { MyTicket } from '@/components/tickets/types';

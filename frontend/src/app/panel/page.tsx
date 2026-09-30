@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import toast from 'react-hot-toast';
+import toast from '@/utils/toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import DashboardTab from '@/components/panel/DashboardTab';
 import EventsTab from '@/components/panel/EventsTab';

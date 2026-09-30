@@ -16,7 +16,7 @@ import {
   CheckCheck,
 } from 'lucide-react';
 import { apiFetch } from '@/utils/api';
-import toast from 'react-hot-toast';
+import toast from '@/utils/toast';
 import { useStaffInvitation } from '@/hooks/useStaffInvitation';
 
 type Notification = {

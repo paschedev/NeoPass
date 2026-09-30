@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Edit, ArrowLeft } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/utils/toast';
 import EventForm from '@/components/panel/EventForm';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';

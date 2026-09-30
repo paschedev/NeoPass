@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Edit2, Plus, Ticket, Trash2 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/utils/toast';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { MAX_PRESETS } from '@/utils/preset-form';

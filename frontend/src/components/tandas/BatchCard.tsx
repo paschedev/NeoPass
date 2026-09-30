@@ -1,7 +1,7 @@
 'use client';
 
 import { Ticket, Trash2 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/utils/toast';
 import {
   Controller,
   useFieldArray,

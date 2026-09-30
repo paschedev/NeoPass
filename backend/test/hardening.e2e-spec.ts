@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common';
+import { v2 as cloudinary } from 'cloudinary';
 import request from 'supertest';
 import { authHeader } from './utils/auth';
 import { createUser } from './utils/factories';
@@ -36,6 +38,33 @@ describe('Endurecimientos', () => {
         .expect(200);
 
       expect(res.body).toHaveProperty('signature');
+    });
+
+    it('si Cloudinary no puede firmar, responde 500 sin detalles internos y el error queda en el log', async () => {
+      const organizer = await createUser(t.prisma, { role: 'ORGANIZER' });
+      const sign = jest
+        .spyOn(cloudinary.utils, 'api_sign_request')
+        .mockImplementation(() => {
+          throw new Error('Must supply api_secret');
+        });
+      const logError = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+
+      try {
+        const res = await request(t.app.getHttpServer())
+          .get('/media/presign')
+          .set('Authorization', authHeader(t.app, organizer))
+          .expect(500);
+
+        expect(JSON.stringify(res.body)).not.toContain('api_secret');
+        expect(logError.mock.calls.flat().map(String).join(' ')).toContain(
+          'Must supply api_secret',
+        );
+      } finally {
+        sign.mockRestore();
+        logError.mockRestore();
+      }
     });
   });
 

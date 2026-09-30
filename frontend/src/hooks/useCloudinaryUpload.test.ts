@@ -1,11 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
-import toast from 'react-hot-toast';
+import toast from '@/utils/toast';
 import { apiFetch } from '@/utils/api';
 import { useCloudinaryUpload } from './useCloudinaryUpload';
 
 vi.mock('@/utils/api', () => ({ apiFetch: vi.fn() }));
-vi.mock('react-hot-toast', () => ({
+vi.mock('@/utils/toast', () => ({
   default: {
     loading: vi.fn(() => 'toast-1'),
     success: vi.fn(),

@@ -14,7 +14,7 @@ import {
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import toast from 'react-hot-toast';
+import toast from '@/utils/toast';
 import { apiFetch } from '@/utils/api';
 import { formatCurrency } from '@/utils/format';
 import { useCurrentUser } from '@/hooks/useCurrentUser';

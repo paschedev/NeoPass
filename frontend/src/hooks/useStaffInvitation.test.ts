@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
-import toast from 'react-hot-toast';
+import toast from '@/utils/toast';
 import { apiFetch } from '@/utils/api';
 import { useStaffInvitation } from './useStaffInvitation';
 
 vi.mock('@/utils/api', () => ({ apiFetch: vi.fn() }));
-vi.mock('react-hot-toast', () => ({ default: { error: vi.fn() } }));
+vi.mock('@/utils/toast', () => ({ default: { error: vi.fn() } }));
 
 const calledUrls = () => vi.mocked(apiFetch).mock.calls.map(([url]) => url);
 

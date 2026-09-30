@@ -12,7 +12,7 @@ import {
   Search,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import toast from 'react-hot-toast';
+import toast from '@/utils/toast';
 import { apiFetch } from '@/utils/api';
 import { toCsvCell } from '@/utils/csv';
 import { formatCurrency, formatRelativeDate } from '@/utils/format';

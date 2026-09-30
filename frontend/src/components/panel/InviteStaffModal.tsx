@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import toast from 'react-hot-toast';
+import toast from '@/utils/toast';
 import { Check, Search, UserPlus, X } from 'lucide-react';
 import CustomSelect from '@/components/CustomSelect';
 import Modal from '@/components/ui/Modal';

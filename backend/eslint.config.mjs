@@ -29,6 +29,8 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
+      // `const { passwordHash, ...rest } = user` es la forma de sacar un campo.
+      '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
       "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },
