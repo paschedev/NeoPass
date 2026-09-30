@@ -8,7 +8,12 @@ import { Prisma } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { isValidWebhookSignature } from './webhook-signature';
 import { NotificationsService } from '../notifications/notifications.service';
+import { isStockLimitError } from '../prisma/prisma-errors';
 import type { PaymentNotificationJob } from './payments.processor';
+import { calculatePromoterCommission } from './promoter-commission';
+
+type PreferenceBody = Parameters<Preference['create']>[0]['body'];
+export type PreferenceItem = PreferenceBody['items'][number];
 
 // 8 attempts, the last one about an hour after the notification.
 const PAYMENT_JOB_OPTIONS: JobsOptions = {
@@ -35,7 +40,7 @@ export class PaymentsService {
 
   async createPreference(
     orderId: string,
-    items: any[],
+    items: PreferenceItem[],
     feeAmount: number,
     sellerToken: string,
   ) {
@@ -48,8 +53,11 @@ export class PaymentsService {
     try {
       const frontendUrl = this.config.getOrThrow<string>('FRONTEND_URL');
       const backendUrl = this.config.getOrThrow<string>('BACKEND_URL');
-      const bodyParams: any = {
-        items: items,
+      // MP bloquea webhooks a localhost, lo omitimos en desarrollo local
+      const isLocalBackend =
+        backendUrl.includes('localhost') || backendUrl.includes('127.0.0.1');
+      const body: PreferenceBody = {
+        items,
         external_reference: orderId,
         back_urls: {
           success: `${frontendUrl}/checkout/success`,
@@ -57,26 +65,15 @@ export class PaymentsService {
           pending: `${frontendUrl}/checkout/pending`,
         },
         auto_return: 'approved',
+        ...(feeAmount > 0 && { marketplace_fee: feeAmount }),
         // Webhooks only: without source_news Mercado Pago also sends IPN
         // notifications, which carry no signature and get rejected.
-        notification_url: `${backendUrl}/payments/webhook?source_news=webhooks`,
+        ...(!isLocalBackend && {
+          notification_url: `${backendUrl}/payments/webhook?source_news=webhooks`,
+        }),
       };
 
-      if (feeAmount > 0) {
-        bodyParams.marketplace_fee = feeAmount;
-      }
-
-      // MP bloquea webhooks a localhost, lo omitimos en desarrollo local
-      if (
-        backendUrl.includes('localhost') ||
-        backendUrl.includes('127.0.0.1')
-      ) {
-        delete bodyParams.notification_url;
-      }
-
-      const response = await preference.create({
-        body: bodyParams,
-      });
+      const response = await preference.create({ body });
 
       return { initPoint: response.init_point };
     } catch (error) {
@@ -165,12 +162,13 @@ export class PaymentsService {
 
       try {
         const paid = await this.paymentsRepository.payOrderTransaction(
-          orderId,
-          order.status,
-          { providerPaymentId: paymentId, amount },
-          async (tx: Prisma.TransactionClient) => {
-            await this.ticketsService.generateTicketsForOrder(orderId, tx);
+          {
+            orderId,
+            fromStatus: order.status,
+            payment: { providerPaymentId: paymentId, amount },
+            promoterCommission: promoterCommissionOf(order),
           },
+          (tx) => this.ticketsService.generateTicketsForOrder(orderId, tx),
         );
         if (paid) {
           this.logger.log(
@@ -216,9 +214,7 @@ export class PaymentsService {
   // A payment Mercado Pago approved but that cannot be turned into tickets:
   // it is logged and the organizer gets a notification to refund it by hand.
   private async reportPaymentIssue(
-    order: NonNullable<
-      Awaited<ReturnType<PaymentsRepository['findOrderForPayment']>>
-    >,
+    order: OrderForPayment,
     paymentId: string,
     reason: PaymentIssueReason,
     details: Record<string, unknown> = {},
@@ -240,6 +236,25 @@ export class PaymentsService {
 }
 
 type MercadoPagoPayment = Awaited<ReturnType<Payment['get']>>;
+
+type OrderForPayment = NonNullable<
+  Awaited<ReturnType<PaymentsRepository['findOrderForPayment']>>
+>;
+
+// What the order's promoter earns with it, if it came through a promoter.
+function promoterCommissionOf(order: OrderForPayment) {
+  if (!order.promoter) return null;
+  return {
+    promoterId: order.promoter.id,
+    amount: calculatePromoterCommission(order.promoter, {
+      ticketAmount: order.ticketAmount,
+      ticketCount: order.orderItems.reduce(
+        (sum, item) => sum + item.quantity,
+        0,
+      ),
+    }),
+  };
+}
 
 // Statuses that undo money Mercado Pago had approved.
 const REVERSED_PAYMENT_STATUSES = ['refunded', 'charged_back', 'cancelled'];
@@ -272,8 +287,4 @@ function sameAmount(amount: number, total: Prisma.Decimal) {
   return new Prisma.Decimal(amount)
     .toDecimalPlaces(2)
     .equals(total.toDecimalPlaces(2));
-}
-
-function isStockLimitError(error: unknown) {
-  return error instanceof Error && error.message.includes('check_stock_limits');
 }

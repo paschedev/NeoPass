@@ -6,7 +6,6 @@ import {
   ENCRYPTED_TOKEN_PREFIX,
   MercadoPagoTokenCipher,
 } from '../mercadopago-token-cipher';
-import { calculatePromoterCommission } from '../promoter-commission';
 
 // The organizers' Mercado Pago tokens are encrypted here, at the database
 // boundary: every method takes and returns them readable.
@@ -158,10 +157,14 @@ export class PaymentsRepository {
         id: true,
         status: true,
         totalAmount: true,
+        ticketAmount: true,
         payment: { select: { id: true } },
+        promoter: {
+          select: { id: true, commissionType: true, commissionValue: true },
+        },
         orderItems: {
-          take: 1,
           select: {
+            quantity: true,
             ticketType: {
               select: { event: { select: { id: true, organizerId: true } } },
             },
@@ -176,25 +179,35 @@ export class PaymentsRepository {
   // Returns false if the status changed in the meantime. A late payment
   // (EXPIRED/CANCELLED) no longer has a reservation: it only adds to `sold`,
   // and the stock CHECK aborts the transaction if there are no tickets left.
+  // The promoter's commission is fixed on the order when it is paid, so a
+  // refund takes back exactly that amount.
   async payOrderTransaction(
-    orderId: string,
-    fromStatus: OrderStatus,
-    payment: { providerPaymentId: string; amount: number },
+    {
+      orderId,
+      fromStatus,
+      payment,
+      promoterCommission,
+    }: {
+      orderId: string;
+      fromStatus: OrderStatus;
+      payment: { providerPaymentId: string; amount: number };
+      promoterCommission: { promoterId: string; amount: Prisma.Decimal } | null;
+    },
     generateTicketsCallback: (tx: Prisma.TransactionClient) => Promise<void>,
   ) {
     return this.prisma.$transaction(async (tx) => {
       const { count } = await tx.order.updateMany({
         where: { id: orderId, status: fromStatus },
-        data: { status: 'PAID' },
+        data: {
+          status: 'PAID',
+          promoterCommission: promoterCommission?.amount,
+        },
       });
       if (count === 0) return false;
 
-      const order = await tx.order.findUniqueOrThrow({
-        where: { id: orderId },
-        include: { orderItems: true },
-      });
+      const items = await tx.orderItem.findMany({ where: { orderId } });
       const hadReservation = fromStatus === 'PENDING';
-      for (const item of order.orderItems) {
+      for (const item of items) {
         await tx.ticketType.update({
           where: { id: item.ticketTypeId },
           data: hadReservation
@@ -208,7 +221,7 @@ export class PaymentsRepository {
 
       await tx.payment.create({
         data: {
-          orderId: order.id,
+          orderId,
           provider: 'MERCADO_PAGO',
           providerPaymentId: payment.providerPaymentId,
           status: 'APPROVED',
@@ -219,26 +232,10 @@ export class PaymentsRepository {
       // Execute callback to generate tickets
       await generateTicketsCallback(tx);
 
-      // The promoter's commission is fixed on the order when it is paid, so a
-      // refund takes back exactly that amount.
-      if (order.promoterId) {
-        const promoter = await tx.eventStaff.findUniqueOrThrow({
-          where: { id: order.promoterId },
-        });
-        const commission = calculatePromoterCommission(promoter, {
-          ticketAmount: order.ticketAmount,
-          ticketCount: order.orderItems.reduce(
-            (acc, curr) => acc + curr.quantity,
-            0,
-          ),
-        });
-        await tx.order.update({
-          where: { id: order.id },
-          data: { promoterCommission: commission },
-        });
+      if (promoterCommission) {
         await tx.eventStaff.update({
-          where: { id: promoter.id },
-          data: { totalEarned: { increment: commission } },
+          where: { id: promoterCommission.promoterId },
+          data: { totalEarned: { increment: promoterCommission.amount } },
         });
       }
 

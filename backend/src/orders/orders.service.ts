@@ -1,9 +1,23 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadGatewayException,
+  BadRequestException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import { OrdersRepository } from './repositories/orders.repository';
 import { PaymentsService } from '../payments/payments.service';
+import { isStockLimitError } from '../prisma/prisma-errors';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { MAX_TICKETS_PER_ORDER } from './dto/create-order.dto';
+import { buildCheckoutOrder } from './checkout-order';
+import { hasUsableMercadoPagoToken } from '../payments/mercadopago-token';
+import { MercadoPagoTokenCipher } from '../payments/mercadopago-token-cipher';
+import type { ExpireOrderJob } from './orders.processor';
+
+// Time the buyer has to pay before the reservation is released.
+const ORDER_PAYMENT_WINDOW_MS = 10 * 60 * 1000;
 
 @Injectable()
 export class OrdersService {
@@ -12,6 +26,7 @@ export class OrdersService {
   constructor(
     private readonly ordersRepository: OrdersRepository,
     private paymentsService: PaymentsService,
+    private readonly mercadoPagoTokenCipher: MercadoPagoTokenCipher,
     @InjectQueue('orders') private ordersQueue: Queue,
   ) {}
 
@@ -27,58 +42,93 @@ export class OrdersService {
       );
     }
 
-    // 1. Transaction to reserve stock and create order in PENDING status
-    let order, mpItems, serviceFee, sellerToken;
-    try {
-      const result = await this.ordersRepository.createCheckoutOrderTransaction(
-        userId,
-        items,
-        promoterId,
+    const now = new Date();
+    const checkout = buildCheckoutOrder(
+      items,
+      await this.ordersRepository.findTicketTypesForCheckout(
+        items.map((item) => item.ticketTypeId),
+      ),
+      now,
+    );
+
+    // The organizer collects with their own Mercado Pago account; the
+    // platform account never collects a sale, nor an expired token.
+    const { organizer } = checkout.event;
+    if (!hasUsableMercadoPagoToken(organizer, now)) {
+      throw new ConflictException(
+        'El organizador de este evento todavía no puede cobrar entradas.',
       );
-      order = result.order;
-      mpItems = result.mpItems;
-      serviceFee = result.serviceFee;
-      sellerToken = result.sellerToken;
-    } catch (error: any) {
-      if (
-        error.code === 'P2010' ||
-        error.message?.includes('check_stock_limits')
-      ) {
-        throw new BadRequestException(
-          'Se agotaron las entradas mientras procesabamos tu compra.',
+    }
+    const sellerToken = this.mercadoPagoTokenCipher.decrypt(
+      organizer.mercadoPagoAccessToken,
+    );
+
+    // Only an accepted promoter of this event earns a commission; any other
+    // id is dropped so a stale or foreign referral link doesn't block the sale.
+    const promoter = promoterId
+      ? await this.ordersRepository.findAcceptedPromoter(
+          promoterId,
+          checkout.event.id,
+        )
+      : null;
+
+    // 1. Reserve the stock and create the order in PENDING
+    let order: { id: string };
+    try {
+      order = await this.ordersRepository.createPendingOrder({
+        userId,
+        ticketAmount: checkout.ticketAmount,
+        serviceFee: checkout.serviceFee,
+        totalAmount: checkout.totalAmount,
+        promoterId: promoter?.id,
+        expiresAt: new Date(now.getTime() + ORDER_PAYMENT_WINDOW_MS),
+        items: checkout.orderItems,
+      });
+    } catch (error) {
+      if (isStockLimitError(error)) {
+        throw new ConflictException(
+          'Se agotaron las entradas mientras procesábamos tu compra.',
         );
       }
       throw error;
     }
 
     // 2. Schedule expiration job (Queue doesn't hold the DB connection)
-    await this.ordersQueue.add(
-      'expire-order',
-      { orderId: order.id },
-      { delay: 10 * 60 * 1000 },
-    );
+    const job: ExpireOrderJob = { orderId: order.id };
+    await this.ordersQueue.add('expire-order', job, {
+      delay: ORDER_PAYMENT_WINDOW_MS,
+    });
 
     // 3. Create Mercado Pago preference OUTSIDE the DB transaction to avoid blocking resources
     let initPoint = '';
     try {
       const res = await this.paymentsService.createPreference(
         order.id,
-        mpItems,
-        serviceFee.toNumber(),
+        checkout.mpItems,
+        checkout.serviceFee.toNumber(),
         sellerToken,
       );
       initPoint = res.initPoint || '';
     } catch (error) {
       this.logger.error('Error creating preference:', error);
 
-      // If external payment API fails, rollback stock manually
-      await this.ordersRepository.markOrderFailedAndRollbackStock(order.id);
+      // If external payment API fails, release the reservation right away
+      await this.ordersRepository.releasePendingOrder(order.id, 'CANCELLED');
 
-      throw new BadRequestException(
-        'Fallo de conexión con Mercado Pago. Es posible que el token del organizador sea inválido o haya caducado.',
+      throw new BadGatewayException(
+        'No pudimos conectar con Mercado Pago. Probá de nuevo en unos minutos.',
       );
     }
 
     return { orderId: order.id, checkoutUrl: initPoint };
+  }
+
+  // The time to pay ran out: the order expires and its tickets go back on sale.
+  async expireOrder(orderId: string) {
+    const released = await this.ordersRepository.releasePendingOrder(
+      orderId,
+      'EXPIRED',
+    );
+    if (released) this.logger.log(`Expired order ${orderId} due to timeout`);
   }
 }

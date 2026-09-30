@@ -1,186 +1,95 @@
-import {
-  Injectable,
-  BadRequestException,
-  ConflictException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Prisma, Order } from '@prisma/client';
-import { hasUsableMercadoPagoToken } from '../../payments/mercadopago-token';
-import { MercadoPagoTokenCipher } from '../../payments/mercadopago-token-cipher';
-import { getSaleWindowStatus } from '../../events/batch-sale-status';
+import { OrderStatus, Prisma } from '@prisma/client';
+import type { CheckoutOrderItem } from '../checkout-order';
 
-type EventWithOrganizer = Prisma.EventGetPayload<{
-  include: { organizer: true };
-}>;
+export type PendingOrder = {
+  userId: string;
+  ticketAmount: Prisma.Decimal;
+  serviceFee: Prisma.Decimal;
+  totalAmount: Prisma.Decimal;
+  promoterId?: string;
+  expiresAt: Date;
+  items: CheckoutOrderItem[];
+};
 
 @Injectable()
 export class OrdersRepository {
-  constructor(
-    private prisma: PrismaService,
-    private mercadoPagoTokenCipher: MercadoPagoTokenCipher,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
-  async createCheckoutOrderTransaction(
-    userId: string,
-    items: { ticketTypeId: string; quantity: number }[],
-    promoterId?: string,
-  ) {
-    return this.prisma.$transaction(async (tx) => {
-      let ticketAmount = new Prisma.Decimal(0);
-      const mpItems = [];
-      const orderItemsData = [];
-      let orderEvent: EventWithOrganizer | undefined;
-
-      for (const item of items) {
-        const ticketType = await tx.ticketType.findUnique({
-          where: { id: item.ticketTypeId },
-          include: {
-            event: { include: { organizer: true } },
-            batch: true,
-          },
-        });
-
-        if (!ticketType)
-          throw new BadRequestException(
-            `TicketType ${item.ticketTypeId} not found`,
-          );
-
-        const event = ticketType.event;
-        // One order = one event: the fee and the organizer who gets paid come from it.
-        if (orderEvent && orderEvent.id !== event.id) {
-          throw new BadRequestException(
-            'Una orden solo puede tener entradas de un evento.',
-          );
-        }
-        orderEvent = event;
-        const now = new Date();
-
-        // Security / Lifecycle Checks
-        if (event.status !== 'PUBLISHED') {
-          throw new BadRequestException(`El evento no se encuentra activo.`);
-        }
-        if (event.endDate < now) {
-          throw new BadRequestException(`El evento ya ha finalizado.`);
-        }
-        if (
-          !ticketType.batch ||
-          getSaleWindowStatus(ticketType.batch, event.endDate, now) !== 'OPEN'
-        ) {
-          throw new BadRequestException(
-            `La tanda de venta para este ticket no está activa en este momento.`,
-          );
-        }
-
-        // Calculate available stock
-        const availableStock =
-          ticketType.stock - ticketType.sold - ticketType.reserved;
-
-        if (availableStock < item.quantity) {
-          throw new BadRequestException(
-            `Not enough stock for ${ticketType.name}`,
-          );
-        }
-
-        // Increment reserved stock
-        await tx.ticketType.update({
-          where: { id: item.ticketTypeId },
-          data: { reserved: { increment: item.quantity } },
-        });
-
-        ticketAmount = ticketAmount.add(ticketType.price.mul(item.quantity));
-
-        mpItems.push({
-          id: ticketType.id,
-          title: `${ticketType.event.title} - ${ticketType.name}`,
-          quantity: item.quantity,
-          unit_price: ticketType.price.toNumber(),
-          currency_id: 'ARS',
-        });
-
-        orderItemsData.push({
-          ticketTypeId: ticketType.id,
-          quantity: item.quantity,
-          unitPrice: ticketType.price,
-        });
-      }
-
-      // items is never empty (DTO), so the event is always set here.
-      const event = orderEvent!;
-      // The organizer collects with their own Mercado Pago account; the
-      // platform account never collects a sale, nor an expired token.
-      const { organizer } = event;
-      if (!hasUsableMercadoPagoToken(organizer, new Date())) {
-        throw new ConflictException(
-          'El organizador de este evento todavía no puede cobrar entradas.',
-        );
-      }
-      const sellerToken = this.mercadoPagoTokenCipher.decrypt(
-        organizer.mercadoPagoAccessToken,
-      );
-      const serviceFee = ticketAmount
-        .mul(event.neoPassFeePercentage)
-        .div(100)
-        .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
-      mpItems.push({
-        id: 'service_fee',
-        title: 'Cargo por servicio',
-        quantity: 1,
-        unit_price: serviceFee.toNumber(),
-        currency_id: 'ARS',
-      });
-      const totalAmount = ticketAmount.add(serviceFee);
-
-      // Only an accepted promoter of this event earns a commission; any other
-      // id is dropped so a stale or foreign referral link doesn't block the sale.
-      const promoter = promoterId
-        ? await tx.eventStaff.findFirst({
-            where: {
-              id: promoterId,
-              eventId: event.id,
-              role: 'PROMOTER',
-              status: 'ACCEPTED',
-            },
-            select: { id: true },
-          })
-        : null;
-
-      // Create Order in PENDING status
-      const order = await tx.order.create({
-        data: {
-          userId,
-          status: 'PENDING',
-          totalAmount,
-          ticketAmount,
-          serviceFee,
-          promoterId: promoter?.id,
-          expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes to pay
-          orderItems: {
-            create: orderItemsData,
-          },
-        },
-        include: {
-          orderItems: {
-            include: {
-              ticketType: {
-                include: { event: { include: { organizer: true } } },
+  async findTicketTypesForCheckout(ticketTypeIds: string[]) {
+    return this.prisma.ticketType.findMany({
+      where: { id: { in: ticketTypeIds } },
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        stock: true,
+        sold: true,
+        reserved: true,
+        batch: { select: { isVisible: true, publishAt: true, closeAt: true } },
+        event: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            endDate: true,
+            neoPassFeePercentage: true,
+            organizer: {
+              select: {
+                mercadoPagoAccessToken: true,
+                mercadoPagoTokenExpiresAt: true,
               },
             },
           },
         },
-      });
-
-      return { order, mpItems, serviceFee, sellerToken };
+      },
     });
   }
 
-  async markOrderFailedAndRollbackStock(orderId: string) {
+  async findAcceptedPromoter(promoterId: string, eventId: string) {
+    return this.prisma.eventStaff.findFirst({
+      where: {
+        id: promoterId,
+        eventId,
+        role: 'PROMOTER',
+        status: 'ACCEPTED',
+      },
+      select: { id: true },
+    });
+  }
+
+  // Reserves the tickets and creates the order in PENDING. If another purchase
+  // took the last tickets in the meantime, the stock CHECK aborts it all.
+  async createPendingOrder({ items, ...order }: PendingOrder) {
     return this.prisma.$transaction(async (tx) => {
-      // Conditional on PENDING so the reservation is released exactly once.
+      for (const item of items) {
+        await tx.ticketType.update({
+          where: { id: item.ticketTypeId },
+          data: { reserved: { increment: item.quantity } },
+        });
+      }
+      return tx.order.create({
+        data: { ...order, status: 'PENDING', orderItems: { create: items } },
+        select: { id: true },
+      });
+    });
+  }
+
+  // PENDING → EXPIRED or CANCELLED, releasing the reservation. Conditional on
+  // PENDING: a payment or a concurrent job that already moved the order makes
+  // this a no-op, so the reservation is released exactly once. Returns whether
+  // the order was released.
+  async releasePendingOrder(
+    orderId: string,
+    status: Extract<OrderStatus, 'EXPIRED' | 'CANCELLED'>,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
       const { count } = await tx.order.updateMany({
         where: { id: orderId, status: 'PENDING' },
-        data: { status: 'CANCELLED' },
+        data: { status },
       });
-      if (count === 0) return;
+      if (count === 0) return false;
 
       const items = await tx.orderItem.findMany({ where: { orderId } });
       for (const item of items) {
@@ -189,6 +98,7 @@ export class OrdersRepository {
           data: { reserved: { decrement: item.quantity } },
         });
       }
+      return true;
     });
   }
 }

@@ -10,7 +10,7 @@ import {
   InvitationAnswer,
 } from './repositories/events.repository';
 import { UserRepository } from '../auth/repositories/user.repository';
-import { StaffRole, CommissionType } from '@prisma/client';
+import { StaffRole, CommissionType, Prisma } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { buildRevenueChart } from './revenue-chart';
 import { getBatchSaleStatus } from './batch-sale-status';
@@ -375,17 +375,13 @@ export class EventsService {
       eventIds,
       thirtyDaysAgo,
     );
+    const totalRevenue =
+      await this.eventsRepository.sumPaidTicketAmountForOrganizer(userId);
 
-    let totalSold = 0;
-    let totalRevenue = 0;
-
-    // Calculate totals for ALL time based on ticketTypes.sold
-    events.forEach((event) => {
-      event.ticketTypes.forEach((tt) => {
-        totalSold += tt.sold;
-        totalRevenue += tt.sold * Number(tt.price);
-      });
-    });
+    // Tickets sold for ALL time, from ticketTypes.sold
+    const totalSold = events
+      .flatMap((event) => event.ticketTypes)
+      .reduce((sum, ticketType) => sum + ticketType.sold, 0);
 
     const chartData = buildRevenueChart(paidOrders, eventIds, new Date());
 
@@ -402,7 +398,7 @@ export class EventsService {
     return {
       totalEvents: events.length,
       totalTicketsSold: totalSold,
-      totalRevenue: totalRevenue,
+      totalRevenue: totalRevenue.toNumber(),
       activeEvents: events.filter((e) => e.status === 'PUBLISHED').length,
       chartData, // Returns last 30 days of real revenue
       recentTransactions,
@@ -500,13 +496,13 @@ export class EventsService {
         .reduce((sum, item) => sum + item.quantity, 0),
     }));
 
-    const totalEarned = assignments.reduce(
-      (acc, curr) => acc + Number(curr.totalEarned),
+    const totalEarned = Prisma.Decimal.sum(
       0,
+      ...assignments.map((assignment) => assignment.totalEarned),
     );
-    const totalPaid = assignments.reduce(
-      (acc, curr) => acc + Number(curr.totalPaid),
+    const totalPaid = Prisma.Decimal.sum(
       0,
+      ...assignments.map((assignment) => assignment.totalPaid),
     );
     const totalTicketsSold = assignments.reduce(
       (acc, curr) => acc + curr.totalTicketsSold,
@@ -515,10 +511,10 @@ export class EventsService {
 
     return {
       isPromoter: assignments.length > 0,
-      totalEarned,
-      totalPaid,
+      totalEarned: totalEarned.toNumber(),
+      totalPaid: totalPaid.toNumber(),
       totalTicketsSold,
-      pendingBalance: totalEarned - totalPaid,
+      pendingBalance: totalEarned.minus(totalPaid).toNumber(),
       events: assignments,
     };
   }

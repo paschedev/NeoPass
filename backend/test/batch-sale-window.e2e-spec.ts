@@ -63,7 +63,7 @@ describe('Tandas con estado de venta calculado', () => {
         batch: { isVisible: false },
       });
 
-      expect(await checkoutStatus([ticketType.id])).toBe(400);
+      expect(await checkoutStatus([ticketType.id])).toBe(409);
     });
 
     it('no vende entradas de una tanda que todavía no empezó a venderse', async () => {
@@ -71,7 +71,7 @@ describe('Tandas con estado de venta calculado', () => {
         batch: { publishAt: fromNow(HOUR_MS) },
       });
 
-      expect(await checkoutStatus([ticketType.id])).toBe(400);
+      expect(await checkoutStatus([ticketType.id])).toBe(409);
     });
 
     it('no vende entradas de una tanda cuya venta terminó', async () => {
@@ -79,7 +79,7 @@ describe('Tandas con estado de venta calculado', () => {
         batch: { closeAt: fromNow(-MINUTE_MS) },
       });
 
-      expect(await checkoutStatus([ticketType.id])).toBe(400);
+      expect(await checkoutStatus([ticketType.id])).toBe(409);
     });
 
     it('vende una tanda en cuanto llega su inicio de venta, sin esperar a ningún proceso', async () => {
@@ -248,7 +248,7 @@ describe('Tandas con estado de venta calculado', () => {
 
       expect(res.status).toBe(200);
       expect(await publicBatches(event.id)).toEqual([]);
-      expect(await checkoutStatus([ticketType.id])).toBe(400);
+      expect(await checkoutStatus([ticketType.id])).toBe(409);
     });
 
     it('no deja mover el fin del evento antes del fin de venta de una tanda', async () => {

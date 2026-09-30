@@ -1,7 +1,11 @@
 import request from 'supertest';
 import { mercadoPagoMock } from './mocks/mercadopago';
 import { authHeader } from './utils/auth';
-import { createOrganizerWithEvent, createUser } from './utils/factories';
+import {
+  createBatch,
+  createOrganizerWithEvent,
+  createUser,
+} from './utils/factories';
 import { mockTurnstile } from './utils/network';
 import { createTestApp, TestApp } from './utils/test-app';
 import { resetDb } from './utils/test-database';
@@ -157,13 +161,17 @@ describe('Checkout', () => {
   });
 
   it('una orden no puede tener más de 10 entradas', async () => {
-    const { ticketType } = await createOrganizerWithEvent(t.prisma);
+    const { event, ticketType } = await createOrganizerWithEvent(t.prisma);
+    const second = await createBatch(t.prisma, {
+      eventId: event.id,
+      name: 'General',
+    });
     const buyer = await createUser(t.prisma);
 
     await checkout(buyer, {
       items: [
         { ticketTypeId: ticketType.id, quantity: 6 },
-        { ticketTypeId: ticketType.id, quantity: 5 },
+        { ticketTypeId: second.ticketType.id, quantity: 5 },
       ],
     }).expect(400);
 
@@ -243,4 +251,101 @@ describe('Checkout', () => {
       expect(order.promoterId).toBeNull();
     },
   );
+
+  it('una entrada que no existe responde 404', async () => {
+    const buyer = await createUser(t.prisma);
+
+    await checkout(buyer, {
+      items: [
+        { ticketTypeId: '00000000-0000-4000-8000-000000000000', quantity: 1 },
+      ],
+    }).expect(404);
+  });
+
+  it('la misma entrada no se puede repetir en una orden', async () => {
+    const { ticketType } = await createOrganizerWithEvent(t.prisma);
+    const buyer = await createUser(t.prisma);
+
+    await checkout(buyer, {
+      items: [
+        { ticketTypeId: ticketType.id, quantity: 1 },
+        { ticketTypeId: ticketType.id, quantity: 1 },
+      ],
+    }).expect(400);
+
+    expect(await reservedTotal()).toBe(0);
+  });
+
+  it('si no quedan suficientes entradas responde 409 y no reserva nada', async () => {
+    const { ticketType } = await createOrganizerWithEvent(t.prisma, {
+      stock: 2,
+    });
+    const buyer = await createUser(t.prisma);
+
+    await checkout(buyer, {
+      items: [{ ticketTypeId: ticketType.id, quantity: 3 }],
+    }).expect(409);
+
+    expect(await reservedTotal()).toBe(0);
+    expect(await t.prisma.order.count()).toBe(0);
+  });
+
+  it('de dos compras simultáneas de la última entrada, solo una la reserva', async () => {
+    const { ticketType } = await createOrganizerWithEvent(t.prisma, {
+      stock: 1,
+    });
+    const [first, second] = await Promise.all([
+      createUser(t.prisma),
+      createUser(t.prisma),
+    ]);
+    const items = [{ ticketTypeId: ticketType.id, quantity: 1 }];
+    mockTurnstile(true); // una respuesta del captcha por compra
+
+    const statuses = (
+      await Promise.all([
+        checkout(first, { items }),
+        checkout(second, { items }),
+      ])
+    ).map((res) => res.status);
+
+    expect(statuses.sort()).toEqual([201, 409]);
+    expect(await reservedTotal()).toBe(1);
+  });
+
+  it.each([
+    ['cancelado', { status: 'CANCELLED' as const }],
+    [
+      'que ya terminó',
+      {
+        startDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+      },
+    ],
+  ])('no vende entradas de un evento %s: responde 409', async (_case, data) => {
+    const { event, ticketType } = await createOrganizerWithEvent(t.prisma);
+    await t.prisma.event.update({ where: { id: event.id }, data });
+    const buyer = await createUser(t.prisma);
+
+    await checkout(buyer, {
+      items: [{ ticketTypeId: ticketType.id, quantity: 1 }],
+    }).expect(409);
+
+    expect(await reservedTotal()).toBe(0);
+  });
+
+  it('si Mercado Pago no responde, avisa con 502 y libera la reserva', async () => {
+    mercadoPagoMock.preferenceCreate.mockRejectedValueOnce(
+      new Error('Mercado Pago no disponible'),
+    );
+    const { ticketType } = await createOrganizerWithEvent(t.prisma);
+    const buyer = await createUser(t.prisma);
+
+    await checkout(buyer, {
+      items: [{ ticketTypeId: ticketType.id, quantity: 1 }],
+    }).expect(502);
+
+    expect(await reservedTotal()).toBe(0);
+    const order = await t.prisma.order.findFirstOrThrow();
+    expect(order.status).toBe('CANCELLED');
+  });
 });
