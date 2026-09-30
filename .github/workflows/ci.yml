@@ -3,6 +3,9 @@ name: CI
 on:
   pull_request:
     branches: [dev, main]
+    # `labeled`: poner la etiqueta automerge después de abrir el PR vuelve a
+    # correr la CI y, si pasa, lo mergea.
+    types: [opened, synchronize, reopened, labeled]
 
 permissions:
   contents: read
@@ -79,3 +82,32 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+
+  # El repo es privado y el plan gratuito de GitHub no tiene auto-merge nativo:
+  # este job mergea a dev (merge commit) los PRs con la etiqueta `automerge`
+  # cuando pasan Backend y Frontend. Sin la etiqueta no hace nada.
+  automerge:
+    name: Auto-merge
+    needs: [backend, frontend]
+    if: github.base_ref == 'dev' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Mergear si tiene la etiqueta automerge
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        # Las etiquetas se leen ahora y no del evento, que puede no traerlas si
+        # se agregaron al crear el PR. --match-head-commit mergea solo el commit
+        # que pasó la CI.
+        run: |
+          labels=$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json labels --jq '.labels[].name')
+          if ! grep -qx automerge <<< "$labels"; then
+            echo "El PR no tiene la etiqueta automerge: queda para mergear a mano."
+            exit 0
+          fi
+          gh pr merge "$PR" --repo "$GITHUB_REPOSITORY" --merge --match-head-commit "$HEAD_SHA"
