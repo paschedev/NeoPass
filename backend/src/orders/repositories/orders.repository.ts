@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, Order } from '@prisma/client';
+import { hasUsableMercadoPagoToken } from '../../payments/mercadopago-token';
 import { getSaleWindowStatus } from '../../events/batch-sale-status';
 
 type EventWithOrganizer = Prisma.EventGetPayload<{
@@ -102,13 +103,14 @@ export class OrdersRepository {
       // items is never empty (DTO), so the event is always set here.
       const event = orderEvent!;
       // The organizer collects with their own Mercado Pago account; the
-      // platform account never collects a sale.
-      const sellerToken = event.organizer.mercadoPagoAccessToken;
-      if (!sellerToken) {
+      // platform account never collects a sale, nor an expired token.
+      const { organizer } = event;
+      if (!hasUsableMercadoPagoToken(organizer, new Date())) {
         throw new ConflictException(
           'El organizador de este evento todavía no puede cobrar entradas.',
         );
       }
+      const sellerToken = organizer.mercadoPagoAccessToken;
       const serviceFee = ticketAmount
         .mul(event.neoPassFeePercentage)
         .div(100)

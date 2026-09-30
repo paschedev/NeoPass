@@ -6,6 +6,7 @@ import { PaymentsProcessor } from './payments.processor';
 import { TicketsModule } from '../tickets/tickets.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { PaymentsRepository } from './repositories/payments.repository';
+import { MercadoPagoOAuthService } from './mercadopago-oauth.service';
 import { AuthModule } from '../auth/auth.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 
@@ -18,7 +19,12 @@ import { NotificationsModule } from '../notifications/notifications.module';
     BullModule.registerQueue({ name: 'payments' }),
   ],
   controllers: [PaymentsController],
-  providers: [PaymentsService, PaymentsRepository, PaymentsProcessor],
+  providers: [
+    PaymentsService,
+    PaymentsRepository,
+    PaymentsProcessor,
+    MercadoPagoOAuthService,
+  ],
   exports: [PaymentsService],
 })
 export class PaymentsModule {}

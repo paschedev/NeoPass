@@ -99,6 +99,21 @@ describe('Eventos del organizador', () => {
         .send(body);
     }
 
+    it('con el token de Mercado Pago vencido no puede crear eventos', async () => {
+      const organizer = await createUser(t.prisma, {
+        role: 'ORGANIZER',
+        mercadoPagoAccessToken: 'TEST-organizer-access-token',
+        mercadoPagoTokenExpiresAt: new Date(Date.now() - 60_000),
+      });
+
+      const res = await create(organizer, eventBody()).expect(400);
+
+      expect((res.body as { message: string }).message).toBe(
+        'Debes vincular Mercado Pago antes de crear un evento',
+      );
+      expect(await t.prisma.event.count()).toBe(0);
+    });
+
     it('crea el evento con sus tandas y entradas', async () => {
       const organizer = await organizerWithMp();
 

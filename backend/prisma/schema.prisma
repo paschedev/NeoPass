@@ -86,10 +86,14 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now()) @updatedAt
 
-  // Mercado Pago
-  mercadoPagoAccessToken String?
-  mercadoPagoPublicKey   String?
-  mercadoPagoUserId      String?
+  // Mercado Pago (OAuth). The access token lasts 180 days and is renewed with
+  // the refresh token, which changes on every renewal. Accounts linked before
+  // the renewal existed have neither.
+  mercadoPagoAccessToken    String?
+  mercadoPagoPublicKey      String?
+  mercadoPagoUserId         String?
+  mercadoPagoRefreshToken   String?
+  mercadoPagoTokenExpiresAt DateTime?
 
   // Password Reset (the token is stored as a SHA-256 hash)
   passwordResetToken   String?   @unique

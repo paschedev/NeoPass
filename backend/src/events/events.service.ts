@@ -12,6 +12,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { buildRevenueChart } from './revenue-chart';
 import { getBatchSaleStatus } from './batch-sale-status';
 import { getEventPhase } from './event-phase';
+import { hasUsableMercadoPagoToken } from '../payments/mercadopago-token';
 
 type EventDates = { startDate: string; endDate: string };
 
@@ -218,7 +219,7 @@ export class EventsService {
     const user = await this.userRepository.findById(userId);
 
     if (!user) throw new BadRequestException('Usuario no encontrado');
-    if (!user.mercadoPagoAccessToken) {
+    if (!hasUsableMercadoPagoToken(user, new Date())) {
       throw new BadRequestException(
         'Debes vincular Mercado Pago antes de crear un evento',
       );
