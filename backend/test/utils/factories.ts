@@ -102,11 +102,13 @@ export function createOrder(
     ticketType,
     quantity = 1,
     status = 'PENDING',
+    promoterId,
   }: {
     user: Pick<User, 'id'>;
     ticketType: Pick<TicketType, 'id' | 'price'>;
     quantity?: number;
     status?: OrderStatus;
+    promoterId?: string;
   },
 ) {
   const ticketAmount = new Prisma.Decimal(ticketType.price).mul(quantity);
@@ -128,6 +130,7 @@ export function createOrder(
       data: {
         userId: user.id,
         status,
+        promoterId,
         ticketAmount,
         totalAmount: ticketAmount,
         expiresAt: new Date(Date.now() + ORDER_TTL_MS),

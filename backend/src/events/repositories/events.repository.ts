@@ -348,7 +348,7 @@ export class EventsRepository {
 
   async getPromoterStats(userId: string) {
     const staffList = await this.prisma.eventStaff.findMany({
-      where: { userId, role: 'PROMOTER' },
+      where: { userId, role: 'PROMOTER', status: 'ACCEPTED' },
       include: {
         event: { select: { title: true, status: true, startDate: true } },
         orders: {
@@ -373,16 +373,19 @@ export class EventsRepository {
     });
   }
 
-  async incrementPromoterClicks(staffId: string) {
-    return this.prisma.eventStaff.update({
-      where: { id: staffId },
+  // Only an accepted promoter of this event gets the click. Returns whether it
+  // was counted.
+  async incrementAcceptedPromoterClicks(eventId: string, staffId: string) {
+    const { count } = await this.prisma.eventStaff.updateMany({
+      where: { id: staffId, eventId, role: 'PROMOTER', status: 'ACCEPTED' },
       data: { clicks: { increment: 1 } },
     });
+    return count > 0;
   }
 
   async getPromoterStatsForEvent(userId: string, eventId: string) {
     const staff = await this.prisma.eventStaff.findFirst({
-      where: { userId, eventId, role: 'PROMOTER' },
+      where: { userId, eventId, role: 'PROMOTER', status: 'ACCEPTED' },
       include: {
         event: { select: { title: true } },
         orders: {

@@ -12,6 +12,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { buildRevenueChart } from './revenue-chart';
 import { getBatchSaleStatus } from './batch-sale-status';
 import { getEventPhase } from './event-phase';
+import { PromoterClicksService } from './promoter-clicks.service';
 import { hasUsableMercadoPagoToken } from '../payments/mercadopago-token';
 
 type EventDates = { startDate: string; endDate: string };
@@ -167,6 +168,7 @@ export class EventsService {
     private readonly eventsRepository: EventsRepository,
     private readonly userRepository: UserRepository,
     private readonly notificationsService: NotificationsService,
+    private readonly promoterClicks: PromoterClicksService,
   ) {}
 
   async findPublicPage(page: number, limit: number) {
@@ -178,17 +180,15 @@ export class EventsService {
     return { items, total, page, limit };
   }
 
-  async findOne(id: string, rppId?: string) {
-    if (rppId) {
-      // Fire and forget (no esperamos para no bloquear la respuesta)
-      this.eventsRepository
-        .incrementPromoterClicks(rppId)
-        .catch((err) => console.error('Error tracking click', err));
-    }
+  async findOne(id: string, rppId?: string, visitorIp?: string) {
     // Drafts, cancelled and finished events are not public; organizers use
     // GET /events/organizer/:id instead.
     const event = await this.eventsRepository.findPublicById(id, new Date());
     if (!event) throw new NotFoundException('Evento no encontrado');
+
+    if (rppId && visitorIp) {
+      await this.promoterClicks.register(event.id, rppId, visitorIp);
+    }
 
     // Buyers see upcoming, on sale and sold out batches, and how many tickets
     // are left instead of the raw stock counters.
@@ -572,7 +572,7 @@ export class EventsService {
       eventId,
     );
     if (!staff) {
-      throw new BadRequestException('No eres promotor de este evento');
+      throw new NotFoundException('No sos RPP de este evento');
     }
 
     const recentSales = staff.orders.map((order) => {
@@ -581,21 +581,13 @@ export class EventsService {
         0,
       );
 
-      // Calculate order commission based on staff commission settings
-      let orderCommission = 0;
-      if (staff.commissionType === 'PERCENTAGE' && staff.commissionValue) {
-        orderCommission =
-          (Number(order.ticketAmount) * Number(staff.commissionValue)) / 100;
-      } else if (staff.commissionType === 'FIXED' && staff.commissionValue) {
-        orderCommission = ticketsCount * Number(staff.commissionValue);
-      }
-
       return {
         id: order.id,
         buyer: order.user.name,
         tickets: ticketsCount,
         price: Number(order.ticketAmount),
-        commission: orderCommission,
+        // Fixed when the order was paid, not recalculated with today's rate.
+        commission: Number(order.promoterCommission ?? 0),
         date: order.createdAt,
       };
     });
