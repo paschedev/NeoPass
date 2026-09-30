@@ -122,6 +122,23 @@ describe('Checkout', () => {
     expect(mercadoPagoMock.preferenceCreate).not.toHaveBeenCalled();
   });
 
+  it('si el token de Mercado Pago del organizador venció, no se vende nada', async () => {
+    const { organizer, ticketType } = await createOrganizerWithEvent(t.prisma);
+    await t.prisma.user.update({
+      where: { id: organizer.id },
+      data: { mercadoPagoTokenExpiresAt: new Date(Date.now() - 60_000) },
+    });
+    const buyer = await createUser(t.prisma);
+
+    await checkout(buyer, {
+      items: [{ ticketTypeId: ticketType.id, quantity: 1 }],
+    }).expect(409);
+
+    expect(await reservedTotal()).toBe(0);
+    expect(await t.prisma.order.count()).toBe(0);
+    expect(mercadoPagoMock.preferenceCreate).not.toHaveBeenCalled();
+  });
+
   it('una orden sin entradas se rechaza', async () => {
     const buyer = await createUser(t.prisma);
 

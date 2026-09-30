@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { PaymentsService } from './payments.service';
+import { MercadoPagoOAuthService } from './mercadopago-oauth.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -26,6 +27,7 @@ type OAuthState = { sub?: string; purpose?: string };
 export class PaymentsController {
   constructor(
     private readonly paymentsService: PaymentsService,
+    private readonly oauthService: MercadoPagoOAuthService,
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,
   ) {}
@@ -72,7 +74,7 @@ export class PaymentsController {
         throw new Error('Invalid state token purpose');
       }
 
-      await this.paymentsService.exchangeOAuthCode(payload.sub, code);
+      await this.oauthService.exchangeCode(payload.sub, code);
       // Redirect to frontend dashboard with success flag
       return res.redirect(`${frontendUrl}/panel?mp_success=true`);
     } catch (error) {
@@ -86,11 +88,6 @@ export class PaymentsController {
   async getOauthLink(@Req() req: any) {
     const state: OAuthState = { sub: req.user.userId, purpose: 'oauth_state' };
     const stateToken = this.jwtService.sign(state, { expiresIn: '15m' });
-
-    const clientId = this.config.getOrThrow<string>('MERCADOPAGO_CLIENT_ID');
-    const redirectUri = `${this.config.getOrThrow<string>('BACKEND_URL')}/payments/oauth/callback`;
-    const url = `https://auth.mercadopago.com/authorization?client_id=${clientId}&response_type=code&platform_id=mp&redirect_uri=${redirectUri}&state=${stateToken}`;
-
-    return { url };
+    return { url: this.oauthService.authorizationUrl(stateToken) };
   }
 }
