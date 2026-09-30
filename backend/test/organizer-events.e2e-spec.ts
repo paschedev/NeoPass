@@ -210,5 +210,18 @@ describe('Eventos del organizador', () => {
         .send({ title: 'Otro título' })
         .expect(409);
     });
+
+    it.each(['', '/batches'])(
+      'editar (PUT /events/:id%s) un evento que no existe da 404',
+      async (path) => {
+        const { organizer } = await createOrganizerWithEvent(t.prisma);
+
+        await request(t.app.getHttpServer())
+          .put(`/events/${randomUUID()}${path}`)
+          .set('Authorization', authHeader(t.app, organizer))
+          .send({ batches: [] })
+          .expect(404);
+      },
+    );
   });
 });

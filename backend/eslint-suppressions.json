@@ -47,14 +47,6 @@
       "count": 2
     }
   },
-  "src/events/events.controller.ts": {
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 12
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 3
-    }
-  },
   "src/media/media.service.ts": {
     "@typescript-eslint/no-unused-vars": {
       "count": 1

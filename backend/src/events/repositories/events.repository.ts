@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Prisma, StaffRole } from '@prisma/client';
+import { Prisma, StaffRole, StaffStatus } from '@prisma/client';
 import { BatchChanges } from '../batch-changes';
+
+export type InvitationAnswer = Extract<StaffStatus, 'ACCEPTED' | 'REJECTED'>;
 
 // Public = published and not over yet.
 function publicEventWhere(now: Date): Prisma.EventWhereInput {
@@ -274,10 +276,19 @@ export class EventsRepository {
     return this.prisma.eventStaff.findUnique({
       where: { id },
       include: {
-        event: true,
-        user: true,
+        event: { select: { id: true, title: true, organizerId: true } },
+        user: { select: { name: true } },
       },
     });
+  }
+
+  // Returns whether this call answered it: only a pending invitation can be.
+  async answerPendingInvitation(id: string, status: InvitationAnswer) {
+    const { count } = await this.prisma.eventStaff.updateMany({
+      where: { id, status: 'PENDING' },
+      data: { status },
+    });
+    return count > 0;
   }
 
   async createEventStaff(data: Prisma.EventStaffCreateInput) {
