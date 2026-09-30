@@ -22,3 +22,23 @@ export const optimizeCloudinaryUrl = (
 
   return `${urlParts[0]}/upload/${transforms}/${urlParts[1]}`;
 };
+
+export const IMAGE_UPLOAD_TYPES = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/avif',
+  'image/gif',
+];
+const MAX_IMAGE_MB = 10;
+
+// Devuelve el motivo por el que el archivo no se puede subir, o null si está bien.
+export const validateImageFile = (file: File): string | null => {
+  if (!IMAGE_UPLOAD_TYPES.includes(file.type)) {
+    return 'Formato no permitido. Solo JPG, PNG, WebP, AVIF o GIF.';
+  }
+  if (file.size > MAX_IMAGE_MB * 1024 * 1024) {
+    return `La imagen supera el límite de ${MAX_IMAGE_MB} MB.`;
+  }
+  return null;
+};
