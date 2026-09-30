@@ -230,8 +230,11 @@ model Order {
   userId String
   user   User   @relation(fields: [userId], references: [id])
 
-  promoterId String?
-  promoter   EventStaff? @relation("OrderPromoter", fields: [promoterId], references: [id])
+  promoterId         String?
+  promoter           EventStaff? @relation("OrderPromoter", fields: [promoterId], references: [id])
+  // What the promoter earned with this order, fixed when it was paid so that a
+  // later change to the commission does not rewrite past sales.
+  promoterCommission Decimal?    @db.Decimal(10, 2)
 
   payment    Payment?
   orderItems OrderItem[]
