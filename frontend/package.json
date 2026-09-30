@@ -14,18 +14,15 @@
     "@hookform/resolvers": "^5.9.1",
     "@marsidev/react-turnstile": "^1.6.0",
     "@yudiel/react-qr-scanner": "^2.5.1",
-    "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",
     "libphonenumber-js": "^1.13.12",
     "lucide-react": "^1.14.0",
     "next": "16.3.6",
-    "next-cloudinary": "^6.17.5",
     "qrcode.react": "^4.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "^7.87.0",
     "react-hot-toast": "^2.6.0",
-    "tailwind-merge": "^3.5.0",
     "zod": "^4.6.2"
   },
   "devDependencies": {
