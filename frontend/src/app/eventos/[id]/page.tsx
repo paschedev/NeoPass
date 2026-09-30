@@ -13,6 +13,7 @@ import {
 import toast from 'react-hot-toast';
 import CustomSelect from '@/components/CustomSelect';
 import { Turnstile } from '@marsidev/react-turnstile';
+import { TURNSTILE_OPTIONS } from '@/utils/captcha';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -409,7 +410,8 @@ function EventContent() {
                       siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
                       onSuccess={(token) => setCaptchaToken(token)}
                       onError={() => setCaptchaToken('')}
-                      options={{ theme: 'dark', size: 'normal' }}
+                      options={TURNSTILE_OPTIONS}
+                      className="w-full"
                     />
                   </div>
 

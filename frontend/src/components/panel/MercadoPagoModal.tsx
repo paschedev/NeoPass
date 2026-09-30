@@ -1,10 +1,8 @@
 'use client';
 
-import toast from 'react-hot-toast';
 import { Link2, X } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
-import { apiFetch } from '@/utils/api';
-import { getApiErrorMessage } from '@/utils/api-error';
+import ConnectMercadoPagoButton from './ConnectMercadoPagoButton';
 
 // Explica la vinculación y redirige al OAuth de Mercado Pago.
 export default function MercadoPagoModal({
@@ -14,22 +12,6 @@ export default function MercadoPagoModal({
   open: boolean;
   onClose: () => void;
 }) {
-  const handleConnect = async () => {
-    try {
-      const response = await apiFetch('/payments/oauth/link');
-      const data = await response.json();
-      if (response.ok && data.url) {
-        window.location.href = data.url;
-      } else {
-        toast.error(
-          getApiErrorMessage(data, 'Error al generar link de MercadoPago'),
-        );
-      }
-    } catch {
-      toast.error('Error de conexión al servidor');
-    }
-  };
-
   return (
     <Modal
       open={open}
@@ -60,12 +42,9 @@ export default function MercadoPagoModal({
         comprador final.
       </p>
 
-      <button
-        onClick={handleConnect}
-        className="w-full bg-[#009EE3] hover:bg-[#0089C7] text-white py-4 rounded-full font-bold transition-all shadow-lg shadow-[#009EE3]/20 flex items-center justify-center gap-2 mb-6"
-      >
-        Conectar con Mercado Pago
-      </button>
+      <div className="mb-6">
+        <ConnectMercadoPagoButton />
+      </div>
     </Modal>
   );
 }
