@@ -65,69 +65,12 @@
       "count": 1
     }
   },
-  "src/orders/orders.controller.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 1
-    }
-  },
-  "src/orders/orders.processor.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 3
-    }
-  },
-  "src/orders/repositories/orders.repository.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/payments/payments.controller.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 1
-    },
     "@typescript-eslint/no-unused-vars": {
       "count": 1
-    },
-    "@typescript-eslint/require-await": {
-      "count": 1
-    }
-  },
-  "src/payments/payments.service.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 1
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 2
     }
   },
   "src/presets/presets.controller.ts": {
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 4
-    }
-  },
-  "src/tickets/repositories/tickets.repository.ts": {
-    "@typescript-eslint/no-unsafe-call": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 2
-    },
-    "@typescript-eslint/no-unsafe-return": {
-      "count": 4
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
-  "src/tickets/tickets.controller.ts": {
-    "@typescript-eslint/no-unsafe-assignment": {
-      "count": 2
-    },
     "@typescript-eslint/no-unsafe-member-access": {
       "count": 4
     }

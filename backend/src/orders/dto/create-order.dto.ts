@@ -31,7 +31,7 @@ export class CreateOrderDto {
   captchaToken: string;
 
   // Not @IsUUID: a malformed referral link must not block the purchase; the
-  // repository only keeps it if it is an accepted promoter of the event.
+  // service only keeps it if it is an accepted promoter of the event.
   @IsOptional()
   @IsString()
   promoterId?: string;

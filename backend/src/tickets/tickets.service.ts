@@ -9,6 +9,7 @@ import {
 import { TicketsRepository } from './repositories/tickets.repository';
 import { NotificationsService } from '../notifications/notifications.service';
 import { MailService } from '../mail/mail.service';
+import { isUniqueViolation } from '../prisma/prisma-errors';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
@@ -21,31 +22,23 @@ export class TicketsService {
     private readonly notificationsService: NotificationsService,
   ) {}
 
-  async generateTicketsForOrder(
-    orderId: string,
-    tx?: Prisma.TransactionClient,
-  ) {
+  // Runs inside the payment transaction: the tickets exist only if it commits.
+  async generateTicketsForOrder(orderId: string, tx: Prisma.TransactionClient) {
     const order = await this.ticketsRepository.findOrderWithItems(orderId, tx);
-
-    if (!order) throw new BadRequestException('Orden no encontrada');
 
     const ticketData: Prisma.TicketCreateManyInput[] = [];
     for (const item of order.orderItems) {
       for (let i = 0; i < item.quantity; i++) {
         ticketData.push({
           orderId: order.id,
-          ticketTypeId: item.ticketType.id,
+          ticketTypeId: item.ticketTypeId,
           userId: order.userId,
           // Prisma will generate uuid for qrCode and id automatically
         });
       }
     }
 
-    await this.ticketsRepository.createTicketsTransaction(
-      order.id,
-      ticketData,
-      tx,
-    );
+    await this.ticketsRepository.createTickets(ticketData, tx);
     this.logger.log(
       `Generated ${ticketData.length} tickets for Order ${order.id}`,
     );
@@ -76,33 +69,26 @@ export class TicketsService {
     return this.ticketsRepository.findMyTickets(userId);
   }
 
-  async processCheckIn(qrCode: string, scannerId: string, userAgent: string) {
+  async processCheckIn(
+    qrCode: string,
+    scannerId: string,
+    userAgent: string | undefined,
+  ) {
     const ticket = await this.ticketsRepository.findTicketForValidation(qrCode);
 
     if (!ticket) {
       return { success: false, status: 'INVALID', message: 'INVÁLIDO' };
     }
 
-    // Validar permisos del Scanner en EventStaff o si es el organizador global
+    // The organizer of the event, or an accepted scanner or manager of it.
     const event = ticket.ticketType.event;
     if (event.organizerId !== scannerId) {
-      const staffPermission = await this.ticketsRepository.findEventStaff(
+      const isEventStaff = await this.ticketsRepository.hasAcceptedStaffRole(
         event.id,
         scannerId,
-        'SCANNER',
+        ['SCANNER', 'MANAGER'],
       );
-
-      // Intentamos validar también MANAGER por si el frontend no distingue bien
-      const managerPermission = await this.ticketsRepository.findEventStaff(
-        event.id,
-        scannerId,
-        'MANAGER',
-      );
-
-      if (
-        (!staffPermission || staffPermission.status !== 'ACCEPTED') &&
-        (!managerPermission || managerPermission.status !== 'ACCEPTED')
-      ) {
+      if (!isEventStaff) {
         return {
           success: false,
           status: 'WRONG_EVENT',
@@ -221,11 +207,4 @@ export class TicketsService {
       ],
     });
   }
-}
-
-function isUniqueViolation(error: unknown) {
-  return (
-    error instanceof Prisma.PrismaClientKnownRequestError &&
-    error.code === 'P2002'
-  );
 }

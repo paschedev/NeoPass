@@ -1,46 +1,27 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Prisma } from '@prisma/client';
+import { Prisma, StaffRole } from '@prisma/client';
 
 @Injectable()
 export class TicketsRepository {
   constructor(private prisma: PrismaService) {}
 
-  async findOrderWithItems(orderId: string, tx?: Prisma.TransactionClient) {
-    const prismaClient = tx || this.prisma;
-    return prismaClient.order.findUnique({
+  async findOrderWithItems(orderId: string, tx: Prisma.TransactionClient) {
+    return tx.order.findUniqueOrThrow({
       where: { id: orderId },
-      include: {
-        user: true,
-        orderItems: {
-          include: { ticketType: { include: { event: true } } },
-        },
+      select: {
+        id: true,
+        userId: true,
+        orderItems: { select: { ticketTypeId: true, quantity: true } },
       },
     });
   }
 
-  async createTicketsTransaction(
-    orderId: string,
+  async createTickets(
     ticketData: Prisma.TicketCreateManyInput[],
-    tx?: Prisma.TransactionClient,
+    tx: Prisma.TransactionClient,
   ) {
-    const createTicketsFn = async (client: any) => {
-      await client.ticket.createMany({
-        data: ticketData,
-      });
-      return client.ticket.findMany({
-        where: { orderId: orderId },
-        include: { ticketType: { include: { event: true } } },
-      });
-    };
-
-    if (tx) {
-      return createTicketsFn(tx);
-    } else {
-      return this.prisma.$transaction(async (t: any) => {
-        return createTicketsFn(t);
-      });
-    }
+    return tx.ticket.createMany({ data: ticketData });
   }
 
   async findMyTickets(userId: string) {
@@ -60,11 +41,23 @@ export class TicketsRepository {
   async findTicketForValidation(qrCode: string) {
     return this.prisma.ticket.findUnique({
       where: { qrCode },
-      include: {
+      select: {
+        id: true,
+        status: true,
+        isGuestList: true,
         ticketType: {
-          include: { event: true },
+          select: {
+            name: true,
+            event: {
+              select: {
+                id: true,
+                organizerId: true,
+                status: true,
+                title: true,
+              },
+            },
+          },
         },
-        user: true,
       },
     });
   }
@@ -104,7 +97,7 @@ export class TicketsRepository {
   async processCheckInTransaction(
     ticketId: string,
     scannerId: string,
-    userAgent: string,
+    userAgent: string | undefined,
   ) {
     // Conditional on VALID: of two simultaneous scans only one marks the
     // ticket as used. Returns false if it was already used.
@@ -126,16 +119,16 @@ export class TicketsRepository {
     });
   }
 
-  async findEventStaff(
+  async hasAcceptedStaffRole(
     eventId: string,
     userId: string,
-    role: import('@prisma/client').StaffRole,
+    roles: StaffRole[],
   ) {
-    return this.prisma.eventStaff.findUnique({
-      where: {
-        eventId_userId_role: { eventId, userId, role },
-      },
+    const staff = await this.prisma.eventStaff.findFirst({
+      where: { eventId, userId, role: { in: roles }, status: 'ACCEPTED' },
+      select: { id: true },
     });
+    return staff !== null;
   }
 
   // Moves a still-valid ticket to its new owner with a fresh QR, so the one the
@@ -155,6 +148,9 @@ export class TicketsRepository {
   }
 
   async findUserById(id: string) {
-    return this.prisma.user.findUnique({ where: { id } });
+    return this.prisma.user.findUnique({
+      where: { id },
+      select: { id: true, email: true, name: true },
+    });
   }
 }

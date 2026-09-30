@@ -1,14 +1,8 @@
-import {
-  Controller,
-  Post,
-  Body,
-  BadRequestException,
-  UseGuards,
-  Req,
-} from '@nestjs/common';
+import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { OrdersService } from './orders.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CaptchaService } from '../auth/captcha.service';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { CreateOrderDto } from './dto/create-order.dto';
 
 @Controller('orders')
@@ -20,18 +14,14 @@ export class OrdersController {
 
   @UseGuards(JwtAuthGuard)
   @Post('checkout')
-  async createCheckout(@Req() req: any, @Body() body: CreateOrderDto) {
+  async createCheckout(
+    @CurrentUser('userId') userId: string,
+    @Body() body: CreateOrderDto,
+  ) {
     await this.captchaService.assertHuman(body.captchaToken);
 
-    const finalUserId = req.user?.userId;
-    if (!finalUserId) {
-      throw new BadRequestException(
-        'Se requiere sesión activa para procesar la compra.',
-      );
-    }
-
     return this.ordersService.createCheckoutSession(
-      finalUserId,
+      userId,
       body.items,
       body.promoterId,
     );

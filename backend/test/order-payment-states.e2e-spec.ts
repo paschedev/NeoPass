@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { TicketType } from '@prisma/client';
 import { OrdersProcessor } from '../src/orders/orders.processor';
+import { OrdersService } from '../src/orders/orders.service';
 import { PaymentsProcessor } from '../src/payments/payments.processor';
 import { PaymentsService } from '../src/payments/payments.service';
 import { mercadoPagoMock } from './mocks/mercadopago';
@@ -59,7 +60,7 @@ describe('Estados de la orden al pagar y al vencer', () => {
   }
 
   function expire(orderId: string) {
-    const processor = new OrdersProcessor(t.prisma);
+    const processor = new OrdersProcessor(t.app.get(OrdersService));
     return processor.process({
       name: 'expire-order',
       data: { orderId },
