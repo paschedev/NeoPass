@@ -7,9 +7,17 @@ import {
   TicketType,
   User,
 } from '@prisma/client';
+import { MercadoPagoTokenCipher } from '../../src/payments/mercadopago-token-cipher';
+import { testEnv } from '../setup/test-env';
 
 const HOUR_MS = 60 * 60 * 1000;
 const ORDER_TTL_MS = 10 * 60 * 1000;
+
+// El token con el que cobra el organizador de prueba; en la base queda cifrado.
+export const ORGANIZER_MP_ACCESS_TOKEN = 'TEST-organizer-access-token';
+export const mercadoPagoTokenCipher = new MercadoPagoTokenCipher(
+  testEnv.MERCADOPAGO_TOKEN_KEY,
+);
 
 export function createUser(
   prisma: PrismaClient,
@@ -44,7 +52,9 @@ export async function createOrganizerWithEvent(
   const now = Date.now();
   const organizer = await createUser(prisma, {
     role: 'ORGANIZER',
-    mercadoPagoAccessToken: 'TEST-organizer-access-token',
+    mercadoPagoAccessToken: mercadoPagoTokenCipher.encrypt(
+      ORGANIZER_MP_ACCESS_TOKEN,
+    ),
   });
   const event = await prisma.event.create({
     data: {
