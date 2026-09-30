@@ -27,16 +27,6 @@
       "count": 1
     }
   },
-  "src/app/panel/eventos/[id]/editar/page.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 2
-    }
-  },
-  "src/app/panel/eventos/nuevo/page.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
   "src/app/panel/notificaciones/page.tsx": {
     "@typescript-eslint/no-explicit-any": {
       "count": 1
