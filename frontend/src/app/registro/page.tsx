@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { UserPlus } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
+import { TURNSTILE_OPTIONS } from '@/utils/captcha';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { toE164Phone } from '@/utils/phone';
@@ -416,7 +417,8 @@ export default function RegistroPage() {
                     setCaptchaError(false);
                   }}
                   onError={() => setCaptchaError(true)}
-                  options={{ theme: 'dark' }}
+                  options={TURNSTILE_OPTIONS}
+                  className="w-full"
                 />
               )}
               {captchaError && (

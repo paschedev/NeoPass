@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LogIn } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
+import { TURNSTILE_OPTIONS } from '@/utils/captcha';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { getSafeRedirect } from '@/utils/redirect';
@@ -170,7 +171,8 @@ export default function LoginPage() {
                     setCaptchaError(false);
                   }}
                   onError={() => setCaptchaError(true)}
-                  options={{ theme: 'dark' }}
+                  options={TURNSTILE_OPTIONS}
+                  className="w-full"
                 />
               )}
               {captchaError && (

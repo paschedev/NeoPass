@@ -195,6 +195,7 @@ export default function EventForm({
             <textarea
               id="description"
               rows={4}
+              spellCheck
               placeholder="Contá de qué trata el evento..."
               className={fieldClass(errors.description?.message)}
               {...register('description')}
