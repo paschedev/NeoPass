@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, Order } from '@prisma/client';
 import { hasUsableMercadoPagoToken } from '../../payments/mercadopago-token';
+import { MercadoPagoTokenCipher } from '../../payments/mercadopago-token-cipher';
 import { getSaleWindowStatus } from '../../events/batch-sale-status';
 
 type EventWithOrganizer = Prisma.EventGetPayload<{
@@ -14,7 +15,10 @@ type EventWithOrganizer = Prisma.EventGetPayload<{
 
 @Injectable()
 export class OrdersRepository {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private mercadoPagoTokenCipher: MercadoPagoTokenCipher,
+  ) {}
 
   async createCheckoutOrderTransaction(
     userId: string,
@@ -110,7 +114,9 @@ export class OrdersRepository {
           'El organizador de este evento todavía no puede cobrar entradas.',
         );
       }
-      const sellerToken = organizer.mercadoPagoAccessToken;
+      const sellerToken = this.mercadoPagoTokenCipher.decrypt(
+        organizer.mercadoPagoAccessToken,
+      );
       const serviceFee = ticketAmount
         .mul(event.neoPassFeePercentage)
         .div(100)

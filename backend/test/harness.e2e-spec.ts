@@ -8,6 +8,7 @@ import {
   createOrganizerWithEvent,
   createTicket,
   createUser,
+  ORGANIZER_MP_ACCESS_TOKEN,
 } from './utils/factories';
 import { mockTurnstile } from './utils/network';
 import { createTestApp, TestApp } from './utils/test-app';
@@ -94,7 +95,7 @@ describe('Base de tests e2e', () => {
   });
 
   it('una compra valida el captcha, crea la preferencia y encola la expiración contra los servicios simulados', async () => {
-    const { organizer, ticketType } = await createOrganizerWithEvent(t.prisma);
+    const { ticketType } = await createOrganizerWithEvent(t.prisma);
     const buyer = await createUser(t.prisma);
     mockTurnstile(true);
     mercadoPagoMock.preferenceCreate.mockResolvedValueOnce({
@@ -118,7 +119,7 @@ describe('Base de tests e2e', () => {
     );
     expect(mercadoPagoMock.preferenceCreate).toHaveBeenCalledWith(
       expect.anything(),
-      organizer.mercadoPagoAccessToken,
+      ORGANIZER_MP_ACCESS_TOKEN,
     );
     expect(t.queues.orders.add).toHaveBeenCalledWith(
       'expire-order',

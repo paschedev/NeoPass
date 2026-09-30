@@ -6,6 +6,7 @@ import {
   IsOptional,
   IsString,
   IsUrl,
+  Matches,
   ValidateIf,
   validateSync,
 } from 'class-validator';
@@ -55,6 +56,11 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   MERCADOPAGO_WEBHOOK_SECRET: string;
+
+  // Encrypts the organizers' Mercado Pago tokens in the database: 32 random
+  // bytes in base64. Losing it means every organizer has to link again.
+  @Matches(/^[A-Za-z0-9+/]{43}=$/)
+  MERCADOPAGO_TOKEN_KEY: string;
 
   @IsString()
   @IsNotEmpty()

@@ -17,6 +17,8 @@ export const testEnv = {
   MERCADOPAGO_CLIENT_ID: 'test-client-id',
   MERCADOPAGO_CLIENT_SECRET: 'test-client-secret',
   MERCADOPAGO_WEBHOOK_SECRET: 'test-webhook-secret',
+  // 32 bytes en base64, solo para los tests.
+  MERCADOPAGO_TOKEN_KEY: 'BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=',
   RESEND_API_KEY: 're_test_key',
   TURNSTILE_SECRET_KEY: 'test-turnstile-secret',
   CAPTCHA_DISABLED: 'false',

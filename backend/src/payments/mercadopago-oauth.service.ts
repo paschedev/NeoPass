@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import { PaymentsRepository } from './repositories/payments.repository';
@@ -14,13 +14,29 @@ const RENEWAL_WINDOW_MS = 30 * DAY_MS;
 // Links an organizer's Mercado Pago account (OAuth authorization code) and
 // keeps its token alive with the refresh token, which changes on every renewal.
 @Injectable()
-export class MercadoPagoOAuthService {
+export class MercadoPagoOAuthService implements OnApplicationBootstrap {
   private readonly logger = new Logger(MercadoPagoOAuthService.name);
 
   constructor(
     private readonly paymentsRepository: PaymentsRepository,
     private readonly config: ConfigService,
   ) {}
+
+  // Tokens linked before they were stored encrypted get encrypted before the
+  // app serves requests. If it fails, the app does not start.
+  async onApplicationBootstrap() {
+    await this.encryptPlaintextTokens();
+  }
+
+  async encryptPlaintextTokens() {
+    const updated =
+      await this.paymentsRepository.encryptPlaintextMercadoPagoTokens();
+    if (updated > 0) {
+      this.logger.log(
+        `Encrypted the Mercado Pago tokens of ${updated} organizers`,
+      );
+    }
+  }
 
   authorizationUrl(state: string) {
     const params = new URLSearchParams({

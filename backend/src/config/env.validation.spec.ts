@@ -11,6 +11,7 @@ const PRODUCTION_ENV = {
   MERCADOPAGO_CLIENT_ID: 'mp-client-id',
   MERCADOPAGO_CLIENT_SECRET: 'mp-client-secret',
   MERCADOPAGO_WEBHOOK_SECRET: 'mp-webhook-secret',
+  MERCADOPAGO_TOKEN_KEY: Buffer.alloc(32, 1).toString('base64'),
   RESEND_API_KEY: 're_resend_key',
   TURNSTILE_SECRET_KEY: 'turnstile-secret',
   CLOUDINARY_URL: 'cloudinary://key:secret@neopass',
@@ -46,6 +47,18 @@ describe('validateEnv', () => {
       validateEnv({ ...PRODUCTION_ENV, BACKEND_URL: 'api.neopass.ar' }),
     ).toThrow('BACKEND_URL');
   });
+
+  it.each([
+    ['más corta que 32 bytes', Buffer.alloc(16, 1).toString('base64')],
+    ['texto que no es base64', 'clave-de-texto-que-no-es-base64-de-32-bytes!!'],
+  ])(
+    'la clave de cifrado de los tokens de Mercado Pago no sirve si es %s',
+    (_case, key) => {
+      expect(() =>
+        validateEnv({ ...PRODUCTION_ENV, MERCADOPAGO_TOKEN_KEY: key }),
+      ).toThrow('MERCADOPAGO_TOKEN_KEY');
+    },
+  );
 
   it('el error nombra las variables inválidas sin mostrar sus valores', () => {
     let message = '';
