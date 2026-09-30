@@ -1,6 +1,13 @@
-import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadGatewayException,
+  BadRequestException,
+  ConflictException,
+  Logger,
+} from '@nestjs/common';
 import { OrdersRepository } from './repositories/orders.repository';
 import { PaymentsService } from '../payments/payments.service';
+import { isStockLimitError } from '../prisma/prisma-errors';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { MAX_TICKETS_PER_ORDER } from './dto/create-order.dto';
@@ -39,13 +46,10 @@ export class OrdersService {
       mpItems = result.mpItems;
       serviceFee = result.serviceFee;
       sellerToken = result.sellerToken;
-    } catch (error: any) {
-      if (
-        error.code === 'P2010' ||
-        error.message?.includes('check_stock_limits')
-      ) {
-        throw new BadRequestException(
-          'Se agotaron las entradas mientras procesabamos tu compra.',
+    } catch (error) {
+      if (isStockLimitError(error)) {
+        throw new ConflictException(
+          'Se agotaron las entradas mientras procesábamos tu compra.',
         );
       }
       throw error;
@@ -74,8 +78,8 @@ export class OrdersService {
       // If external payment API fails, rollback stock manually
       await this.ordersRepository.markOrderFailedAndRollbackStock(order.id);
 
-      throw new BadRequestException(
-        'Fallo de conexión con Mercado Pago. Es posible que el token del organizador sea inválido o haya caducado.',
+      throw new BadGatewayException(
+        'No pudimos conectar con Mercado Pago. Probá de nuevo en unos minutos.',
       );
     }
 

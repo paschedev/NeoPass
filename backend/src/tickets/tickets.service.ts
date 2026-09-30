@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { TicketsRepository } from './repositories/tickets.repository';
 import { NotificationsService } from '../notifications/notifications.service';
 import { MailService } from '../mail/mail.service';
@@ -151,32 +157,32 @@ export class TicketsService {
   ) {
     const targetUser = await this.ticketsRepository.findUserById(targetUserId);
     if (!targetUser) {
-      throw new BadRequestException(
-        'El usuario destino no existe. Pídele que se registre primero.',
+      throw new NotFoundException(
+        'El usuario destino no existe. Pedile que se registre primero.',
       );
     }
 
     if (targetUser.id === currentUserId) {
       throw new BadRequestException(
-        'No puedes transferirte la entrada a ti mismo.',
+        'No podés transferirte la entrada a vos mismo.',
       );
     }
 
     const ticket = await this.ticketsRepository.findTicketWithEvent(ticketId);
 
     if (!ticket || ticket.userId !== currentUserId) {
-      throw new BadRequestException('La entrada no te pertenece o no existe.');
+      throw new NotFoundException('La entrada no te pertenece o no existe.');
     }
 
     if (ticket.status !== 'VALID') {
-      throw new BadRequestException(
+      throw new ConflictException(
         'Solo se pueden transferir entradas válidas.',
       );
     }
 
     const { event } = ticket.ticketType;
     if (event.status === 'FINISHED' || event.status === 'CANCELLED') {
-      throw new BadRequestException(
+      throw new ConflictException(
         'No se pueden transferir entradas de un evento finalizado o cancelado.',
       );
     }
@@ -189,7 +195,7 @@ export class TicketsService {
       newQrCode,
     );
     if (!transferred) {
-      throw new BadRequestException(
+      throw new ConflictException(
         'La entrada cambió mientras la transferías. Probá de nuevo.',
       );
     }

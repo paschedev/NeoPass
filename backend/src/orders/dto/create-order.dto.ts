@@ -6,6 +6,7 @@ import {
   Max,
   IsArray,
   ArrayNotEmpty,
+  ArrayUnique,
   ValidateNested,
   IsOptional,
 } from 'class-validator';
@@ -37,6 +38,9 @@ export class CreateOrderDto {
 
   @IsArray({ message: 'Debes incluir al menos un item' })
   @ArrayNotEmpty({ message: 'Elegí al menos una entrada' })
+  @ArrayUnique((item?: OrderItemDto) => item?.ticketTypeId, {
+    message: 'Cada entrada va una sola vez en la orden',
+  })
   @ValidateNested({ each: true })
   @Type(() => OrderItemDto)
   items: OrderItemDto[];

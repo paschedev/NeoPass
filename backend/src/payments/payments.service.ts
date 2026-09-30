@@ -8,6 +8,7 @@ import { Prisma } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { isValidWebhookSignature } from './webhook-signature';
 import { NotificationsService } from '../notifications/notifications.service';
+import { isStockLimitError } from '../prisma/prisma-errors';
 import type { PaymentNotificationJob } from './payments.processor';
 
 // 8 attempts, the last one about an hour after the notification.
@@ -272,8 +273,4 @@ function sameAmount(amount: number, total: Prisma.Decimal) {
   return new Prisma.Decimal(amount)
     .toDecimalPlaces(2)
     .equals(total.toDecimalPlaces(2));
-}
-
-function isStockLimitError(error: unknown) {
-  return error instanceof Error && error.message.includes('check_stock_limits');
 }

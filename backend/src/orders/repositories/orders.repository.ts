@@ -2,6 +2,7 @@ import {
   Injectable,
   BadRequestException,
   ConflictException,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, Order } from '@prisma/client';
@@ -40,10 +41,9 @@ export class OrdersRepository {
           },
         });
 
-        if (!ticketType)
-          throw new BadRequestException(
-            `TicketType ${item.ticketTypeId} not found`,
-          );
+        if (!ticketType) {
+          throw new NotFoundException('La entrada seleccionada no existe.');
+        }
 
         const event = ticketType.event;
         // One order = one event: the fee and the organizer who gets paid come from it.
@@ -57,17 +57,17 @@ export class OrdersRepository {
 
         // Security / Lifecycle Checks
         if (event.status !== 'PUBLISHED') {
-          throw new BadRequestException(`El evento no se encuentra activo.`);
+          throw new ConflictException('El evento no está a la venta.');
         }
         if (event.endDate < now) {
-          throw new BadRequestException(`El evento ya ha finalizado.`);
+          throw new ConflictException('El evento ya terminó.');
         }
         if (
           !ticketType.batch ||
           getSaleWindowStatus(ticketType.batch, event.endDate, now) !== 'OPEN'
         ) {
-          throw new BadRequestException(
-            `La tanda de venta para este ticket no está activa en este momento.`,
+          throw new ConflictException(
+            'Esta tanda no está a la venta en este momento.',
           );
         }
 
@@ -76,8 +76,8 @@ export class OrdersRepository {
           ticketType.stock - ticketType.sold - ticketType.reserved;
 
         if (availableStock < item.quantity) {
-          throw new BadRequestException(
-            `Not enough stock for ${ticketType.name}`,
+          throw new ConflictException(
+            `No quedan suficientes entradas de ${ticketType.name}.`,
           );
         }
 
