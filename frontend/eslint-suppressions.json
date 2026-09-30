@@ -52,11 +52,6 @@
       "count": 1
     }
   },
-  "src/components/ClientLayoutWrapper.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 4
-    }
-  },
   "src/components/GlobalSidebar.tsx": {
     "@typescript-eslint/no-explicit-any": {
       "count": 1

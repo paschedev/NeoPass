@@ -10,7 +10,7 @@ import {
   Users,
   ArrowLeft,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/utils/toast';
 import CustomSelect from '@/components/CustomSelect';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { TURNSTILE_OPTIONS } from '@/utils/captcha';
