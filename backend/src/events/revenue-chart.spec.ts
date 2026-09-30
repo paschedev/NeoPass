@@ -43,4 +43,18 @@ describe('buildRevenueChart', () => {
 
     expect(chart[29].revenue).toBe(1000);
   });
+
+  it('suma las ventas del día al centavo, sin errores de redondeo', () => {
+    const chart = buildRevenueChart(
+      [
+        order('2026-09-25T13:00:00Z', 1500.15),
+        order('2026-09-25T14:00:00Z', 1500.15),
+        order('2026-09-25T15:00:00Z', 1500.15),
+      ],
+      [EVENT],
+      now,
+    );
+
+    expect(chart[29].revenue).toBe(4500.45);
+  });
 });

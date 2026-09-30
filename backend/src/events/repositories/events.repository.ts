@@ -216,6 +216,19 @@ export class EventsRepository {
     });
   }
 
+  // Face value of the tickets of every paid order of the organizer's events,
+  // as charged: a later price change doesn't rewrite it.
+  async sumPaidTicketAmountForOrganizer(organizerId: string) {
+    const { _sum } = await this.prisma.order.aggregate({
+      where: {
+        status: 'PAID',
+        orderItems: { some: { ticketType: { event: { organizerId } } } },
+      },
+      _sum: { ticketAmount: true },
+    });
+    return _sum.ticketAmount ?? new Prisma.Decimal(0);
+  }
+
   async getPaidOrdersForEvents(eventIds: string[], fromDate: Date) {
     return this.prisma.order.findMany({
       where: {

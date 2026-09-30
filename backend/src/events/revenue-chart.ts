@@ -28,9 +28,12 @@ export function buildRevenueChart(
   eventIds: string[],
   now: Date,
 ) {
-  const revenueByDay = new Map<string, number>();
+  const revenueByDay = new Map<string, Prisma.Decimal>();
   for (let daysAgo = CHART_DAYS - 1; daysAgo >= 0; daysAgo--) {
-    revenueByDay.set(dayFormat.format(now.getTime() - daysAgo * DAY_MS), 0);
+    revenueByDay.set(
+      dayFormat.format(now.getTime() - daysAgo * DAY_MS),
+      new Prisma.Decimal(0),
+    );
   }
 
   for (const order of orders) {
@@ -40,9 +43,16 @@ export function buildRevenueChart(
 
     const revenue = order.orderItems
       .filter((item) => eventIds.includes(item.ticketType.eventId))
-      .reduce((sum, item) => sum + item.quantity * Number(item.unitPrice), 0);
-    revenueByDay.set(day, current + revenue);
+      .reduce(
+        (sum, item) =>
+          sum.add(new Prisma.Decimal(item.unitPrice).mul(item.quantity)),
+        new Prisma.Decimal(0),
+      );
+    revenueByDay.set(day, current.add(revenue));
   }
 
-  return [...revenueByDay].map(([date, revenue]) => ({ date, revenue }));
+  return [...revenueByDay].map(([date, revenue]) => ({
+    date,
+    revenue: revenue.toNumber(),
+  }));
 }
