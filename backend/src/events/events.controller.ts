@@ -8,6 +8,7 @@ import {
   UseGuards,
   Req,
   Query,
+  Ip,
 } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { Prisma, StaffRole, CommissionType } from '@prisma/client';
@@ -63,8 +64,12 @@ export class EventsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string, @Query('rpp') rppId?: string) {
-    return this.eventsService.findOne(id, rppId);
+  findOne(
+    @Param('id') id: string,
+    @Ip() visitorIp: string,
+    @Query('rpp') rppId?: string,
+  ) {
+    return this.eventsService.findOne(id, rppId, visitorIp);
   }
 
   @Get(':id/promoters')

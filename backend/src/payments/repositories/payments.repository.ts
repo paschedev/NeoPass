@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OrderStatus, Prisma } from '@prisma/client';
 import type { MercadoPagoCredentials } from '../mercadopago-token';
+import { calculatePromoterCommission } from '../promoter-commission';
 
 @Injectable()
 export class PaymentsRepository {
@@ -131,35 +132,27 @@ export class PaymentsRepository {
       // Execute callback to generate tickets
       await generateTicketsCallback(tx);
 
-      // Calculate promoter commission if a promoter is linked
+      // The promoter's commission is fixed on the order when it is paid, so a
+      // refund takes back exactly that amount.
       if (order.promoterId) {
-        const promoter = await tx.eventStaff.findUnique({
+        const promoter = await tx.eventStaff.findUniqueOrThrow({
           where: { id: order.promoterId },
         });
-        if (promoter) {
-          let commission = 0;
-          if (promoter.commissionType === 'FIXED' && promoter.commissionValue) {
-            const ticketCount = order.orderItems.reduce(
-              (acc, curr) => acc + curr.quantity,
-              0,
-            );
-            commission = Number(promoter.commissionValue) * ticketCount;
-          } else if (
-            promoter.commissionType === 'PERCENTAGE' &&
-            promoter.commissionValue
-          ) {
-            commission =
-              Number(order.ticketAmount) *
-              (Number(promoter.commissionValue) / 100);
-          }
-
-          if (commission > 0) {
-            await tx.eventStaff.update({
-              where: { id: promoter.id },
-              data: { totalEarned: { increment: commission } },
-            });
-          }
-        }
+        const commission = calculatePromoterCommission(promoter, {
+          ticketAmount: order.ticketAmount,
+          ticketCount: order.orderItems.reduce(
+            (acc, curr) => acc + curr.quantity,
+            0,
+          ),
+        });
+        await tx.order.update({
+          where: { id: order.id },
+          data: { promoterCommission: commission },
+        });
+        await tx.eventStaff.update({
+          where: { id: promoter.id },
+          data: { totalEarned: { increment: commission } },
+        });
       }
 
       return true;
@@ -167,8 +160,9 @@ export class PaymentsRepository {
   }
 
   // Reverses the order paid by a payment that Mercado Pago refunded, charged
-  // back or cancelled: the order is cancelled, its tickets are voided and they
-  // go back on sale. Conditional on PAID so it applies only once. Returns the
+  // back or cancelled: the order is cancelled, its tickets are voided, they go
+  // back on sale and the promoter loses the commission of that order.
+  // Conditional on PAID so it applies only once. Returns the
   // order id, or null if there was nothing to reverse.
   async refundPaymentTransaction(providerPaymentId: string) {
     return this.prisma.$transaction(async (tx) => {
@@ -199,6 +193,17 @@ export class PaymentsRepository {
         await tx.ticketType.update({
           where: { id: item.ticketTypeId },
           data: { sold: { decrement: item.quantity } },
+        });
+      }
+      const { promoterId, promoterCommission } =
+        await tx.order.findUniqueOrThrow({
+          where: { id: payment.orderId },
+          select: { promoterId: true, promoterCommission: true },
+        });
+      if (promoterId && promoterCommission) {
+        await tx.eventStaff.update({
+          where: { id: promoterId },
+          data: { totalEarned: { decrement: promoterCommission } },
         });
       }
       return payment.orderId;
