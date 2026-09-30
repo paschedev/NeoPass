@@ -240,6 +240,29 @@ describe('RPP', () => {
       expect(body.events[0].orders).toBeUndefined();
     });
 
+    it('suma lo ganado, lo cobrado y el saldo de todos sus eventos al centavo', async () => {
+      const promoter = await createUser(t.prisma);
+      for (const totalPaid of [0.1, 0.2, 0]) {
+        const { event } = await createOrganizerWithEvent(t.prisma);
+        const { staff } = await addStaff(event.id, { user: promoter });
+        await t.prisma.eventStaff.update({
+          where: { id: staff.id },
+          data: { totalEarned: 1500.15, totalPaid },
+        });
+      }
+
+      const res = await request(t.app.getHttpServer())
+        .get('/events/promoter/me')
+        .set('Authorization', authHeader(t.app, promoter))
+        .expect(200);
+
+      expect(res.body).toMatchObject({
+        totalEarned: 4500.45,
+        totalPaid: 0.3,
+        pendingBalance: 4500.15,
+      });
+    });
+
     it.each(['PENDING', 'REJECTED'] as const)(
       'las estadísticas de un evento con la invitación %s dan 404',
       async (status) => {
