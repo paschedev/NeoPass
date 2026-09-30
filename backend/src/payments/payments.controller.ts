@@ -2,7 +2,6 @@ import {
   Controller,
   Post,
   Body,
-  Req,
   Headers,
   Get,
   Query,
@@ -16,6 +15,7 @@ import { MercadoPagoOAuthService } from './mercadopago-oauth.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -85,8 +85,8 @@ export class PaymentsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ORGANIZER)
   @Get('oauth/link')
-  async getOauthLink(@Req() req: any) {
-    const state: OAuthState = { sub: req.user.userId, purpose: 'oauth_state' };
+  getOauthLink(@CurrentUser('userId') userId: string) {
+    const state: OAuthState = { sub: userId, purpose: 'oauth_state' };
     const stateToken = this.jwtService.sign(state, { expiresIn: '15m' });
     return { url: this.oauthService.authorizationUrl(stateToken) };
   }
