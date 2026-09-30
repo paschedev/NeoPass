@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { useForm, useWatch } from 'react-hook-form';
+import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Calendar, Info, MapPin, Save, Video } from 'lucide-react';
 import TandasManager from '@/components/TandasManager';
@@ -14,6 +14,7 @@ import {
   toEventPayload,
   type EventDateRules,
   type EventFormInput,
+  type EventFormOutput,
 } from '@/utils/event-form';
 import FlyerField from './FlyerField';
 
@@ -26,6 +27,7 @@ const EMPTY_EVENT: EventFormInput = {
   endDate: '',
   venueName: '',
   venueAddress: '',
+  batches: [],
 };
 
 const SUBMIT_LABELS = {
@@ -88,20 +90,22 @@ export default function EventForm({
   mode,
   rules,
   defaultValues = EMPTY_EVENT,
-  initialBatches = [],
   onSubmit,
 }: {
   mode: 'create' | 'edit';
   // Se leen al montar: la página arma el formulario con el evento ya cargado.
   rules: EventDateRules;
   defaultValues?: EventFormInput;
-  initialBatches?: unknown[];
   onSubmit: (event: EventFormValues) => Promise<void>;
 }) {
   const router = useRouter();
   const [schema] = useState(() => buildEventSchema(rules));
-  const [batches, setBatches] = useState(initialBatches);
   const { uploading, upload } = useCloudinaryUpload();
+  const form = useForm<EventFormInput, unknown, EventFormOutput>({
+    resolver: zodResolver(schema),
+    defaultValues,
+    mode: 'onChange',
+  });
   const {
     register,
     handleSubmit,
@@ -110,11 +114,7 @@ export default function EventForm({
     getValues,
     trigger,
     formState: { errors, isSubmitting },
-  } = useForm<EventFormInput>({
-    resolver: zodResolver(schema),
-    defaultValues,
-    mode: 'onChange',
-  });
+  } = form;
 
   const inProgress = rules.phase === 'IN_PROGRESS';
   const [imageUrl, startDate, endDate] = useWatch({
@@ -131,9 +131,7 @@ export default function EventForm({
 
   return (
     <form
-      onSubmit={handleSubmit((values) =>
-        onSubmit(toEventPayload(values, batches)),
-      )}
+      onSubmit={handleSubmit((values) => onSubmit(toEventPayload(values)))}
       className="space-y-8"
       noValidate
     >
@@ -236,7 +234,16 @@ export default function EventForm({
               type="datetime-local"
               min={limits.endMin}
               className={dateFieldClass(errors.endDate?.message)}
-              {...register('endDate')}
+              {...register('endDate', {
+                // Las ventanas de venta de las tandas no pueden pasar del fin.
+                onChange: () => {
+                  const windows = getValues('batches').flatMap((_, index) => [
+                    `batches.${index}.publishAt` as const,
+                    `batches.${index}.closeAt` as const,
+                  ]);
+                  if (windows.length) void trigger(windows);
+                },
+              })}
             />
           </Field>
         </div>
@@ -284,7 +291,9 @@ export default function EventForm({
           disabled={inProgress}
           className="min-w-0 disabled:opacity-60"
         >
-          <TandasManager batches={batches} setBatches={setBatches} />
+          <FormProvider {...form}>
+            <TandasManager saved={rules.saved?.batches} />
+          </FormProvider>
         </fieldset>
       </div>
 

@@ -69,3 +69,79 @@ export function defaultSaleEnd(publishAt: string | null, now: Date): string {
   const base = start > now ? start : now;
   return new Date(base.getTime() + DAY_MS).toISOString();
 }
+
+type WindowErrors = { publishAt?: string; closeAt?: string };
+
+// Espejo de assertBatchWindows (backend/src/events/events.service.ts): la venta
+// termina a más tardar con el evento y empieza antes de terminar. Un fin de
+// venta pasado vale (finaliza la tanda); un inicio pasado solo si ya estaba
+// guardado así.
+export function getBatchWindowErrors(
+  batch: SaleWindow,
+  {
+    eventEnd,
+    now,
+    savedPublishAt,
+  }: { eventEnd: Date | null; now: Date; savedPublishAt?: string | null },
+): WindowErrors {
+  const publishAt = batch.publishAt ? new Date(batch.publishAt) : null;
+  const closeAt = batch.closeAt ? new Date(batch.closeAt) : null;
+  const errors: WindowErrors = {};
+  if (closeAt && eventEnd && closeAt > eventEnd) {
+    errors.closeAt = 'No puede ser después del fin del evento';
+  }
+  const saleEnd = closeAt ?? eventEnd;
+  const keepsSavedStart =
+    savedPublishAt !== undefined &&
+    (savedPublishAt ? new Date(savedPublishAt).getTime() : null) ===
+      (publishAt?.getTime() ?? null);
+  if (publishAt && saleEnd && publishAt >= saleEnd) {
+    errors.publishAt = closeAt
+      ? 'Tiene que ser anterior al fin de venta'
+      : 'Tiene que ser anterior al fin del evento';
+  } else if (publishAt && publishAt < now && !keepsSavedStart) {
+    errors.publishAt = 'Esta fecha ya pasó';
+  }
+  return errors;
+}
+
+// Un fin de venta elegido que ya pasó finaliza la tanda al guardar.
+export function saleEndsOnSave(
+  batch: Pick<SaleWindow, 'closeAt'>,
+  savedCloseAt: string | null | undefined,
+  now: Date,
+): boolean {
+  return (
+    batch.closeAt !== null &&
+    batch.closeAt !== savedCloseAt &&
+    new Date(batch.closeAt) <= now
+  );
+}
+
+type NamedWindow = SaleWindow & { name: string; isVisible: boolean };
+
+// Pares de tandas visibles que se venden a la vez desde ahora. Están
+// permitidas (el organizador decide), pero conviene avisarlo.
+export function getSimultaneousBatches(
+  batches: NamedWindow[],
+  eventEnd: Date,
+  now: Date,
+): [string, string][] {
+  const windows = batches
+    .filter((batch) => batch.isVisible)
+    .map((batch) => ({
+      name: batch.name,
+      start: batch.publishAt ? new Date(batch.publishAt) : now,
+      end: batch.closeAt ? new Date(batch.closeAt) : eventEnd,
+    }));
+  const pairs: [string, string][] = [];
+  windows.forEach((a, i) => {
+    for (const b of windows.slice(i + 1)) {
+      const start = a.start > b.start ? a.start : b.start;
+      const end = a.end < b.end ? a.end : b.end;
+      const overlapStart = start > now ? start : now;
+      if (overlapStart < end) pairs.push([a.name, b.name]);
+    }
+  });
+  return pairs;
+}

@@ -20,6 +20,7 @@ const valid: EventFormInput = {
   endDate: '2026-10-11T05:00',
   venueName: 'Club Central',
   venueAddress: 'Av. Siempre Viva 742',
+  batches: [],
 };
 
 const errorsOf = (
@@ -63,6 +64,7 @@ describe('buildEventSchema', () => {
       endDate: '',
       venueName: '',
       venueAddress: '',
+      batches: [],
     };
 
     expect(errorsOf(empty)).toEqual({
@@ -171,8 +173,133 @@ describe('getDateLimits', () => {
   });
 });
 
+// Tanda como la guarda el formulario: fechas en ISO, precio y stock como texto.
+const batch = (
+  overrides: Partial<EventFormInput['batches'][number]> = {},
+): EventFormInput['batches'][number] => ({
+  name: 'Preventa',
+  isVisible: true,
+  publishAt: null,
+  closeAt: null,
+  ticketTypes: [{ name: 'General', price: '5000', stock: '100' }],
+  ...overrides,
+});
+
+describe('tandas del formulario', () => {
+  it('pide nombre de tanda y de entrada, precio y stock entero mayor a 0', () => {
+    expect(
+      errorsOf({
+        ...valid,
+        batches: [
+          batch({
+            name: ' ',
+            ticketTypes: [
+              { name: '', price: '', stock: '0' },
+              { name: 'VIP', price: '-1', stock: '2.5' },
+              { name: 'Mesa', price: '1000', stock: '' },
+            ],
+          }),
+        ],
+      }),
+    ).toEqual({
+      'batches.0.name': 'Poné el nombre de la tanda',
+      'batches.0.ticketTypes.0.name': 'Poné el nombre de la entrada',
+      'batches.0.ticketTypes.0.price': 'Poné el precio (0 si es gratis)',
+      'batches.0.ticketTypes.0.stock': 'El stock tiene que ser mayor a 0',
+      'batches.0.ticketTypes.1.price': 'El precio no puede ser negativo',
+      'batches.0.ticketTypes.1.stock':
+        'El stock tiene que ser un número entero',
+      'batches.0.ticketTypes.2.stock': 'Poné el stock',
+    });
+  });
+
+  it('el precio no puede superar $99.999.999,99', () => {
+    expect(
+      errorsOf({
+        ...valid,
+        batches: [
+          batch({
+            ticketTypes: [{ name: 'General', price: '100000000', stock: '1' }],
+          }),
+        ],
+      }),
+    ).toEqual({
+      'batches.0.ticketTypes.0.price': 'El precio máximo es $99.999.999,99',
+    });
+  });
+
+  it('el stock no puede quedar por debajo de lo vendido y reservado', () => {
+    const general = { name: 'General', price: '5000.00', sold: 3, reserved: 2 };
+
+    expect(
+      errorsOf({
+        ...valid,
+        batches: [batch({ ticketTypes: [{ ...general, stock: 4 }] })],
+      }),
+    ).toEqual({
+      'batches.0.ticketTypes.0.stock':
+        'El stock no puede ser menor a lo vendido y reservado (5)',
+    });
+    expect(
+      errorsOf({
+        ...valid,
+        batches: [batch({ ticketTypes: [{ ...general, stock: 5 }] })],
+      }),
+    ).toEqual({});
+  });
+
+  it('revisa la ventana de venta de cada tanda contra el fin del evento elegido', () => {
+    // El evento termina el 11/10 a las 05:00 de Buenos Aires (08:00 UTC).
+    expect(
+      errorsOf({
+        ...valid,
+        batches: [
+          batch(),
+          batch({ name: 'General', closeAt: '2026-10-11T09:00:00.000Z' }),
+        ],
+      }),
+    ).toEqual({
+      'batches.1.closeAt': 'No puede ser después del fin del evento',
+    });
+  });
+
+  it('editar: acepta el inicio de venta guardado aunque ya haya pasado', () => {
+    const selling = batch({ id: 'b1', publishAt: '2026-09-30T12:00:00.000Z' });
+
+    expect(errorsOf({ ...valid, batches: [selling] })).toEqual({
+      'batches.0.publishAt': 'Esta fecha ya pasó',
+    });
+    expect(
+      errorsOf(
+        { ...valid, batches: [selling] },
+        { phase: 'NOT_STARTED', saved: { ...valid, batches: [selling] } },
+      ),
+    ).toEqual({});
+  });
+
+  it('en curso no revisa las ventanas: las tandas quedan como están', () => {
+    const started = { ...valid, startDate: '2026-10-01T10:00' };
+    const selling = batch({ id: 'b1', publishAt: '2026-09-30T12:00:00.000Z' });
+
+    expect(
+      errorsOf(
+        { ...started, batches: [selling] },
+        { phase: 'IN_PROGRESS', saved: started },
+      ),
+    ).toEqual({});
+  });
+});
+
 describe('toEventFormInput', () => {
-  it('carga un evento guardado con las fechas en hora local y sin nulls', () => {
+  it('carga un evento guardado con las fechas en hora local, sin nulls y con sus tandas', () => {
+    const general = {
+      id: 't1',
+      name: 'General',
+      price: '5000.00',
+      stock: 100,
+      sold: 3,
+      reserved: 1,
+    };
     expect(
       toEventFormInput({
         title: 'Fiesta',
@@ -183,6 +310,17 @@ describe('toEventFormInput', () => {
         endDate: '2026-10-11T08:00:00.000Z',
         venueName: null,
         venueAddress: 'Calle 1',
+        ticketBatches: [
+          {
+            id: 'b1',
+            name: 'Preventa',
+            isVisible: true,
+            publishAt: null,
+            closeAt: '2026-10-10T20:00:00.000Z',
+            publishWhenPreviousSoldOut: false,
+            ticketTypes: [general],
+          },
+        ],
       }),
     ).toEqual({
       title: 'Fiesta',
@@ -193,15 +331,29 @@ describe('toEventFormInput', () => {
       endDate: '2026-10-11T05:00',
       venueName: '',
       venueAddress: 'Calle 1',
+      batches: [
+        {
+          id: 'b1',
+          name: 'Preventa',
+          isVisible: true,
+          publishAt: null,
+          closeAt: '2026-10-10T20:00:00.000Z',
+          publishWhenPreviousSoldOut: false,
+          ticketTypes: [{ ...general, stock: '100' }],
+        },
+      ],
     });
   });
 });
 
 describe('toEventPayload', () => {
-  it('manda las fechas en ISO, el YouTube vacío como null y las tandas', () => {
-    const batches = [{ name: 'Preventa' }];
+  it('manda las fechas en ISO, el YouTube vacío como null y precio y stock como números', () => {
+    const parsed = buildEventSchema({ phase: 'NOT_STARTED' }, clock).parse({
+      ...valid,
+      batches: [batch({ tempId: 'nueva' })],
+    });
 
-    expect(toEventPayload(valid, batches)).toEqual({
+    expect(toEventPayload(parsed)).toEqual({
       title: 'Fiesta de primavera',
       description: 'Música toda la noche',
       imageUrl: valid.imageUrl,
@@ -210,7 +362,16 @@ describe('toEventPayload', () => {
       endDate: '2026-10-11T08:00:00.000Z',
       venueName: 'Club Central',
       venueAddress: 'Av. Siempre Viva 742',
-      batches,
+      batches: [
+        {
+          tempId: 'nueva',
+          name: 'Preventa',
+          isVisible: true,
+          publishAt: null,
+          closeAt: null,
+          ticketTypes: [{ name: 'General', price: 5000, stock: 100 }],
+        },
+      ],
     });
   });
 });
