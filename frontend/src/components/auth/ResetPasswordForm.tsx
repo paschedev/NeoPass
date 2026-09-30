@@ -3,24 +3,15 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Key } from 'lucide-react';
-import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
+import {
+  newPasswordSchema,
+  type NewPasswordValues,
+} from '@/utils/password-schema';
 import PasswordInput from '@/components/forms/PasswordInput';
-
-const resetSchema = z
-  .object({
-    newPassword: z.string().min(8, 'Tiene que tener al menos 8 caracteres'),
-    confirmPassword: z.string(),
-  })
-  .refine((values) => values.newPassword === values.confirmPassword, {
-    message: 'Las contraseñas no coinciden',
-    path: ['confirmPassword'],
-  });
-
-type ResetFormValues = z.infer<typeof resetSchema>;
 
 const cardClass =
   'max-w-md mx-4 md:mx-auto mt-20 bg-white/5 border border-white/10 p-8 rounded-3xl';
@@ -37,7 +28,9 @@ export default function ResetPasswordForm({ token }: { token: string | null }) {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<ResetFormValues>({ resolver: zodResolver(resetSchema) });
+  } = useForm<NewPasswordValues>({
+    resolver: zodResolver(newPasswordSchema),
+  });
 
   if (!token) {
     return (
@@ -75,7 +68,7 @@ export default function ResetPasswordForm({ token }: { token: string | null }) {
     );
   }
 
-  const onSubmit = async ({ newPassword }: ResetFormValues) => {
+  const onSubmit = async ({ newPassword }: NewPasswordValues) => {
     setServerError(null);
     try {
       const res = await apiFetch('/auth/reset-password', {
