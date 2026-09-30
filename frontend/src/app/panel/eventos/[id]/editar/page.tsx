@@ -16,8 +16,10 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import TandasManager from '@/components/TandasManager';
+import { useCloudinaryUpload } from '@/hooks/useCloudinaryUpload';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { IMAGE_UPLOAD_TYPES } from '@/utils/cloudinary';
 import {
   buildEventUpdate,
   closedEventLabel,
@@ -33,6 +35,7 @@ export default function EditarEventoPage() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [imageUrl, setImageUrl] = useState<string>('');
+  const { uploading, upload } = useCloudinaryUpload();
   const [eventData, setEventData] = useState<any>(null);
   const [batches, setBatches] = useState<any[]>([]);
   const [startDate, setStartDate] = useState('');
@@ -117,68 +120,11 @@ export default function EditarEventoPage() {
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Validación de formato
-    const allowedTypes = [
-      'image/jpeg',
-      'image/png',
-      'image/webp',
-      'image/avif',
-      'image/gif',
-    ];
-    if (!allowedTypes.includes(file.type)) {
-      toast.error('Formato no permitido. Solo JPG, PNG, WebP, AVIF o GIF.');
-      return;
-    }
-
-    // Validación de peso máximo: 10MB
-    const MAX_SIZE_MB = 10;
-    const MAX_SIZE_BYTES = MAX_SIZE_MB * 1024 * 1024;
-
-    if (file.size > MAX_SIZE_BYTES) {
-      toast.error(`La imagen supera el límite máximo de ${MAX_SIZE_MB}MB.`);
-      return;
-    }
-
-    const toastId = toast.loading('Subiendo imagen...');
-    try {
-      // 1. Obtener firma del backend
-      const signRes = await apiFetch('/media/presign');
-      if (!signRes.ok)
-        throw new Error('Error de autorización para subir archivos');
-      const { signature, timestamp, cloudName, apiKey, uploadPreset } =
-        await signRes.json();
-
-      // 2. Armar FormData para Cloudinary
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('api_key', apiKey);
-      formData.append('timestamp', timestamp.toString());
-      formData.append('signature', signature);
-      formData.append('upload_preset', uploadPreset);
-
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
-        {
-          method: 'POST',
-          body: formData,
-        },
-      );
-
-      const data = await response.json();
-      if (response.ok) {
-        setImageUrl(data.secure_url);
-        toast.success('Imagen subida con éxito', { id: toastId });
-      } else {
-        throw new Error(data.error?.message || 'Error al subir');
-      }
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error.message || 'Error al subir la imagen', { id: toastId });
-    }
+    const url = await upload(file);
+    if (url) setImageUrl(url);
   };
 
   if (fetching)
@@ -230,8 +176,9 @@ export default function EditarEventoPage() {
               <div className="relative w-full h-48 bg-white/5 border-2 border-dashed border-white/10 hover:border-indigo-500 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors overflow-hidden group">
                 <input
                   type="file"
-                  accept="image/*"
-                  onChange={handleImageUpload}
+                  accept={IMAGE_UPLOAD_TYPES.join(',')}
+                  onChange={handleImageChange}
+                  disabled={uploading}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                   title="Subir imagen"
                 />
@@ -401,7 +348,7 @@ export default function EditarEventoPage() {
           </button>
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || uploading}
             className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 md:px-8 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
             <Save className="w-5 h-5" />
