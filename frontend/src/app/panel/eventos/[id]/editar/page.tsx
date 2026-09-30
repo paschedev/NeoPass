@@ -21,15 +21,11 @@ import {
   type SavedEvent,
 } from '@/utils/event-form';
 
-type OrganizerEvent = SavedEvent & {
-  status: string;
-  ticketBatches?: unknown[];
-};
+type OrganizerEvent = SavedEvent & { status: string };
 
 type LoadedEvent = {
   phase: EventDateRules['phase'];
   values: EventFormInput;
-  batches: unknown[];
 };
 
 export default function EditarEventoPage() {
@@ -55,11 +51,7 @@ export default function EditarEventoPage() {
           router.replace('/panel?tab=events');
           return;
         }
-        setLoaded({
-          phase,
-          values: toEventFormInput(data),
-          batches: data.ticketBatches ?? [],
-        });
+        setLoaded({ phase, values: toEventFormInput(data) });
         setFetching(false);
       })
       .catch((err) => {
@@ -118,7 +110,6 @@ export default function EditarEventoPage() {
         mode="edit"
         rules={{ phase: loaded.phase, saved: loaded.values }}
         defaultValues={loaded.values}
-        initialBatches={loaded.batches}
         onSubmit={updateEvent}
       />
     </div>
