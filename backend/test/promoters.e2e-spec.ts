@@ -212,6 +212,34 @@ describe('RPP', () => {
       expect(body.events.map((e) => e.id)).toEqual([staff.id]);
     });
 
+    it('cuenta solo las entradas de sus ventas pagadas, por evento y en total', async () => {
+      const { event, ticketType } = await createOrganizerWithEvent(t.prisma);
+      const { staff, user } = await addStaff(event.id);
+      await paidSale(ticketType, staff.id, 2);
+      await paidSale(ticketType, staff.id, 3);
+      await createOrder(t.prisma, {
+        user: await createUser(t.prisma),
+        ticketType,
+        quantity: 4,
+        promoterId: staff.id,
+      });
+
+      const res = await request(t.app.getHttpServer())
+        .get('/events/promoter/me')
+        .set('Authorization', authHeader(t.app, user))
+        .expect(200);
+
+      const body = res.body as {
+        totalTicketsSold: number;
+        events: { totalTicketsSold: number; orders?: unknown }[];
+      };
+      expect(body.totalTicketsSold).toBe(5);
+      expect(body.events).toEqual([
+        expect.objectContaining({ totalTicketsSold: 5 }),
+      ]);
+      expect(body.events[0].orders).toBeUndefined();
+    });
+
     it.each(['PENDING', 'REJECTED'] as const)(
       'las estadísticas de un evento con la invitación %s dan 404',
       async (status) => {

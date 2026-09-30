@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Prisma, StaffRole, CommissionType } from '@prisma/client';
+import { Prisma, StaffRole } from '@prisma/client';
+import { BatchChanges } from '../batch-changes';
 
 // Public = published and not over yet.
 function publicEventWhere(now: Date): Prisma.EventWhereInput {
@@ -117,13 +118,9 @@ export class EventsRepository {
     });
   }
 
-  async updateBatchesTransaction(
-    eventId: string,
-    batchesData: any[],
-    eventContext: any,
-  ) {
+  async updateBatchesTransaction(eventId: string, changes: BatchChanges) {
     return this.prisma.$transaction(async (tx) => {
-      await this.applyBatches(tx, eventId, batchesData, eventContext);
+      await this.applyBatchChanges(tx, eventId, changes);
       return tx.event.findUnique({
         where: { id: eventId },
         include: { ticketBatches: { include: { ticketTypes: true } } },
@@ -136,12 +133,11 @@ export class EventsRepository {
   async updateWithBatches(
     id: string,
     data: Prisma.EventUpdateInput,
-    batchesData: any[],
-    eventContext: any,
+    changes: BatchChanges,
   ) {
     return this.prisma.$transaction(async (tx) => {
       const event = await tx.event.update({ where: { id }, data });
-      await this.applyBatches(tx, id, batchesData, eventContext);
+      await this.applyBatchChanges(tx, id, changes);
       return event;
     });
   }
@@ -161,92 +157,48 @@ export class EventsRepository {
   // event is left behind (and retrying doesn't duplicate it).
   async createWithBatches(
     data: Prisma.EventUncheckedCreateInput,
-    batchesData: any[],
+    changes: BatchChanges,
   ) {
     return this.prisma.$transaction(async (tx) => {
       const event = await tx.event.create({ data });
-      await this.applyBatches(tx, event.id, batchesData, { ticketBatches: [] });
+      await this.applyBatchChanges(tx, event.id, changes);
       return event;
     });
   }
 
-  private async applyBatches(
+  // Every write is scoped to the event, besides the ownership checks the
+  // service already made.
+  private async applyBatchChanges(
     tx: Prisma.TransactionClient,
     eventId: string,
-    batchesData: any[],
-    eventContext: any,
+    { deletedBatchIds, deletedTicketTypeIds, batches }: BatchChanges,
   ) {
-    const incomingBatchIds = batchesData.filter((b) => b.id).map((b) => b.id);
-
-    const batchesToDelete = eventContext.ticketBatches.filter(
-      (b: any) => !incomingBatchIds.includes(b.id),
-    );
-    for (const b of batchesToDelete) {
-      await tx.ticketType.deleteMany({ where: { batchId: b.id } });
-      await tx.ticketBatch.delete({ where: { id: b.id } });
+    if (deletedBatchIds.length > 0) {
+      await tx.ticketType.deleteMany({
+        where: { eventId, batchId: { in: deletedBatchIds } },
+      });
+      await tx.ticketBatch.deleteMany({
+        where: { eventId, id: { in: deletedBatchIds } },
+      });
     }
-    for (const batch of batchesData) {
-      let savedBatch;
-      if (batch.id) {
-        savedBatch = await tx.ticketBatch.update({
-          where: { id: batch.id, eventId },
-          data: {
-            name: batch.name,
-            isVisible: batch.isVisible,
-            publishAt: batch.publishAt ? new Date(batch.publishAt) : null,
-            closeAt: batch.closeAt ? new Date(batch.closeAt) : null,
-            publishWhenPreviousSoldOut:
-              batch.publishWhenPreviousSoldOut || false,
-          },
-        });
-      } else {
-        savedBatch = await tx.ticketBatch.create({
-          data: {
-            eventId,
-            name: batch.name,
-            isVisible: batch.isVisible,
-            publishAt: batch.publishAt ? new Date(batch.publishAt) : null,
-            closeAt: batch.closeAt ? new Date(batch.closeAt) : null,
-            publishWhenPreviousSoldOut:
-              batch.publishWhenPreviousSoldOut || false,
-          },
-        });
-      }
-
-      const incomingTypeIds = batch.ticketTypes
-        .filter((t: any) => t.id)
-        .map((t: any) => t.id);
-      const existingTypes = batch.id
-        ? eventContext.ticketBatches.find((b: any) => b.id === batch.id)
-            ?.ticketTypes || []
-        : [];
-      const typesToDelete = existingTypes.filter(
-        (t: any) => !incomingTypeIds.includes(t.id),
-      );
-
-      for (const t of typesToDelete) {
-        await tx.ticketType.delete({ where: { id: t.id } });
-      }
-
-      for (const tType of batch.ticketTypes) {
-        if (tType.id) {
+    if (deletedTicketTypeIds.length > 0) {
+      await tx.ticketType.deleteMany({
+        where: { eventId, id: { in: deletedTicketTypeIds } },
+      });
+    }
+    for (const { id, ticketTypes, ...data } of batches) {
+      const batch = id
+        ? await tx.ticketBatch.update({ where: { id, eventId }, data })
+        : await tx.ticketBatch.create({ data: { ...data, eventId } });
+      for (const { id: typeId, ...typeData } of ticketTypes) {
+        if (typeId) {
           await tx.ticketType.update({
-            where: { id: tType.id, batchId: savedBatch.id },
-            data: {
-              name: tType.name,
-              price: tType.price,
-              stock: tType.stock,
-            },
+            where: { id: typeId, batchId: batch.id },
+            data: typeData,
           });
         } else {
           await tx.ticketType.create({
-            data: {
-              eventId,
-              batchId: savedBatch.id,
-              name: tType.name,
-              price: tType.price,
-              stock: tType.stock,
-            },
+            data: { ...typeData, eventId, batchId: batch.id },
           });
         }
       }
@@ -346,30 +298,17 @@ export class EventsRepository {
     });
   }
 
-  async getPromoterStats(userId: string) {
-    const staffList = await this.prisma.eventStaff.findMany({
+  async findAcceptedPromoterAssignments(userId: string) {
+    return this.prisma.eventStaff.findMany({
       where: { userId, role: 'PROMOTER', status: 'ACCEPTED' },
       include: {
         event: { select: { title: true, status: true, startDate: true } },
         orders: {
           where: { status: 'PAID' },
-          include: { orderItems: true },
+          select: { orderItems: { select: { quantity: true } } },
         },
       },
       orderBy: { event: { startDate: 'desc' } },
-    });
-
-    return staffList.map((staff) => {
-      const totalTicketsSold = staff.orders.reduce((acc, order) => {
-        return (
-          acc + order.orderItems.reduce((sum, item) => sum + item.quantity, 0)
-        );
-      }, 0);
-      const { orders, ...rest } = staff;
-      return {
-        ...rest,
-        totalTicketsSold,
-      };
     });
   }
 

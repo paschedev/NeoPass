@@ -7,15 +7,17 @@ import {
 } from '@nestjs/common';
 import { EventsRepository } from './repositories/events.repository';
 import { UserRepository } from '../auth/repositories/user.repository';
-import { Prisma, StaffRole, CommissionType } from '@prisma/client';
+import { StaffRole, CommissionType } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { buildRevenueChart } from './revenue-chart';
 import { getBatchSaleStatus } from './batch-sale-status';
 import { getEventPhase } from './event-phase';
 import { PromoterClicksService } from './promoter-clicks.service';
 import { hasUsableMercadoPagoToken } from '../payments/mercadopago-token';
-
-type EventDates = { startDate: string; endDate: string };
+import { planBatchChanges } from './batch-changes';
+import { CreateEventDto } from './dto/create-event.dto';
+import { UpdateEventDto } from './dto/update-event.dto';
+import { BatchDto } from './dto/batch.dto';
 
 function assertEndAfterStart(startDate: Date, endDate: Date) {
   if (endDate <= startDate) {
@@ -31,12 +33,6 @@ type EventForEdit = {
   endDate: Date;
   venueName: string | null;
   venueAddress: string | null;
-};
-type EventChanges = Partial<EventDates> & {
-  venueName?: string;
-  venueAddress?: string;
-  status?: string;
-  batches?: unknown[];
 };
 
 // Finished and cancelled events are read only; an event whose end already
@@ -59,7 +55,7 @@ const BATCHES_LOCKED_MESSAGE =
 // Once the event starts, buyers already hold tickets for its start and venue:
 // only texts and the image change, the end can only move later and the
 // batches stay as they are while they keep selling. Unchanged values are fine.
-function assertInProgressChanges(event: EventForEdit, changes: EventChanges) {
+function assertInProgressChanges(event: EventForEdit, changes: UpdateEventDto) {
   const changesStart =
     changes.startDate !== undefined &&
     new Date(changes.startDate).getTime() !== event.startDate.getTime();
@@ -82,12 +78,8 @@ function assertInProgressChanges(event: EventForEdit, changes: EventChanges) {
 }
 
 type ExistingBatch = { id: string; ticketTypes: { id: string }[] };
-type IncomingBatch = { id?: string; ticketTypes?: { id?: string }[] };
 type ExistingBatchWithSales = {
   ticketTypes: { id: string; name: string; sold: number; reserved: number }[];
-};
-type IncomingBatchWithStock = {
-  ticketTypes?: { id?: string; stock: number }[];
 };
 
 type BatchWindow = {
@@ -139,7 +131,7 @@ function assertBatchWindows(
 // event being edited (and each ticket type to its batch) before anything is written.
 function assertOwnBatchIds(
   existing: ExistingBatch[],
-  incoming: IncomingBatch[] = [],
+  incoming: BatchDto[] = [],
 ) {
   const typeIdsByBatch = new Map(
     existing.map((batch) => [
@@ -151,7 +143,7 @@ function assertOwnBatchIds(
     const ownTypeIds = batch.id
       ? typeIdsByBatch.get(batch.id)
       : new Set<string>();
-    const hasForeignType = batch.ticketTypes?.some(
+    const hasForeignType = batch.ticketTypes.some(
       (ticketType) => ticketType.id && !ownTypeIds?.has(ticketType.id),
     );
     if (!ownTypeIds || hasForeignType) {
@@ -214,7 +206,7 @@ export class EventsService {
     return { ...event, ticketBatches };
   }
 
-  async create(userId: string, data: any) {
+  async create(userId: string, data: CreateEventDto) {
     const { batches, ...eventData } = data;
     const user = await this.userRepository.findById(userId);
 
@@ -225,18 +217,17 @@ export class EventsService {
       );
     }
     assertOwnBatchIds([], batches);
-    const dates = data as EventDates;
-    const startDate = new Date(dates.startDate);
+    const startDate = new Date(data.startDate);
     if (startDate <= new Date()) {
       throw new BadRequestException('La fecha de inicio tiene que ser futura');
     }
-    const endDate = new Date(dates.endDate);
+    const endDate = new Date(data.endDate);
     assertEndAfterStart(startDate, endDate);
-    assertBatchWindows(batches ?? [], [], endDate, new Date());
+    assertBatchWindows(batches, [], endDate, new Date());
 
     return this.eventsRepository.createWithBatches(
       { ...eventData, organizerId: userId },
-      batches ?? [],
+      planBatchChanges([], batches),
     );
   }
 
@@ -250,14 +241,13 @@ export class EventsService {
     return event;
   }
 
-  async update(id: string, organizerId: string, data: any) {
-    const { batches, ...eventData } = data;
+  async update(id: string, organizerId: string, changes: UpdateEventDto) {
+    const { batches, ...eventData } = changes;
     const event = await this.eventsRepository.findOne(id);
     if (!event || event.organizerId !== organizerId) {
       throw new ForbiddenException('No tienes permiso para editar este evento');
     }
     const now = new Date();
-    const changes = data as EventChanges;
     const phase = assertEditable(event, now);
     const startDate = changes.startDate
       ? new Date(changes.startDate)
@@ -296,8 +286,7 @@ export class EventsService {
     return this.eventsRepository.updateWithBatches(
       id,
       eventData,
-      batches,
-      event,
+      planBatchChanges(event.ticketBatches, batches),
     );
   }
 
@@ -308,7 +297,7 @@ export class EventsService {
   async updateBatches(
     eventId: string,
     organizerId: string,
-    batchesData: any[],
+    batchesData: BatchDto[],
   ) {
     const eventContext = await this.eventsRepository.findOne(eventId);
 
@@ -333,8 +322,7 @@ export class EventsService {
 
     return this.eventsRepository.updateBatchesTransaction(
       eventId,
-      batchesData,
-      eventContext,
+      planBatchChanges(eventContext.ticketBatches, batchesData),
     );
   }
 
@@ -342,11 +330,11 @@ export class EventsService {
   // with orders or tickets can't be deleted: they still point to it.
   private async assertBatchChangesAllowed(
     existing: ExistingBatchWithSales[],
-    incoming: IncomingBatchWithStock[],
+    incoming: BatchDto[],
   ) {
     const incomingStock = new Map<string, number>();
     for (const batch of incoming) {
-      for (const ticketType of batch.ticketTypes ?? []) {
+      for (const ticketType of batch.ticketTypes) {
         if (ticketType.id) incomingStock.set(ticketType.id, ticketType.stock);
       }
     }
@@ -541,7 +529,14 @@ export class EventsService {
   }
 
   async getMyPromoterStats(userId: string) {
-    const assignments = await this.eventsRepository.getPromoterStats(userId);
+    const assignments = (
+      await this.eventsRepository.findAcceptedPromoterAssignments(userId)
+    ).map(({ orders, ...assignment }) => ({
+      ...assignment,
+      totalTicketsSold: orders
+        .flatMap((order) => order.orderItems)
+        .reduce((sum, item) => sum + item.quantity, 0),
+    }));
 
     const totalEarned = assignments.reduce(
       (acc, curr) => acc + Number(curr.totalEarned),
