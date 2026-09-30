@@ -6,10 +6,7 @@ import {
   Param,
   UseGuards,
   Req,
-  UnauthorizedException,
-  BadRequestException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -34,16 +31,12 @@ export class TicketsController {
     @Body() body: TransferTicketDto,
     @Req() req: any,
   ) {
-    try {
-      await this.ticketsService.transferTicket(
-        id,
-        req.user.userId,
-        body.targetUserId,
-      );
-      return { success: true, message: 'Entrada transferida con éxito' };
-    } catch (e: any) {
-      throw new BadRequestException(e.message);
-    }
+    await this.ticketsService.transferTicket(
+      id,
+      req.user.userId,
+      body.targetUserId,
+    );
+    return { success: true, message: 'Entrada transferida con éxito' };
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

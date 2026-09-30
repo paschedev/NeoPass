@@ -91,7 +91,7 @@ describe('Transferencia de entradas', () => {
     async (eventStatus) => {
       const { owner, ticket, recipient } = await ownedTicket({ eventStatus });
 
-      await transfer(owner, ticket.id, recipient.id).expect(400);
+      await transfer(owner, ticket.id, recipient.id).expect(409);
 
       const saved = await t.prisma.ticket.findUniqueOrThrow({
         where: { id: ticket.id },
@@ -106,18 +106,42 @@ describe('Transferencia de entradas', () => {
       ticketStatus: 'USED',
     });
 
-    await transfer(owner, ticket.id, recipient.id).expect(400);
+    await transfer(owner, ticket.id, recipient.id).expect(409);
   });
 
   it('no se puede transferir una entrada ajena', async () => {
     const { ticket, recipient } = await ownedTicket();
     const stranger = await createUser(t.prisma);
 
-    await transfer(stranger, ticket.id, recipient.id).expect(400);
+    await transfer(stranger, ticket.id, recipient.id).expect(404);
 
     const saved = await t.prisma.ticket.findUniqueOrThrow({
       where: { id: ticket.id },
     });
     expect(saved.userId).not.toBe(recipient.id);
+  });
+
+  it('no se puede transferir a un usuario que no existe', async () => {
+    const { owner, ticket } = await ownedTicket();
+
+    await transfer(
+      owner,
+      ticket.id,
+      '00000000-0000-4000-8000-000000000000',
+    ).expect(404);
+  });
+
+  it('no se puede transferir una entrada a uno mismo', async () => {
+    const { owner, ticket } = await ownedTicket();
+
+    const res = await transfer(owner, ticket.id, owner.id).expect(400);
+
+    expect((res.body as { message: string }).message).toBe(
+      'No podés transferirte la entrada a vos mismo.',
+    );
+    const saved = await t.prisma.ticket.findUniqueOrThrow({
+      where: { id: ticket.id },
+    });
+    expect(saved.qrCode).toBe(ticket.qrCode);
   });
 });
