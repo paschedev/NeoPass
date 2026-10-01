@@ -142,6 +142,18 @@ describe('staff de un evento', () => {
       await invite(organizer, event.id, randomUUID()).expect(404);
     });
 
+    it('invitar a un usuario con un ID mal formado da 400', async () => {
+      const { organizer, event } = await createOrganizerWithEvent(t.prisma);
+
+      const res = await invite(organizer, event.id, 'no-es-un-uuid').expect(
+        400,
+      );
+
+      expect((res.body as { message: string[] }).message).toEqual([
+        'Elegí a quién invitar',
+      ]);
+    });
+
     it.each([
       [
         'un porcentaje mayor a 100',

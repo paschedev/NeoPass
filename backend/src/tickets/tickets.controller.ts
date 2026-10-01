@@ -14,6 +14,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { TicketsService } from './tickets.service';
 import { TransferTicketDto } from './dto/transfer-ticket.dto';
 import { CheckInDto } from './dto/check-in.dto';
+import { ParseIdPipe } from '../common/parse-id.pipe';
 
 @Controller('tickets')
 export class TicketsController {
@@ -28,7 +29,7 @@ export class TicketsController {
   @UseGuards(JwtAuthGuard)
   @Post(':id/transfer')
   async transferTicket(
-    @Param('id') id: string,
+    @Param('id', ParseIdPipe) id: string,
     @Body() body: TransferTicketDto,
     @CurrentUser('userId') userId: string,
   ) {

@@ -4,6 +4,7 @@ import {
   IsDateString,
   IsNumber,
   IsInt,
+  IsUUID,
   Min,
   Max,
   IsArray,
@@ -16,7 +17,7 @@ import { RequiredText } from '../../common/required-text.decorator';
 
 export class TicketTypeDto {
   @IsOptional()
-  @IsString()
+  @IsUUID('all', { message: 'La entrada no es válida' })
   id?: string;
 
   @IsOptional()
@@ -40,7 +41,7 @@ export class TicketTypeDto {
 
 export class BatchDto {
   @IsOptional()
-  @IsString()
+  @IsUUID('all', { message: 'La tanda no es válida' })
   id?: string;
 
   @IsOptional()

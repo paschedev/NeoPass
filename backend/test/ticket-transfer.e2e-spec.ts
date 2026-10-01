@@ -131,6 +131,16 @@ describe('Transferencia de entradas', () => {
     ).expect(404);
   });
 
+  it('no se puede transferir a un usuario con un ID mal formado', async () => {
+    const { owner, ticket } = await ownedTicket();
+
+    const res = await transfer(owner, ticket.id, 'no-es-un-uuid').expect(400);
+
+    expect((res.body as { message: string[] }).message).toEqual([
+      'Elegí a quién transferir la entrada',
+    ]);
+  });
+
   it('no se puede transferir una entrada a uno mismo', async () => {
     const { owner, ticket } = await ownedTicket();
 

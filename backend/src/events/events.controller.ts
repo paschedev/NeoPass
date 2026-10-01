@@ -19,6 +19,7 @@ import { UpdateBatchesDto } from './dto/update-batches.dto';
 import { AddStaffDto } from './dto/add-staff.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ListEventsQueryDto } from './dto/list-events-query.dto';
+import { ParseIdPipe } from '../common/parse-id.pipe';
 
 @Controller('events')
 export class EventsController {
@@ -55,7 +56,7 @@ export class EventsController {
   @Roles('ORGANIZER', 'ADMIN')
   @Get('organizer/:id')
   findOneForOrganizer(
-    @Param('id') id: string,
+    @Param('id', ParseIdPipe) id: string,
     @CurrentUser('userId') userId: string,
   ) {
     return this.eventsService.findOneForOrganizer(id, userId);
@@ -63,7 +64,7 @@ export class EventsController {
 
   @Get(':id')
   findOne(
-    @Param('id') id: string,
+    @Param('id', ParseIdPipe) id: string,
     @Ip() visitorIp: string,
     @Query('rpp') rppId?: string,
   ) {
@@ -71,7 +72,7 @@ export class EventsController {
   }
 
   @Get(':id/promoters')
-  getPublicPromoters(@Param('id') id: string) {
+  getPublicPromoters(@Param('id', ParseIdPipe) id: string) {
     return this.eventsService.getPublicPromoters(id);
   }
 
@@ -86,7 +87,7 @@ export class EventsController {
   @Roles('ORGANIZER', 'ADMIN')
   @Put(':id')
   update(
-    @Param('id') id: string,
+    @Param('id', ParseIdPipe) id: string,
     @Body() body: UpdateEventDto,
     @CurrentUser('userId') userId: string,
   ) {
@@ -97,7 +98,7 @@ export class EventsController {
   @Roles('ORGANIZER', 'ADMIN')
   @Put(':id/batches')
   updateBatches(
-    @Param('id') eventId: string,
+    @Param('id', ParseIdPipe) eventId: string,
     @Body() body: UpdateBatchesDto,
     @CurrentUser('userId') userId: string,
   ) {
@@ -115,7 +116,7 @@ export class EventsController {
   @UseGuards(JwtAuthGuard)
   @Get('promoter/me/:eventId/stats')
   getPromoterEventStats(
-    @Param('eventId') eventId: string,
+    @Param('eventId', ParseIdPipe) eventId: string,
     @CurrentUser('userId') userId: string,
   ) {
     return this.eventsService.getPromoterEventStats(userId, eventId);
@@ -125,7 +126,7 @@ export class EventsController {
   @Roles('ORGANIZER', 'ADMIN')
   @Post(':id/staff')
   addStaff(
-    @Param('id') eventId: string,
+    @Param('id', ParseIdPipe) eventId: string,
     @Body() body: AddStaffDto,
     @CurrentUser('userId') userId: string,
   ) {
@@ -143,7 +144,7 @@ export class EventsController {
   @Roles('ORGANIZER', 'ADMIN')
   @Get(':id/staff')
   getStaff(
-    @Param('id') eventId: string,
+    @Param('id', ParseIdPipe) eventId: string,
     @CurrentUser('userId') userId: string,
   ) {
     return this.eventsService.getEventStaff(eventId, userId);
@@ -152,7 +153,7 @@ export class EventsController {
   @UseGuards(JwtAuthGuard)
   @Put('staff/:eventStaffId/accept')
   acceptInvitation(
-    @Param('eventStaffId') eventStaffId: string,
+    @Param('eventStaffId', ParseIdPipe) eventStaffId: string,
     @CurrentUser('userId') userId: string,
   ) {
     return this.eventsService.acceptInvitation(eventStaffId, userId);
@@ -161,7 +162,7 @@ export class EventsController {
   @UseGuards(JwtAuthGuard)
   @Put('staff/:eventStaffId/reject')
   rejectInvitation(
-    @Param('eventStaffId') eventStaffId: string,
+    @Param('eventStaffId', ParseIdPipe) eventStaffId: string,
     @CurrentUser('userId') userId: string,
   ) {
     return this.eventsService.rejectInvitation(eventStaffId, userId);

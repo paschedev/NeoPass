@@ -14,6 +14,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { PresetDto } from './dto/preset.dto';
+import { ParseIdPipe } from '../common/parse-id.pipe';
 
 @Controller('presets')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -32,7 +33,11 @@ export class PresetsController {
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Req() req: any, @Body() body: PresetDto) {
+  update(
+    @Param('id', ParseIdPipe) id: string,
+    @Req() req: any,
+    @Body() body: PresetDto,
+  ) {
     return this.presetsService.update(
       id,
       req.user.userId,
@@ -42,7 +47,7 @@ export class PresetsController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string, @Req() req: any) {
+  remove(@Param('id', ParseIdPipe) id: string, @Req() req: any) {
     return this.presetsService.remove(id, req.user.userId);
   }
 }

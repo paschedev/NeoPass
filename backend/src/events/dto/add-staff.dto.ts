@@ -2,6 +2,7 @@ import {
   IsString,
   IsIn,
   IsNumber,
+  IsUUID,
   Max,
   Min,
   ValidateIf,
@@ -10,7 +11,7 @@ import { StaffRole, CommissionType } from '@prisma/client';
 import { MAX_AMOUNT } from '../../common/amounts';
 
 export class AddStaffDto {
-  @IsString({ message: 'Elegí a quién invitar' })
+  @IsUUID('all', { message: 'Elegí a quién invitar' })
   userId: string;
 
   @IsString()
