@@ -1,5 +1,13 @@
-import { IsString, IsIn, IsNumber, ValidateIf } from 'class-validator';
+import {
+  IsString,
+  IsIn,
+  IsNumber,
+  Max,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 import { StaffRole, CommissionType } from '@prisma/client';
+import { MAX_AMOUNT } from '../../common/amounts';
 
 export class AddStaffDto {
   @IsString({ message: 'Elegí a quién invitar' })
@@ -21,5 +29,8 @@ export class AddStaffDto {
     {},
     { message: 'El valor de la comisión es obligatorio para los promotores' },
   )
+  @Min(0, { message: 'La comisión no puede ser negativa' })
+  // A percentage has its own cap (100), which the service checks.
+  @Max(MAX_AMOUNT, { message: 'La comisión máxima es $99.999.999,99' })
   commissionValue?: number;
 }

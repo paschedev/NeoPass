@@ -432,6 +432,19 @@ export class EventsService {
   ) {
     const event = await this.findOneForOrganizer(eventId, organizerId);
 
+    // Only promoters earn a commission: for the other roles it is ignored.
+    const commissionTerms =
+      role === 'PROMOTER' ? { commissionType, commissionValue } : {};
+    if (
+      role === 'PROMOTER' &&
+      commissionType === 'PERCENTAGE' &&
+      (commissionValue ?? 0) > 100
+    ) {
+      throw new BadRequestException(
+        'El porcentaje de comisión tiene que estar entre 0 y 100',
+      );
+    }
+
     const user = await this.userRepository.findById(inviteeId);
     if (!user) {
       throw new NotFoundException(
@@ -459,15 +472,13 @@ export class EventsService {
     const staff = existing
       ? await this.eventsRepository.updateEventStaff(existing.id, {
           status: 'PENDING',
-          commissionType,
-          commissionValue,
+          ...commissionTerms,
         })
       : await this.eventsRepository.createEventStaff({
           event: { connect: { id: eventId } },
           user: { connect: { id: user.id } },
           role,
-          commissionType,
-          commissionValue,
+          ...commissionTerms,
         });
 
     let commission = '';
@@ -487,8 +498,7 @@ export class EventsService {
       metadata: {
         eventStaffId: staff.id,
         role,
-        commissionType,
-        commissionValue,
+        ...commissionTerms,
         status: 'PENDING',
       },
     });
