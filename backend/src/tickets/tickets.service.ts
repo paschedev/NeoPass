@@ -10,7 +10,7 @@ import { TicketsRepository } from './repositories/tickets.repository';
 import { NotificationsService } from '../notifications/notifications.service';
 import { MailService } from '../mail/mail.service';
 import { isUniqueViolation } from '../prisma/prisma-errors';
-import { Prisma } from '@prisma/client';
+import { Event, Prisma } from '@prisma/client';
 
 @Injectable()
 export class TicketsService {
@@ -57,8 +57,8 @@ export class TicketsService {
         tickets: order.tickets.map((ticket) => ({
           id: ticket.id,
           qrCode: ticket.qrCode,
-          eventName: ticket.ticketType.event.title,
           ticketTypeName: ticket.ticketType.name,
+          ...eventForMail(ticket.ticketType.event),
         })),
       },
       `tickets-${orderId}`,
@@ -201,10 +201,26 @@ export class TicketsService {
         {
           id: ticket.id,
           qrCode: newQrCode,
-          eventName: event.title,
           ticketTypeName: ticket.ticketType.name,
+          ...eventForMail(event),
         },
       ],
     });
   }
+}
+
+// The job is serialized to JSON in the queue: the date travels as ISO text.
+function eventForMail(
+  event: Pick<
+    Event,
+    'title' | 'startDate' | 'venueName' | 'venueAddress' | 'venueCity'
+  >,
+) {
+  return {
+    eventName: event.title,
+    eventStartDate: event.startDate.toISOString(),
+    venueName: event.venueName,
+    venueAddress: event.venueAddress,
+    venueCity: event.venueCity,
+  };
 }

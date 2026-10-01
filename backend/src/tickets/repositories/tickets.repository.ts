@@ -2,6 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, StaffRole } from '@prisma/client';
 
+// What the tickets mail shows about the event.
+const EVENT_FOR_MAIL = {
+  title: true,
+  startDate: true,
+  venueName: true,
+  venueAddress: true,
+  venueCity: true,
+} satisfies Prisma.EventSelect;
+
 @Injectable()
 export class TicketsRepository {
   constructor(private prisma: PrismaService) {}
@@ -69,7 +78,7 @@ export class TicketsRepository {
         ticketType: {
           select: {
             name: true,
-            event: { select: { id: true, title: true, status: true } },
+            event: { select: { id: true, status: true, ...EVENT_FOR_MAIL } },
           },
         },
       },
@@ -86,7 +95,7 @@ export class TicketsRepository {
             id: true,
             qrCode: true,
             ticketType: {
-              select: { name: true, event: { select: { title: true } } },
+              select: { name: true, event: { select: EVENT_FOR_MAIL } },
             },
           },
         },
