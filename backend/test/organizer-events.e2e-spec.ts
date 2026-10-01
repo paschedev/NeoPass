@@ -109,7 +109,7 @@ describe('Eventos del organizador', () => {
       const res = await create(organizer, eventBody()).expect(400);
 
       expect((res.body as { message: string }).message).toBe(
-        'Debes vincular Mercado Pago antes de crear un evento',
+        'Vinculá Mercado Pago antes de crear un evento',
       );
       expect(await t.prisma.event.count()).toBe(0);
     });

@@ -23,9 +23,7 @@ export class PresetsService {
       where: { organizerId },
     });
     if (count >= 7) {
-      throw new BadRequestException(
-        'Has alcanzado el límite máximo de 7 plantillas.',
-      );
+      throw new BadRequestException('Llegaste al límite de 7 plantillas.');
     }
 
     return this.prisma.ticketPreset.create({

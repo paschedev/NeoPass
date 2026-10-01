@@ -20,7 +20,7 @@ export class TicketTypeDto {
   @IsString()
   tempId?: string;
 
-  @IsString({ message: 'El nombre del ticket debe ser texto' })
+  @IsString({ message: 'El nombre de la entrada debe ser texto' })
   name: string;
 
   // The edit screen sends prices back as the API returns them: Decimal strings.

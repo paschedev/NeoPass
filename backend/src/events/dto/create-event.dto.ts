@@ -10,13 +10,13 @@ import { Type } from 'class-transformer';
 import { BatchDto } from './batch.dto';
 
 export class CreateEventDto {
-  @IsString({ message: 'El título es requerido' })
+  @IsString({ message: 'El título es obligatorio' })
   title: string;
 
-  @IsString({ message: 'La descripción es requerida' })
+  @IsString({ message: 'La descripción es obligatoria' })
   description: string;
 
-  @IsString({ message: 'La imagen del evento (Flyer) es obligatoria' })
+  @IsString({ message: 'El flyer del evento es obligatorio' })
   imageUrl: string;
 
   @IsOptional()
@@ -29,10 +29,10 @@ export class CreateEventDto {
   @IsDateString({}, { message: 'La fecha de fin debe ser válida' })
   endDate: string;
 
-  @IsString({ message: 'El nombre del lugar es requerido' })
+  @IsString({ message: 'El nombre del lugar es obligatorio' })
   venueName: string;
 
-  @IsString({ message: 'La dirección es requerida' })
+  @IsString({ message: 'La dirección es obligatoria' })
   venueAddress: string;
 
   @IsString()
