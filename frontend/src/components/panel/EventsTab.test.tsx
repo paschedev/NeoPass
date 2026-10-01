@@ -41,7 +41,7 @@ describe('EventsTab', () => {
     vi.useFakeTimers({ now, toFake: ['Date'] });
     renderTab(organizerEvent({}));
 
-    expect(screen.getByRole('link', { name: 'Editar Evento' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Editar evento' })).toHaveAttribute(
       'href',
       '/panel/eventos/event-1/editar',
     );
@@ -53,7 +53,7 @@ describe('EventsTab', () => {
 
     expect(screen.getByText('Evento finalizado')).toBeInTheDocument();
     expect(
-      screen.queryByRole('link', { name: 'Editar Evento' }),
+      screen.queryByRole('link', { name: 'Editar evento' }),
     ).not.toBeInTheDocument();
     expect(screen.getByText('FINALIZADO')).toBeInTheDocument();
   });
@@ -64,7 +64,7 @@ describe('EventsTab', () => {
 
     expect(screen.getByText('Evento finalizado')).toBeInTheDocument();
     expect(
-      screen.queryByRole('link', { name: 'Editar Evento' }),
+      screen.queryByRole('link', { name: 'Editar evento' }),
     ).not.toBeInTheDocument();
   });
 

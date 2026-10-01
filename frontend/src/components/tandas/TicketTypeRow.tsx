@@ -33,7 +33,7 @@ export default function TicketTypeRow({
         <div className="flex-1 min-w-[150px]">
           <input
             type="text"
-            placeholder="Nombre del Ticket"
+            placeholder="Nombre de la entrada"
             maxLength={30}
             {...register(`${path}.name`)}
             className="w-full bg-transparent border-b border-transparent hover:border-white/20 focus:border-indigo-500 text-sm text-white focus:outline-none px-1 py-1"
@@ -59,7 +59,7 @@ export default function TicketTypeRow({
             inputMode="numeric"
             placeholder="Stock"
             aria-label="Stock"
-            title="Capacidad de este ticket"
+            title="Capacidad de esta entrada"
             min={1}
             {...register(`${path}.stock`)}
             className={`w-full bg-white/5 border ${ticketErrors?.stock ? 'border-red-500' : 'border-white/10'} rounded px-3 py-1 text-sm text-white focus:outline-none focus:border-indigo-500`}

@@ -85,7 +85,7 @@ export default function GlobalSidebar() {
           <NavItem
             href="/eventos"
             icon={Globe}
-            label="Eventos Públicos"
+            label="Eventos públicos"
             show={true}
           />
 
@@ -106,7 +106,7 @@ export default function GlobalSidebar() {
               <NavItem
                 href="/panel/tickets"
                 icon={Ticket}
-                label="Tickets"
+                label="Entradas"
                 show={true}
               />
               <NavItem
@@ -128,7 +128,7 @@ export default function GlobalSidebar() {
               <NavItem
                 href="/login"
                 icon={LogOut}
-                label="Iniciar Sesión"
+                label="Iniciar sesión"
                 show={true}
               />
               <NavItem
@@ -172,7 +172,7 @@ export default function GlobalSidebar() {
           ¿Cerrar sesión?
         </h2>
         <p className="text-sm text-neutral-400 text-center mb-8">
-          Vas a tener que ingresar de nuevo para ver tus tickets y tu panel.
+          Vas a tener que ingresar de nuevo para ver tus entradas y tu panel.
         </p>
         <div className="flex gap-3">
           <button

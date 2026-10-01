@@ -14,11 +14,11 @@ export default function CheckoutFailurePage() {
         </div>
 
         <h1 className="font-outfit text-3xl font-bold text-white mb-4">
-          Pago Rechazado
+          Pago rechazado
         </h1>
         <p className="text-neutral-400 mb-8 leading-relaxed">
           Hubo un problema al procesar tu tarjeta o el pago fue rechazado por
-          Mercado Pago. Por favor, intenta nuevamente con otro medio de pago.
+          Mercado Pago. Probá de nuevo con otro medio de pago.
         </p>
 
         <button

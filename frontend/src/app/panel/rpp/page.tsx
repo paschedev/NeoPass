@@ -73,7 +73,7 @@ export default function RppDashboard() {
     const link = `${baseUrl}/eventos/${eventId}?rpp=${staffId}`;
     navigator.clipboard.writeText(link);
     setCopiedLink(eventId);
-    toast.success('¡Enlace de referido copiado!');
+    toast.success('¡Link de referido copiado!');
     setTimeout(() => setCopiedLink(''), 2000);
   };
 
@@ -82,23 +82,23 @@ export default function RppDashboard() {
       {/* Header */}
       <div className="mb-8">
         <h1 className="font-outfit text-4xl font-bold text-white mb-2">
-          Mi Panel de Promotor
+          Mi panel RPP
         </h1>
         <p className="text-neutral-400">
-          Rastrea tus ventas, ganancias y enlaces de afiliado.
+          Seguí tus ventas, ganancias y links de referido.
         </p>
       </div>
 
       {/* Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
         <MetricCard
-          title="Dinero Total Generado"
+          title="Dinero total generado"
           value={formatCurrency(stats.totalEarned)}
           icon={<DollarSign className="text-emerald-400 w-6 h-6" />}
           color="emerald"
         />
         <MetricCard
-          title="Tickets Vendidos (Histórico)"
+          title="Entradas vendidas (histórico)"
           value={stats.totalTicketsSold.toString()}
           icon={<Ticket className="text-indigo-400 w-6 h-6" />}
           color="indigo"
@@ -110,7 +110,7 @@ export default function RppDashboard() {
         <div className="hidden md:block absolute top-0 right-0 w-96 h-96 bg-purple-500/5 rounded-full blur-[100px] pointer-events-none" />
 
         <h2 className="font-outfit text-2xl font-bold mb-6 relative z-10">
-          Mis Eventos Asignados
+          Mis eventos asignados
         </h2>
 
         <div className="grid gap-4 relative z-10">
@@ -156,7 +156,7 @@ export default function RppDashboard() {
                   ) : (
                     <Activity className="w-5 h-5" />
                   )}
-                  {navigatingId === ev.id ? 'Cargando...' : 'Ver Detalles'}
+                  {navigatingId === ev.id ? 'Cargando...' : 'Ver detalles'}
                 </button>
                 <button
                   disabled={ev.status !== 'Activo'}
@@ -168,7 +168,7 @@ export default function RppDashboard() {
                   ) : (
                     <Link2 className="w-5 h-5" />
                   )}
-                  {copiedLink === ev.id ? '¡Copiado!' : 'Copiar Link'}
+                  {copiedLink === ev.id ? '¡Copiado!' : 'Copiar link'}
                 </button>
               </div>
             </div>
@@ -178,10 +178,11 @@ export default function RppDashboard() {
             <div className="text-center py-12 bg-white/[0.02] rounded-2xl border border-white/5 border-dashed">
               <CalendarIcon className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
               <h3 className="text-lg font-bold text-neutral-400 mb-2">
-                No tienes eventos activos
+                No tenés eventos activos
               </h3>
               <p className="text-sm text-neutral-500">
-                Cuando un organizador te asigne como promotor, aparecerá aquí.
+                Cuando un organizador te sume como RPP, el evento va a aparecer
+                acá.
               </p>
             </div>
           )}

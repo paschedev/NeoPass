@@ -27,25 +27,25 @@ export default function DashboardTab({ stats }: { stats: DashboardStats }) {
     >
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
         <MetricCard
-          title="Ingresos Totales"
+          title="Ingresos totales"
           value={formatCurrency(stats.totalRevenue)}
           icon={<DollarSign className="text-emerald-400 w-6 h-6" />}
           color="emerald"
         />
         <MetricCard
-          title="Entradas Vendidas"
+          title="Entradas vendidas"
           value={stats.totalTicketsSold.toString()}
           icon={<Ticket className="text-indigo-400 w-6 h-6" />}
           color="indigo"
         />
         <MetricCard
-          title="Eventos Activos"
+          title="Eventos activos"
           value={stats.activeEvents.toString()}
           icon={<CalendarIcon className="text-purple-400 w-6 h-6" />}
           color="purple"
         />
         <MetricCard
-          title="Eventos Totales"
+          title="Eventos totales"
           value={stats.totalEvents.toString()}
           icon={<Library className="text-blue-400 w-6 h-6" />}
           color="blue"

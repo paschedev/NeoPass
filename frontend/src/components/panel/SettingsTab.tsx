@@ -16,10 +16,10 @@ export default function SettingsTab() {
         <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="font-outfit text-2xl font-bold">
-              Ajustes de Organizador
+              Ajustes del organizador
             </h2>
             <p className="text-sm text-neutral-400">
-              Configura tu perfil de organizador y herramientas.
+              Configurá tu perfil de organizador y tus herramientas.
             </p>
           </div>
         </div>
@@ -30,17 +30,17 @@ export default function SettingsTab() {
               <Ticket className="w-6 h-6" />
             </div>
             <h3 className="text-lg font-bold text-white mb-2">
-              Plantillas de Tickets
+              Plantillas de entradas
             </h3>
             <p className="text-sm text-neutral-400 mb-6 flex-1">
-              Gestiona tus presets rápidos para cargar entradas en segundos al
-              crear nuevos eventos.
+              Gestioná tus plantillas para cargar entradas en segundos al crear
+              nuevos eventos.
             </p>
             <Link
               href="/panel/configuracion/presets"
               className="w-full text-center bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
             >
-              Administrar Plantillas
+              Administrar plantillas
             </Link>
           </div>
         </div>

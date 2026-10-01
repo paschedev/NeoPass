@@ -44,7 +44,7 @@ export default function TransactionsModal({
           className="text-2xl font-bold mb-6 flex items-center gap-2 pr-8"
         >
           <Activity className="w-6 h-6 text-emerald-400" />
-          Historial de Transacciones
+          Historial de transacciones
         </h2>
 
         <div className="relative mb-6">

@@ -21,7 +21,7 @@ export default function FlyerField({
         htmlFor="flyer"
         className="block text-sm font-medium text-neutral-400 mb-2"
       >
-        Flyer / Portada del Evento
+        Flyer / portada del evento
       </label>
       <div
         className={`relative w-full h-48 bg-white/5 border-2 border-dashed ${error ? 'border-red-500' : 'border-white/10'} hover:border-indigo-500 rounded-xl flex flex-col items-center justify-center cursor-pointer transition-colors overflow-hidden group`}
@@ -55,10 +55,10 @@ export default function FlyerField({
           <>
             <UploadCloud className="w-8 h-8 text-neutral-500 mb-2" />
             <span className="text-sm text-neutral-400">
-              Click o arrastra una imagen aquí
+              Hacé clic o arrastrá una imagen acá
             </span>
             <span className="text-xs text-neutral-600 mt-1">
-              Recomendado: 1920x1080px (Máx 10MB)
+              Recomendado: 1920 × 1080 px (máx. 10 MB)
             </span>
           </>
         )}

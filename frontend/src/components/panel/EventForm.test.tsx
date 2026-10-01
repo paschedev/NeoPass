@@ -224,10 +224,10 @@ describe('EventForm', () => {
     );
 
     expect(
-      within(first).getAllByPlaceholderText('Nombre del Ticket'),
+      within(first).getAllByPlaceholderText('Nombre de la entrada'),
     ).toHaveLength(2);
     expect(
-      within(second).getAllByPlaceholderText('Nombre del Ticket'),
+      within(second).getAllByPlaceholderText('Nombre de la entrada'),
     ).toHaveLength(1);
   });
 

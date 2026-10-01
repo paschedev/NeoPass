@@ -50,10 +50,10 @@ describe('validateInvitation', () => {
   });
 
   it.each([
-    [{ eventId: '' }, 'Selecciona un evento'],
-    [{ userCount: 0 }, 'Selecciona al menos un usuario'],
-    [{ commissionValue: '' }, 'Ingresa una comisión válida'],
-    [{ commissionValue: '0' }, 'Ingresa una comisión válida'],
+    [{ eventId: '' }, 'Seleccioná un evento'],
+    [{ userCount: 0 }, 'Seleccioná al menos un usuario'],
+    [{ commissionValue: '' }, 'Ingresá una comisión válida'],
+    [{ commissionValue: '0' }, 'Ingresá una comisión válida'],
   ])('%j → "%s"', (change, message) => {
     expect(validateInvitation({ ...valid, ...change })).toBe(message);
   });

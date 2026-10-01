@@ -23,7 +23,7 @@ export default function TransferPanel({
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2">
       <p className="text-sm text-neutral-400">
-        Ingresa el email o usuario al que deseas transferir esta entrada.
+        Ingresá el email o usuario al que querés transferir esta entrada.
       </p>
 
       {!selectedUser ? (

@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { UserPlus, Users } from 'lucide-react';
+import { staffRoleLabel } from '@/utils/staff-roles';
 import type { StaffMember } from './types';
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
@@ -36,14 +37,14 @@ export default function StaffTab({
               Gestión de Staff y RPPs
             </h2>
             <p className="text-sm text-neutral-400">
-              Invita Scanners y Promotores a tus eventos.
+              Invitá scanners y promotores a tus eventos.
             </p>
           </div>
           <button
             onClick={onInvite}
             className="bg-white/10 hover:bg-white/20 text-white px-5 py-2.5 rounded-full text-sm font-medium transition-colors flex items-center gap-2"
           >
-            <UserPlus className="w-4 h-4" /> Enviar Invitación
+            <UserPlus className="w-4 h-4" /> Enviar invitación
           </button>
         </div>
 
@@ -56,11 +57,11 @@ export default function StaffTab({
             <div className="text-center py-12 bg-white/[0.02] rounded-2xl border border-white/5 border-dashed">
               <Users className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
               <h3 className="text-lg font-bold text-neutral-400 mb-2">
-                No tienes staff asignado
+                No tenés staff asignado
               </h3>
               <p className="text-sm text-neutral-500">
-                Haz click en &quot;Enviar Invitación&quot; para agregar Scanners
-                o Promotores a tus eventos.
+                Tocá &quot;Enviar invitación&quot; para sumar scanners o
+                promotores a tus eventos.
               </p>
             </div>
           ) : (
@@ -97,7 +98,7 @@ export default function StaffTab({
                       <div className="flex justify-between text-sm">
                         <span className="text-neutral-500">Rol</span>
                         <span className="font-semibold text-indigo-300">
-                          {member.role}
+                          {staffRoleLabel(member.role)}
                         </span>
                       </div>
                       <div className="flex justify-between text-sm items-center gap-2">

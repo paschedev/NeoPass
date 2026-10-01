@@ -57,7 +57,7 @@ export default function TicketCard({
             ID: {ticket.id.slice(-8).toUpperCase()}
           </div>
           <div className="text-sm font-medium text-indigo-400 group-hover:text-indigo-300 transition-colors flex items-center gap-1">
-            Ver Entrada{' '}
+            Ver entrada{' '}
             <ArrowRightLeft className="w-3 h-3 opacity-0 group-hover:opacity-100 -ml-4 group-hover:ml-1 transition-all" />
           </div>
         </div>
