@@ -134,7 +134,7 @@ export default function EscanearPage() {
     >
       <div className="max-w-md mx-auto w-full px-4 flex flex-col items-center relative z-10">
         <h1 className="font-outfit text-3xl font-bold mb-2 text-center text-white">
-          Escáner de Accesos
+          Scanner de accesos
         </h1>
         <p className="text-neutral-300 mb-8 text-center">
           Apuntá la cámara al código QR de la entrada
@@ -185,7 +185,7 @@ export default function EscanearPage() {
         {process.env.NODE_ENV === 'development' && (
           <div className="mt-8 flex flex-col items-center w-full">
             <p className="text-xs text-neutral-500 uppercase tracking-widest font-bold mb-3">
-              Modo Prueba (Simulación)
+              Modo prueba (simulación)
             </p>
             <div className="flex gap-2 w-full">
               <button

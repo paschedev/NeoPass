@@ -17,6 +17,12 @@ import {
   type CommissionType,
   type InviteRole,
 } from '@/utils/staff-invitation';
+import { STAFF_ROLE_LABELS } from '@/utils/staff-roles';
+
+const ROLE_OPTIONS: { value: InviteRole; label: string }[] = [
+  { value: 'SCANNER', label: STAFF_ROLE_LABELS.SCANNER },
+  { value: 'RPP', label: STAFF_ROLE_LABELS.PROMOTER },
+];
 
 // Invita a varios usuarios a un evento como scanner o RPP.
 export default function InviteStaffModal({
@@ -112,13 +118,13 @@ export default function InviteStaffModal({
         className="text-2xl font-bold mb-6 flex items-center gap-2"
       >
         <UserPlus className="w-6 h-6 text-indigo-400" />
-        Invitar Staff / RPP
+        Invitar staff
       </h2>
 
       <div className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-neutral-400 mb-2">
-            1. Seleccionar Evento
+            1. Elegí el evento
           </label>
           <CustomSelect
             value={eventId}
@@ -133,17 +139,17 @@ export default function InviteStaffModal({
 
         <div className="bg-white/5 border border-white/5 rounded-xl p-4 space-y-4">
           <label className="block text-sm font-medium text-neutral-400">
-            2. Rol y Configuración (Para todos los invitados)
+            2. Rol y configuración (para todos los invitados)
           </label>
 
           <div className="flex bg-black/40 rounded-lg p-1">
-            {(['SCANNER', 'RPP'] as const).map((option) => (
+            {ROLE_OPTIONS.map((option) => (
               <button
-                key={option}
-                onClick={() => setRole(option)}
-                className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${role === option ? 'bg-indigo-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
+                key={option.value}
+                onClick={() => setRole(option.value)}
+                className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${role === option.value ? 'bg-indigo-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
               >
-                {option}
+                {option.label}
               </button>
             ))}
           </div>
@@ -195,7 +201,7 @@ export default function InviteStaffModal({
 
         <div>
           <label className="block text-sm font-medium text-neutral-400 mb-2">
-            3. Buscar y agregar usuarios (Máx {MAX_INVITEES})
+            3. Buscá y sumá usuarios (máx. {MAX_INVITEES})
           </label>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-500" />

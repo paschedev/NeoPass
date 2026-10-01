@@ -35,8 +35,8 @@ export default function MercadoPagoModal({
         Vincular Mercado Pago
       </h2>
       <p className="text-sm text-neutral-400 mb-6 leading-relaxed">
-        Al conectar tu cuenta de Mercado Pago autorizarás a NeoPass a procesar
-        las ventas en tu nombre. El dinero del valor de tus entradas irá{' '}
+        Al conectar tu cuenta de Mercado Pago autorizás a NeoPass a procesar las
+        ventas en tu nombre. El dinero del valor de tus entradas va{' '}
         <strong>directamente a tu cuenta</strong> sin descuentos. El cargo por
         servicio de la plataforma se le cobra como un extra directamente al
         comprador final.

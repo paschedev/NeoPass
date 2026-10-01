@@ -42,7 +42,7 @@ export default function CrearEventoPage() {
       </Link>
 
       <h1 className="font-outfit text-3xl font-bold mb-8">
-        Crear Nuevo Evento
+        Crear nuevo evento
       </h1>
 
       <EventForm

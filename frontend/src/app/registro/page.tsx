@@ -300,7 +300,7 @@ export default function RegistroPage() {
 
           <div>
             <label className="block text-sm font-medium text-neutral-400 mb-1">
-              Confirmar Contraseña
+              Confirmar contraseña
             </label>
             <Controller
               name="confirmPassword"
@@ -349,7 +349,7 @@ export default function RegistroPage() {
               <div className="grid grid-cols-1 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-1">
-                    Teléfono Móvil / WhatsApp
+                    Celular / WhatsApp
                   </label>
                   <Controller
                     name="phoneNumber"
@@ -377,7 +377,7 @@ export default function RegistroPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-neutral-400 mb-1">
-                    Nombre de la Productora / Marca (Opcional)
+                    Nombre de la productora o marca (opcional)
                   </label>
                   <Controller
                     name="companyName"

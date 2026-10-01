@@ -130,7 +130,7 @@ describe('PresetsPage', () => {
     vi.mocked(apiFetch).mockImplementation(async (_url, init) =>
       init?.method === 'POST'
         ? Response.json(
-            { message: 'Has alcanzado el límite máximo de 7 plantillas.' },
+            { message: 'Llegaste al límite de 7 plantillas.' },
             { status: 400 },
           )
         : Response.json([]),
@@ -143,9 +143,7 @@ describe('PresetsPage', () => {
     typeName('VIP');
 
     expect(
-      await screen.findByText(
-        'Has alcanzado el límite máximo de 7 plantillas.',
-      ),
+      await screen.findByText('Llegaste al límite de 7 plantillas.'),
     ).toBeInTheDocument();
   });
 });

@@ -74,7 +74,7 @@ const TICKETS: NavLink = {
   id: 'tickets',
   href: '/panel/tickets',
   icon: Ticket,
-  label: 'Tickets',
+  label: 'Entradas',
 };
 const SETTINGS: NavLink = {
   id: 'ajustes',

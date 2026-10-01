@@ -12,12 +12,11 @@ export default function CheckoutSuccessPage() {
         </div>
 
         <h1 className="font-outfit text-3xl font-bold text-white mb-4">
-          ¡Pago Confirmado!
+          ¡Pago confirmado!
         </h1>
         <p className="text-neutral-400 mb-8 leading-relaxed">
-          Tu compra se ha procesado con éxito y tus entradas ya están
-          disponibles. Presentá el código QR en la puerta del evento para
-          ingresar.
+          Tu compra se procesó con éxito y tus entradas ya están disponibles.
+          Presentá el código QR en la puerta del evento para ingresar.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">

@@ -153,7 +153,7 @@ export default function NotificacionesPage() {
             <span
               className={`text-sm font-medium ${showOnlyRequests ? 'text-purple-300' : 'text-neutral-500'}`}
             >
-              Solo Solicitudes
+              Solo solicitudes
             </span>
           </div>
 

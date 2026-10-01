@@ -128,7 +128,7 @@ function OrganizerDashboardContent() {
   const handleCreateEventClick = () => {
     if (!hasLinkedMp) {
       toast.error(
-        'Debes vincular tu cuenta de Mercado Pago primero para poder cobrar las entradas.',
+        'Vinculá tu cuenta de Mercado Pago para poder cobrar las entradas.',
       );
       setShowMpModal(true);
       return;
@@ -144,10 +144,10 @@ function OrganizerDashboardContent() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="font-outfit text-4xl font-bold text-white mb-2">
-            Panel Organizador
+            Panel del organizador
           </h1>
           <p className="text-neutral-400">
-            Gestiona tus eventos, lotes de entradas y comisiones a RPPs.
+            Gestioná tus eventos, tandas de entradas y comisiones de promotores.
           </p>
         </div>
         <button
@@ -198,7 +198,7 @@ function OrganizerDashboardContent() {
           },
           {
             id: 'events',
-            label: 'Mis Eventos',
+            label: 'Mis eventos',
             icon: <CalendarIcon className="w-5 h-5 md:w-4 md:h-4 shrink-0" />,
           },
           {

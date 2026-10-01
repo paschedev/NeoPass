@@ -76,7 +76,7 @@ export default function BatchCard({
   const addTicketType = (preset?: TicketPreset) =>
     append({
       tempId: `${Date.now()}`,
-      name: preset?.name ?? 'Nueva Entrada',
+      name: preset?.name ?? 'Nueva entrada',
       price: '',
       stock: '100',
     });
@@ -121,7 +121,7 @@ export default function BatchCard({
               htmlFor={`batch-${index}-name`}
               className="text-xs text-neutral-500 uppercase font-bold"
             >
-              Nombre de Tanda
+              Nombre de la tanda
             </label>
             <span
               className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${badge.className}`}

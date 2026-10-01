@@ -108,7 +108,7 @@ function TicketDetail({
                 >
                   <Eye className="w-10 h-10 mb-2 drop-shadow-md" />
                   <span className="font-bold text-sm drop-shadow-md bg-white/80 px-3 py-1 rounded-full">
-                    Toca para revelar
+                    Tocá para revelar
                   </span>
                 </button>
               )}
@@ -138,7 +138,7 @@ function TicketDetail({
                 className="w-full py-4 rounded-xl flex items-center justify-center gap-2 font-medium bg-white/5 hover:bg-white/10 text-white transition-colors"
               >
                 <ArrowRightLeft className="w-5 h-5" />
-                Transferir Entrada
+                Transferir entrada
               </button>
             ) : (
               <TransferPanel

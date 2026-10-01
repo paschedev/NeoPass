@@ -58,7 +58,7 @@ export default function TandasManager({
             <Ticket className="text-pink-400 w-5 h-5" /> Tandas y Entradas
           </h2>
           <p className="text-sm text-neutral-400 mt-1">
-            Administrá los lotes de venta, precios y disponibilidad.
+            Administrá las tandas de venta, precios y disponibilidad.
           </p>
         </div>
         <button

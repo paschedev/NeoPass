@@ -68,7 +68,7 @@ export default function MisEntradasPage() {
   return (
     <div className="max-w-4xl mx-auto px-6 pb-24 pt-8 md:py-12 md:pt-24">
       <h1 className="font-outfit text-4xl font-bold text-white mb-2">
-        Mis Tickets
+        Mis entradas
       </h1>
       <p className="text-neutral-400 mb-10">
         Tus accesos a los mejores eventos.
@@ -80,10 +80,10 @@ export default function MisEntradasPage() {
             <TicketIcon className="w-10 h-10 text-indigo-400" />
           </div>
           <h3 className="text-2xl font-bold text-white mb-2">
-            No tienes entradas
+            No tenés entradas
           </h3>
           <p className="text-neutral-400">
-            Aún no has comprado entradas para ningún evento.
+            Todavía no compraste entradas para ningún evento.
           </p>
         </div>
       ) : (

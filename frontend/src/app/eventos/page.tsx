@@ -55,10 +55,10 @@ export default function EventosPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
         <div>
           <h1 className="font-outfit text-4xl md:text-5xl font-bold mb-3 text-white">
-            Descubrir Eventos
+            Descubrir eventos
           </h1>
           <p className="text-neutral-400 text-lg">
-            Encuentra los mejores eventos cerca tuyo.
+            Encontrá los mejores eventos cerca tuyo.
           </p>
         </div>
 
