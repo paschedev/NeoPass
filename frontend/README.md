@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NeoPass: frontend
 
-## Getting Started
+Web de NeoPass: Next.js 16, React 19 y Tailwind 4. Las páginas son client components y la sesión (JWT) vive en `localStorage`. Se despliega en Vercel.
 
-First, run the development server:
+## Puesta en marcha
+
+Necesita el backend corriendo (ver `backend/README.md`).
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cd frontend
+npm ci
+cp .env.example .env.local
+npm run dev   # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Variables de entorno
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Están en `.env.example`. Son públicas (Next.js las incluye en el código del navegador), así que nunca llevan secretos.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `NEXT_PUBLIC_API_URL`: URL del backend.
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY`: site key de Cloudflare Turnstile.
 
-## Learn More
+## Scripts
 
-To learn more about Next.js, take a look at the following resources:
+- `npm run build`: build de producción (incluye el type-check).
+- `npm run lint`: ESLint.
+- `npm test`: Vitest + Testing Library en jsdom, con el backend simulado.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Estructura
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `src/app/`: páginas (App Router).
+- `src/components/`: componentes; los del panel del organizador, en `components/panel/`.
+- `src/hooks/` y `src/utils/`: lógica compartida. Toda llamada al backend pasa por `apiFetch` (`utils/api.ts`).

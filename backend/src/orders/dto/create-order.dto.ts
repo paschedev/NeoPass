@@ -27,7 +27,7 @@ class OrderItemDto {
 }
 
 export class CreateOrderDto {
-  @IsString({ message: 'Token de seguridad requerido' })
+  @IsString({ message: 'Completá la verificación de seguridad' })
   captchaToken: string;
 
   // Not @IsUUID: a malformed referral link must not block the purchase; the
@@ -36,7 +36,7 @@ export class CreateOrderDto {
   @IsString()
   promoterId?: string;
 
-  @IsArray({ message: 'Debes incluir al menos un item' })
+  @IsArray({ message: 'Elegí al menos una entrada' })
   @ArrayNotEmpty({ message: 'Elegí al menos una entrada' })
   @ArrayUnique((item?: OrderItemDto) => item?.ticketTypeId, {
     message: 'Cada entrada va una sola vez en la orden',

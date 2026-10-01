@@ -77,7 +77,8 @@ export class PaymentsController {
       await this.oauthService.exchangeCode(payload.sub, code);
       // Redirect to frontend dashboard with success flag
       return res.redirect(`${frontendUrl}/panel?mp_success=true`);
-    } catch (error) {
+    } catch {
+      // State inválido o vencido, o falla de Mercado Pago (exchangeCode ya la registra en el log).
       return res.redirect(`${frontendUrl}/panel?mp_error=true`);
     }
   }

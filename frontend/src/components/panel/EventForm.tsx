@@ -31,8 +31,8 @@ const EMPTY_EVENT: EventFormInput = {
 };
 
 const SUBMIT_LABELS = {
-  create: { full: 'Publicar Evento', short: 'Publicar', busy: 'Creando...' },
-  edit: { full: 'Guardar Cambios', short: 'Guardar', busy: 'Guardando...' },
+  create: { full: 'Publicar evento', short: 'Publicar', busy: 'Creando...' },
+  edit: { full: 'Guardar cambios', short: 'Guardar', busy: 'Guardando...' },
 };
 
 const fieldClass = (error?: string) =>
@@ -148,7 +148,7 @@ export default function EventForm({
 
       <Section
         icon={<Info className="text-indigo-400 w-5 h-5" />}
-        title="Información General"
+        title="Información general"
       >
         <div className="space-y-5">
           <FlyerField
@@ -206,7 +206,7 @@ export default function EventForm({
 
       <Section
         icon={<Calendar className="text-purple-400 w-5 h-5" />}
-        title="Fecha y Hora"
+        title="Fecha y hora"
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           <Field

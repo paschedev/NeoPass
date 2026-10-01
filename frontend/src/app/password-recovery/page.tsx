@@ -66,14 +66,14 @@ export default function PasswordRecoveryPage() {
         <Link
           href="/login"
           className="absolute top-8 left-8 text-neutral-500 hover:text-white transition-colors"
-          title="Volver al Login"
+          title="Volver a iniciar sesión"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
 
         <div className="text-center mb-8 mt-2">
           <h1 className="font-outfit text-3xl font-bold tracking-tighter mb-2 text-white">
-            Recuperar Acceso
+            Recuperar acceso
           </h1>
           <p className="text-neutral-400 text-sm px-4">
             Ingresá tu correo electrónico y te enviaremos las instrucciones para
@@ -111,7 +111,7 @@ export default function PasswordRecoveryPage() {
               href="/login"
               className="mt-4 px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-sm font-medium transition-colors"
             >
-              Volver al Login
+              Volver a iniciar sesión
             </Link>
           </div>
         ) : (

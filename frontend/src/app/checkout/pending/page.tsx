@@ -12,7 +12,7 @@ export default function CheckoutPendingPage() {
         </div>
 
         <h1 className="font-outfit text-3xl font-bold text-white mb-4">
-          Pago Pendiente
+          Pago pendiente
         </h1>
         <p className="text-neutral-400 mb-8 leading-relaxed">
           Tu pago está siendo procesado (por ejemplo, si usaste Rapipago o Pago

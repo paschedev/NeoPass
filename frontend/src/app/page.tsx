@@ -63,7 +63,7 @@ export default function Home() {
                       href={getHomePath(user)}
                       className="inline-flex w-max items-center justify-center gap-2 bg-indigo-600 border border-indigo-500 text-white px-6 py-3 md:px-8 md:py-4 rounded-full font-semibold text-base md:text-lg transition-all hover:bg-indigo-500 active:scale-95 shadow-lg shadow-indigo-600/20"
                     >
-                      {isOrganizer(user) ? 'Ir a mi Panel' : 'Mis Tickets'}
+                      {isOrganizer(user) ? 'Ir a mi panel' : 'Mis entradas'}
                     </Link>
                   ) : (
                     <>
@@ -106,7 +106,7 @@ export default function Home() {
                 <div className="w-14 h-14 bg-indigo-500/20 text-indigo-400 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                   <Ticket className="w-7 h-7" />
                 </div>
-                <h3 className="text-xl font-bold mb-3">Compra en segundos</h3>
+                <h3 className="text-xl font-bold mb-3">Comprá en segundos</h3>
                 <p className="text-neutral-400 leading-relaxed">
                   Olvidate de las filas virtuales interminables. Nuestro sistema
                   soporta alta demanda sin caídas.
@@ -131,7 +131,7 @@ export default function Home() {
                   <Calendar className="w-7 h-7" />
                 </div>
                 <h3 className="text-xl font-bold mb-3">
-                  Panel de Organización
+                  Panel de organización
                 </h3>
                 <p className="text-neutral-400 leading-relaxed">
                   Control total para creadores: ventas en tiempo real, escaneo

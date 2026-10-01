@@ -10,7 +10,7 @@ import {
   Users,
   ArrowLeft,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/utils/toast';
 import CustomSelect from '@/components/CustomSelect';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { TURNSTILE_OPTIONS } from '@/utils/captcha';
@@ -87,7 +87,7 @@ function EventContent() {
       quantity,
     }));
     if (items.length === 0)
-      return toast.error('Selecciona al menos una entrada');
+      return toast.error('Seleccioná al menos una entrada');
 
     setBuying(true);
     try {
@@ -123,7 +123,7 @@ function EventContent() {
       quantity,
     }));
     if (items.length === 0)
-      return toast.error('Selecciona al menos una entrada');
+      return toast.error('Seleccioná al menos una entrada');
 
     if (!user) {
       const currentUrl = encodeURIComponent(
@@ -234,20 +234,20 @@ function EventContent() {
           <div>
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl">
               <h3 className="font-bold text-xl mb-6 flex items-center gap-2">
-                <Ticket className="w-6 h-6 text-indigo-400" /> Comprar Entradas
+                <Ticket className="w-6 h-6 text-indigo-400" /> Comprar entradas
               </h3>
 
               {/* RPP Selector */}
               <div className="mb-6 bg-black/40 p-4 rounded-xl border border-white/5">
                 <label className="flex items-center gap-2 text-sm font-medium text-neutral-300 mb-2">
                   <Users className="w-4 h-4 text-purple-400" />
-                  RPP (Opcional)
+                  Promotor (opcional)
                 </label>
                 <CustomSelect
                   value={selectedRpp}
                   onChange={setSelectedRpp}
                   disabled={!!rppFromUrl}
-                  placeholder="Seleccione un RPP..."
+                  placeholder="Elegí un promotor..."
                   options={[
                     { value: '', label: '(Ninguno)' },
                     ...(rppFromUrl &&
@@ -255,7 +255,7 @@ function EventContent() {
                       ? [
                           {
                             value: rppFromUrl,
-                            label: 'Promotor Referido (Bloqueado)',
+                            label: 'Promotor del link',
                           },
                         ]
                       : []),
@@ -264,7 +264,7 @@ function EventContent() {
                 />
                 {rppFromUrl && (
                   <p className="text-[11px] text-emerald-400 mt-2 font-medium flex items-center gap-1">
-                    ✓ Promotor fijado por link de invitación
+                    ✓ Llegaste por el link de este promotor
                   </p>
                 )}
               </div>

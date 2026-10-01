@@ -12,7 +12,7 @@ import {
   Search,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import toast from 'react-hot-toast';
+import toast from '@/utils/toast';
 import { apiFetch } from '@/utils/api';
 import { toCsvCell } from '@/utils/csv';
 import { formatCurrency, formatRelativeDate } from '@/utils/format';
@@ -64,7 +64,7 @@ export default function RppEventDetailsPage() {
     const link = `${baseUrl}/eventos/${eventId}?rpp=${stats.staffId}`;
     navigator.clipboard.writeText(link);
     setCopiedLink(true);
-    toast.success('¡Enlace copiado!');
+    toast.success('¡Link copiado!');
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
@@ -126,7 +126,7 @@ export default function RppEventDetailsPage() {
           </button>
           <div>
             <h1 className="font-outfit text-3xl font-bold text-white mb-1">
-              Métricas del Evento
+              Métricas del evento
             </h1>
             <p className="text-sm text-neutral-400">{stats.eventName}</p>
           </div>
@@ -141,7 +141,7 @@ export default function RppEventDetailsPage() {
           ) : (
             <Link2 className="w-4 h-4" />
           )}
-          Copiar Link
+          Copiar link
         </button>
       </div>
 
@@ -150,7 +150,7 @@ export default function RppEventDetailsPage() {
         <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-5 relative overflow-hidden flex items-center justify-between">
           <div className="flex flex-col">
             <h3 className="text-emerald-400/80 text-sm font-medium mb-1">
-              Dinero Generado
+              Dinero generado
             </h3>
             <div className="text-3xl lg:text-4xl font-outfit font-bold tracking-tight text-emerald-400">
               {formatCurrency(stats.totalEarned)}
@@ -163,7 +163,7 @@ export default function RppEventDetailsPage() {
         <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-2xl p-5 relative overflow-hidden flex items-center justify-between">
           <div className="flex flex-col">
             <h3 className="text-indigo-400/80 text-sm font-medium mb-1">
-              Tickets Vendidos
+              Entradas vendidas
             </h3>
             <div className="text-3xl lg:text-4xl font-outfit font-bold tracking-tight text-indigo-400">
               {stats.totalTicketsSold}
@@ -191,7 +191,7 @@ export default function RppEventDetailsPage() {
       {/* Sales Log */}
       <div className="flex-1 bg-white/5 border border-white/10 rounded-2xl overflow-hidden flex flex-col">
         <div className="shrink-0 p-6 border-b border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <h2 className="text-xl font-bold text-white">Registro de Ventas</h2>
+          <h2 className="text-xl font-bold text-white">Registro de ventas</h2>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="relative w-full sm:w-64">
@@ -209,7 +209,7 @@ export default function RppEventDetailsPage() {
               className="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-xl"
             >
               <Download className="w-4 h-4" />
-              <span className="hidden sm:inline">Exportar Planilla</span>
+              <span className="hidden sm:inline">Exportar planilla</span>
             </button>
           </div>
         </div>
@@ -228,7 +228,7 @@ export default function RppEventDetailsPage() {
                   Precio
                 </th>
                 <th className="py-4 px-6 text-xs font-bold text-emerald-500/70 uppercase tracking-wider">
-                  Tu Comisión
+                  Tu comisión
                 </th>
                 <th className="py-4 px-6 text-xs font-bold text-neutral-500 uppercase tracking-wider text-right">
                   Fecha

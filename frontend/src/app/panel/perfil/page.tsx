@@ -13,9 +13,9 @@ export default function PerfilPage() {
     <div className="max-w-4xl mx-auto pt-8 pb-24 md:py-8 px-4 md:px-8">
       <div className="mb-8">
         <h1 className="font-outfit text-4xl font-bold text-white mb-2">
-          Mi Perfil
+          Mi perfil
         </h1>
-        <p className="text-neutral-400">Gestiona tu información personal.</p>
+        <p className="text-neutral-400">Gestioná tu información personal.</p>
       </div>
 
       <div className="bg-neutral-900 border border-white/5 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center gap-8 shadow-2xl relative overflow-hidden">
@@ -46,15 +46,15 @@ export default function PerfilPage() {
             </label>
             <div className="inline-block px-3 py-1 bg-white/10 text-white text-sm rounded-lg font-medium border border-white/5">
               {user.role === 'ORGANIZER'
-                ? 'Organizador de Eventos'
-                : 'Usuario Estandar'}
+                ? 'Organizador de eventos'
+                : 'Usuario estándar'}
             </div>
           </div>
         </div>
       </div>
 
       <div className="mt-8 text-center text-sm text-neutral-500">
-        Próximamente podrás editar todos tus datos desde aquí.
+        Próximamente vas a poder editar todos tus datos desde acá.
       </div>
     </div>
   );

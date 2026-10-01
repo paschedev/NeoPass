@@ -1,4 +1,8 @@
+import { randomUUID } from 'node:crypto';
+import { Logger } from '@nestjs/common';
+import { v2 as cloudinary } from 'cloudinary';
 import request from 'supertest';
+import { testEnv } from './setup/test-env';
 import { authHeader } from './utils/auth';
 import { createUser } from './utils/factories';
 import { createTestApp, TestApp } from './utils/test-app';
@@ -16,6 +20,33 @@ describe('Endurecimientos', () => {
   beforeEach(() => resetDb(t.prisma));
 
   afterAll(() => t.close());
+
+  describe('CORS', () => {
+    function allowedOrigin(origin: string) {
+      return request(t.app.getHttpServer())
+        .get('/events')
+        .set('Origin', origin)
+        .expect(200)
+        .then((res) => res.headers['access-control-allow-origin']);
+    }
+
+    it.each([
+      'https://neopass.ar',
+      'https://www.neopass.ar',
+      testEnv.FRONTEND_URL,
+      'http://localhost:3000',
+    ])('acepta pedidos desde %s', async (origin) => {
+      expect(await allowedOrigin(origin)).toBe(origin);
+    });
+
+    it.each([
+      'https://ventipass.com',
+      'https://neopass.com',
+      'https://venti-pass.vercel.app',
+    ])('no acepta pedidos desde %s', async (origin) => {
+      expect(await allowedOrigin(origin)).toBeUndefined();
+    });
+  });
 
   describe('firma para subir imágenes', () => {
     it('un cliente no la puede pedir', async () => {
@@ -36,6 +67,69 @@ describe('Endurecimientos', () => {
         .expect(200);
 
       expect(res.body).toHaveProperty('signature');
+    });
+
+    it('si Cloudinary no puede firmar, responde 500 sin detalles internos y el error queda en el log', async () => {
+      const organizer = await createUser(t.prisma, { role: 'ORGANIZER' });
+      const sign = jest
+        .spyOn(cloudinary.utils, 'api_sign_request')
+        .mockImplementation(() => {
+          throw new Error('Must supply api_secret');
+        });
+      const logError = jest
+        .spyOn(Logger.prototype, 'error')
+        .mockImplementation(() => undefined);
+
+      try {
+        const res = await request(t.app.getHttpServer())
+          .get('/media/presign')
+          .set('Authorization', authHeader(t.app, organizer))
+          .expect(500);
+
+        expect(JSON.stringify(res.body)).not.toContain('api_secret');
+        expect(logError.mock.calls.flat().map(String).join(' ')).toContain(
+          'Must supply api_secret',
+        );
+      } finally {
+        sign.mockRestore();
+        logError.mockRestore();
+      }
+    });
+  });
+
+  describe('IDs mal formados en la ruta', () => {
+    // Un ID que no es UUID no puede existir; con un carácter nulo, además, la
+    // base rechaza la consulta.
+    const MALFORMED_ID = 'no-es-un-id%00';
+
+    it.each([
+      ['get', '/events/:id', undefined],
+      ['get', '/events/:id/promoters', undefined],
+      ['get', '/events/organizer/:id', undefined],
+      ['put', '/events/:id', {}],
+      ['put', '/events/:id/batches', { batches: [] }],
+      ['post', '/events/:id/staff', { userId: randomUUID(), role: 'SCANNER' }],
+      ['get', '/events/:id/staff', undefined],
+      ['get', '/events/promoter/me/:id/stats', undefined],
+      ['put', '/events/staff/:id/accept', undefined],
+      ['put', '/events/staff/:id/reject', undefined],
+      ['post', '/tickets/:id/transfer', { targetUserId: randomUUID() }],
+      ['put', '/presets/:id', { name: 'Campo', price: 0 }],
+      ['delete', '/presets/:id', undefined],
+      ['put', '/notifications/:id/read', undefined],
+      ['delete', '/notifications/:id', undefined],
+    ] as const)('%s %s responde 404', async (method, path, body) => {
+      const organizer = await createUser(t.prisma, { role: 'ORGANIZER' });
+
+      const res = await request(t.app.getHttpServer())
+        [method](path.replace(':id', MALFORMED_ID))
+        .set('Authorization', authHeader(t.app, organizer))
+        .send(body)
+        .expect(404);
+
+      expect((res.body as { message: string }).message).toBe(
+        'No encontramos lo que buscás',
+      );
     });
   });
 

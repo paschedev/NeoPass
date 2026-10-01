@@ -34,6 +34,9 @@ export type CheckoutOrderItem = {
   unitPrice: Prisma.Decimal;
 };
 
+// Every price in NeoPass is in Argentine pesos.
+const CURRENCY_ID = 'ARS';
+
 // Checks that every requested ticket can be sold right now and prices the
 // order with the database values: the tickets, NeoPass's service fee (rounded
 // to cents) and the items Mercado Pago charges. The stock check here gives the
@@ -94,7 +97,7 @@ export function buildCheckoutOrder<T extends CheckoutTicketType>(
       title: `${event.title} - ${ticketType.name}`,
       quantity: item.quantity,
       unit_price: ticketType.price.toNumber(),
-      currency_id: 'ARS',
+      currency_id: CURRENCY_ID,
     });
   }
 
@@ -110,7 +113,7 @@ export function buildCheckoutOrder<T extends CheckoutTicketType>(
     title: 'Cargo por servicio',
     quantity: 1,
     unit_price: serviceFee.toNumber(),
-    currency_id: 'ARS',
+    currency_id: CURRENCY_ID,
   });
 
   return {

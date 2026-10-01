@@ -29,6 +29,23 @@ function eventBody(overrides: Record<string, unknown> = {}) {
   };
 }
 
+// Una tanda con una entrada, cambiando solo lo que el caso necesita.
+function batchesWith(
+  ticketType: Record<string, unknown> = {},
+  batch: Record<string, unknown> = {},
+) {
+  return [
+    {
+      name: 'Preventa',
+      isVisible: true,
+      ...batch,
+      ticketTypes: [
+        { name: 'General', price: 1000, stock: 100, ...ticketType },
+      ],
+    },
+  ];
+}
+
 describe('Eventos del organizador', () => {
   let t: TestApp;
 
@@ -109,7 +126,7 @@ describe('Eventos del organizador', () => {
       const res = await create(organizer, eventBody()).expect(400);
 
       expect((res.body as { message: string }).message).toBe(
-        'Debes vincular Mercado Pago antes de crear un evento',
+        'Vinculá Mercado Pago antes de crear un evento',
       );
       expect(await t.prisma.event.count()).toBe(0);
     });
@@ -155,27 +172,126 @@ describe('Eventos del organizador', () => {
       expect(await t.prisma.event.count()).toBe(0);
     });
 
-    it('si fallan las tandas, el evento no queda creado a medias', async () => {
+    it('si la base rechaza una entrada, el evento no queda creado a medias', async () => {
+      const organizer = await organizerWithMp();
+      // Falla a mitad de la transacción: la primera entrada ya se guardó.
+      await t.prisma.$executeRaw`
+        ALTER TABLE "TicketType"
+        ADD CONSTRAINT "test_rejected_name" CHECK (name <> 'Rechazada')`;
+
+      try {
+        await create(
+          organizer,
+          eventBody({
+            batches: [
+              {
+                name: 'Preventa',
+                isVisible: true,
+                ticketTypes: [
+                  { name: 'General', price: 1000, stock: 1 },
+                  { name: 'Rechazada', price: 1000, stock: 1 },
+                ],
+              },
+            ],
+          }),
+        ).expect(500);
+      } finally {
+        await t.prisma.$executeRaw`
+          ALTER TABLE "TicketType" DROP CONSTRAINT "test_rejected_name"`;
+      }
+
+      expect(await t.prisma.event.count()).toBe(0);
+      expect(await t.prisma.ticketBatch.count()).toBe(0);
+    });
+
+    it.each([
+      [
+        'una entrada de más de $99.999.999,99',
+        batchesWith({ price: 100_000_000 }),
+        'El precio máximo es $99.999.999,99',
+      ],
+      [
+        'una entrada con precio negativo',
+        batchesWith({ price: -1 }),
+        'El precio no puede ser negativo',
+      ],
+      [
+        'una entrada con stock 0',
+        batchesWith({ stock: 0 }),
+        'El stock tiene que ser mayor a 0',
+      ],
+      [
+        'una entrada sin nombre',
+        batchesWith({ name: '' }),
+        'El nombre de la entrada es obligatorio',
+      ],
+      [
+        'una entrada con el nombre en blanco',
+        batchesWith({ name: '   ' }),
+        'El nombre de la entrada es obligatorio',
+      ],
+      [
+        'una tanda sin nombre',
+        batchesWith({}, { name: '' }),
+        'El nombre de la tanda es obligatorio',
+      ],
+      [
+        'una tanda con el nombre en blanco',
+        batchesWith({}, { name: '   ' }),
+        'El nombre de la tanda es obligatorio',
+      ],
+    ])(
+      'no se crea con %s, y el error lo explica',
+      async (_case, batches, message) => {
+        const organizer = await organizerWithMp();
+
+        const res = await create(organizer, eventBody({ batches })).expect(400);
+
+        expect((res.body as { message: string[] }).message).toEqual([
+          expect.stringContaining(message),
+        ]);
+        expect(await t.prisma.event.count()).toBe(0);
+      },
+    );
+
+    it.each([
+      ['sin título', { title: '' }, 'El título es obligatorio'],
+      [
+        'sin descripción',
+        { description: '   ' },
+        'La descripción es obligatoria',
+      ],
+      ['sin flyer', { imageUrl: '' }, 'El flyer del evento es obligatorio'],
+      ['sin lugar', { venueName: '   ' }, 'El nombre del lugar es obligatorio'],
+      ['sin dirección', { venueAddress: '' }, 'La dirección es obligatoria'],
+    ])('no se crea %s', async (_case, blank, message) => {
       const organizer = await organizerWithMp();
 
-      const res = await create(
+      const res = await create(organizer, eventBody(blank)).expect(400);
+
+      expect((res.body as { message: string[] }).message).toEqual([message]);
+      expect(await t.prisma.event.count()).toBe(0);
+    });
+
+    it('los textos se guardan sin espacios al principio ni al final', async () => {
+      const organizer = await organizerWithMp();
+
+      await create(
         organizer,
         eventBody({
-          batches: [
-            {
-              name: 'Preventa',
-              isVisible: true,
-              // Excede la precisión de la columna: la base rechaza la entrada.
-              ticketTypes: [
-                { name: 'General', price: 999_999_999_999, stock: 1 },
-              ],
-            },
-          ],
+          title: '  Fiesta  ',
+          venueName: ' Club ',
+          batches: batchesWith({ name: ' General ' }, { name: ' Preventa ' }),
         }),
-      );
+      ).expect(201);
 
-      expect(res.status).toBeGreaterThanOrEqual(400);
-      expect(await t.prisma.event.count()).toBe(0);
+      const event = await t.prisma.event.findFirstOrThrow({
+        include: { ticketBatches: { include: { ticketTypes: true } } },
+      });
+      expect(event.title).toBe('Fiesta');
+      expect(event.venueName).toBe('Club');
+      expect(event.ticketBatches[0].name).toBe('Preventa');
+      expect(event.ticketBatches[0].ticketTypes[0].name).toBe('General');
     });
   });
 
@@ -223,5 +339,80 @@ describe('Eventos del organizador', () => {
           .expect(404);
       },
     );
+
+    it.each([
+      [
+        '',
+        'de más de $99.999.999,99',
+        { price: 100_000_000 },
+        'El precio máximo es $99.999.999,99',
+      ],
+      [
+        '',
+        'sin nombre',
+        { name: '   ' },
+        'El nombre de la entrada es obligatorio',
+      ],
+      [
+        '/batches',
+        'de más de $99.999.999,99',
+        { price: 100_000_000 },
+        'El precio máximo es $99.999.999,99',
+      ],
+      [
+        '/batches',
+        'sin nombre',
+        { name: '   ' },
+        'El nombre de la entrada es obligatorio',
+      ],
+    ])(
+      'editar (PUT /events/:id%s) no guarda una entrada %s',
+      async (path, _case, change, message) => {
+        const { organizer, event, batch, ticketType } =
+          await createOrganizerWithEvent(t.prisma);
+
+        const res = await request(t.app.getHttpServer())
+          .put(`/events/${event.id}${path}`)
+          .set('Authorization', authHeader(t.app, organizer))
+          .send({
+            batches: batchesWith(
+              { id: ticketType.id, ...change },
+              { id: batch.id },
+            ),
+          })
+          .expect(400);
+
+        expect((res.body as { message: string[] }).message).toEqual([
+          expect.stringContaining(message),
+        ]);
+        const saved = await t.prisma.ticketType.findUniqueOrThrow({
+          where: { id: ticketType.id },
+        });
+        expect(saved.name).toBe('General');
+        expect(Number(saved.price)).toBe(1000);
+      },
+    );
+
+    it.each([
+      ['el título', { title: '   ' }, 'El título es obligatorio'],
+      ['la descripción', { description: '' }, 'La descripción es obligatoria'],
+      ['el flyer', { imageUrl: '' }, 'El flyer del evento es obligatorio'],
+      ['el lugar', { venueName: '   ' }, 'El nombre del lugar es obligatorio'],
+      ['la dirección', { venueAddress: '' }, 'La dirección es obligatoria'],
+    ])('no se puede dejar %s en blanco', async (_case, blank, message) => {
+      const { organizer, event } = await createOrganizerWithEvent(t.prisma);
+
+      const res = await request(t.app.getHttpServer())
+        .put(`/events/${event.id}`)
+        .set('Authorization', authHeader(t.app, organizer))
+        .send(blank)
+        .expect(400);
+
+      expect((res.body as { message: string[] }).message).toEqual([message]);
+      const saved = await t.prisma.event.findUniqueOrThrow({
+        where: { id: event.id },
+      });
+      expect(saved).toEqual(event);
+    });
   });
 });

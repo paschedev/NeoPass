@@ -10,7 +10,7 @@ const VARIANTS = {
       'w-full bg-[#009EE3] hover:bg-[#0089C7] text-white py-4 rounded-full font-bold shadow-lg shadow-[#009EE3]/20 hover:shadow-[#009EE3]/40 focus-visible:ring-[#009EE3]/60',
   },
   change: {
-    label: 'Cambiar Cuenta Vinculada',
+    label: 'Cambiar cuenta vinculada',
     className:
       'w-full sm:w-auto bg-white/5 hover:bg-white/10 text-white px-6 py-3 rounded-xl text-sm font-medium focus-visible:ring-white/30',
   },

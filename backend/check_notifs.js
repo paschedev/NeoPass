@@ -1,1 +1,0 @@
-const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function run() { const notifs = await prisma.notification.findMany(); console.log(JSON.stringify(notifs, null, 2)); } run();

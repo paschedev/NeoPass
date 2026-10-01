@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Key, Lock, type LucideIcon } from 'lucide-react';
-import toast from 'react-hot-toast';
+import toast from '@/utils/toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { apiFetch } from '@/utils/api';

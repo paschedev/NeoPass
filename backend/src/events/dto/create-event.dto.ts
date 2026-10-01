@@ -7,16 +7,17 @@ import {
   IsArray,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { RequiredText } from '../../common/required-text.decorator';
 import { BatchDto } from './batch.dto';
 
 export class CreateEventDto {
-  @IsString({ message: 'El título es requerido' })
+  @RequiredText('El título es obligatorio')
   title: string;
 
-  @IsString({ message: 'La descripción es requerida' })
+  @RequiredText('La descripción es obligatoria')
   description: string;
 
-  @IsString({ message: 'La imagen del evento (Flyer) es obligatoria' })
+  @RequiredText('El flyer del evento es obligatorio')
   imageUrl: string;
 
   @IsOptional()
@@ -29,10 +30,10 @@ export class CreateEventDto {
   @IsDateString({}, { message: 'La fecha de fin debe ser válida' })
   endDate: string;
 
-  @IsString({ message: 'El nombre del lugar es requerido' })
+  @RequiredText('El nombre del lugar es obligatorio')
   venueName: string;
 
-  @IsString({ message: 'La dirección es requerida' })
+  @RequiredText('La dirección es obligatoria')
   venueAddress: string;
 
   @IsString()

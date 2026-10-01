@@ -1,7 +1,9 @@
 import { IsString, MinLength } from 'class-validator';
 
 export class ResetPasswordDto {
-  @IsString({ message: 'El token es requerido' })
+  @IsString({
+    message: 'El link para cambiar la contraseña no es válido o venció',
+  })
   token: string;
 
   @IsString({ message: 'La nueva contraseña debe ser un texto' })

@@ -33,6 +33,18 @@ describe('staff de un evento', () => {
       );
   }
 
+  function invitePromoter(
+    organizer: User,
+    eventId: string,
+    userId: string,
+    commission: Record<string, unknown>,
+  ) {
+    return request(t.app.getHttpServer())
+      .post(`/events/${eventId}/staff`)
+      .set('Authorization', authHeader(t.app, organizer))
+      .send({ userId, role: 'PROMOTER', ...commission });
+  }
+
   function listStaff(organizer: User, eventId: string) {
     return request(t.app.getHttpServer())
       .get(`/events/${eventId}/staff`)
@@ -87,6 +99,28 @@ describe('staff de un evento', () => {
       ]);
     });
 
+    it.each([
+      ['PROMOTER', 'promotor (RPP)', ', con 10% de comisión por entrada.'],
+      ['SCANNER', 'scanner', '.'],
+      ['MANAGER', 'encargado', '.'],
+    ] as const)(
+      'el aviso al invitado como %s nombra el rol en español',
+      async (role, label, ending) => {
+        const { organizer, event } = await createOrganizerWithEvent(t.prisma);
+        const invitee = await createUser(t.prisma);
+
+        await invite(organizer, event.id, invitee.id, role).expect(201);
+
+        const notification = await t.prisma.notification.findFirstOrThrow({
+          where: { userId: invitee.id },
+        });
+        expect(notification).toMatchObject({
+          title: 'Nueva invitación',
+          message: `Te invitaron como ${label} al evento "${event.title}"${ending}`,
+        });
+      },
+    );
+
     it('no puede invitar a un evento ajeno', async () => {
       const { organizer } = await createOrganizerWithEvent(t.prisma);
       const other = await createOrganizerWithEvent(t.prisma);
@@ -108,13 +142,124 @@ describe('staff de un evento', () => {
       await invite(organizer, event.id, randomUUID()).expect(404);
     });
 
-    it.each(['PENDING', 'ACCEPTED'] as const)(
-      'no vuelve a invitar a quien tiene una invitación %s para ese rol',
-      async (status) => {
-        const { organizer, event } = await createOrganizerWithEvent(t.prisma);
-        const { user } = await addStaff(event.id, status);
+    it('invitar a un usuario con un ID mal formado da 400', async () => {
+      const { organizer, event } = await createOrganizerWithEvent(t.prisma);
 
-        await invite(organizer, event.id, user.id).expect(409);
+      const res = await invite(organizer, event.id, 'no-es-un-uuid').expect(
+        400,
+      );
+
+      expect((res.body as { message: string[] }).message).toEqual([
+        'Elegí a quién invitar',
+      ]);
+    });
+
+    it.each([
+      [
+        'un porcentaje mayor a 100',
+        { commissionType: 'PERCENTAGE', commissionValue: 100.1 },
+        'El porcentaje de comisión tiene que estar entre 0 y 100',
+      ],
+      [
+        'un porcentaje negativo',
+        { commissionType: 'PERCENTAGE', commissionValue: -1 },
+        'La comisión no puede ser negativa',
+      ],
+      [
+        'un monto fijo negativo',
+        { commissionType: 'FIXED', commissionValue: -1 },
+        'La comisión no puede ser negativa',
+      ],
+      [
+        'un monto fijo de más de $99.999.999,99',
+        { commissionType: 'FIXED', commissionValue: 100_000_000 },
+        'La comisión máxima es $99.999.999,99',
+      ],
+    ])(
+      'no invita a un promotor con %s de comisión',
+      async (_case, commission, message) => {
+        const { organizer, event } = await createOrganizerWithEvent(t.prisma);
+        const invitee = await createUser(t.prisma);
+
+        const res = await invitePromoter(
+          organizer,
+          event.id,
+          invitee.id,
+          commission,
+        ).expect(400);
+
+        // Un solo motivo, venga de la validación (lista) o de la regla (texto).
+        const body = res.body as { message: string | string[] };
+        expect([body.message].flat()).toEqual([message]);
+        expect(await t.prisma.eventStaff.count()).toBe(0);
+        expect(await t.prisma.notification.count()).toBe(0);
+      },
+    );
+
+    it.each([
+      ['el 100 %', { commissionType: 'PERCENTAGE', commissionValue: 100 }],
+      [
+        'un monto fijo de $99.999.999,99',
+        { commissionType: 'FIXED', commissionValue: 99_999_999.99 },
+      ],
+    ])('invita a un promotor con %s de comisión', async (_case, commission) => {
+      const { organizer, event } = await createOrganizerWithEvent(t.prisma);
+      const invitee = await createUser(t.prisma);
+
+      await invitePromoter(organizer, event.id, invitee.id, commission).expect(
+        201,
+      );
+
+      const staff = await t.prisma.eventStaff.findFirstOrThrow();
+      expect(staff.commissionType).toBe(commission.commissionType);
+      expect(Number(staff.commissionValue)).toBe(commission.commissionValue);
+    });
+
+    it.each(['SCANNER', 'MANAGER'] as const)(
+      'la comisión solo vale para promotores: a un %s se le ignora',
+      async (role) => {
+        const { organizer, event } = await createOrganizerWithEvent(t.prisma);
+        const invitee = await createUser(t.prisma);
+
+        await request(t.app.getHttpServer())
+          .post(`/events/${event.id}/staff`)
+          .set('Authorization', authHeader(t.app, organizer))
+          .send({
+            userId: invitee.id,
+            role,
+            commissionType: 'CUALQUIERA',
+            commissionValue: 'mucho',
+          })
+          .expect(201);
+
+        const staff = await t.prisma.eventStaff.findFirstOrThrow();
+        expect(staff).toMatchObject({
+          role,
+          commissionType: null,
+          commissionValue: null,
+        });
+      },
+    );
+
+    it.each([
+      [
+        'PENDING',
+        'SCANNER',
+        'El usuario ya tiene una invitación pendiente como scanner en este evento.',
+      ],
+      ['ACCEPTED', 'SCANNER', 'El usuario ya es scanner de este evento.'],
+      ['ACCEPTED', 'PROMOTER', 'El usuario ya es promotor de este evento.'],
+    ] as const)(
+      'no vuelve a invitar a quien tiene una invitación %s como %s, y lo explica con el rol en español',
+      async (status, role, message) => {
+        const { organizer, event } = await createOrganizerWithEvent(t.prisma);
+        const { user } = await addStaff(event.id, status, role);
+
+        const res = await invite(organizer, event.id, user.id, role).expect(
+          409,
+        );
+
+        expect((res.body as { message: string }).message).toBe(message);
       },
     );
 
@@ -125,6 +270,12 @@ describe('staff de un evento', () => {
       await invite(organizer, event.id, user.id).expect(201);
 
       expect(await staffStatus(staff.id)).toBe('PENDING');
+      const notification = await t.prisma.notification.findFirstOrThrow({
+        where: { userId: user.id },
+      });
+      expect(notification.message).toBe(
+        `Te invitaron de nuevo como scanner al evento "${event.title}".`,
+      );
     });
   });
 
@@ -165,7 +316,27 @@ describe('staff de un evento', () => {
       const notifications = await t.prisma.notification.findMany({
         where: { userId: organizer.id },
       });
-      expect(notifications).toHaveLength(1);
+      expect(notifications).toEqual([
+        expect.objectContaining({
+          title: 'Invitación aceptada',
+          message: `${user.name} aceptó tu invitación para ser scanner en "${event.title}".`,
+        }),
+      ]);
+    });
+
+    it('si un promotor la rechaza, el organizador recibe el aviso con el rol en español', async () => {
+      const { organizer, event } = await createOrganizerWithEvent(t.prisma);
+      const { user, staff } = await addStaff(event.id, 'PENDING', 'PROMOTER');
+
+      await respond(user, staff.id, 'reject').expect(200);
+
+      const notification = await t.prisma.notification.findFirstOrThrow({
+        where: { userId: organizer.id },
+      });
+      expect(notification).toMatchObject({
+        title: 'Invitación rechazada',
+        message: `${user.name} rechazó tu invitación para ser promotor en "${event.title}".`,
+      });
     });
 
     it('al rechazarla queda rechazada', async () => {

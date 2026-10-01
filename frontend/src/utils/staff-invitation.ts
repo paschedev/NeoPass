@@ -33,13 +33,13 @@ export function validateInvitation(invite: {
   commissionType: CommissionType;
   commissionValue: string;
 }): string | null {
-  if (!invite.eventId) return 'Selecciona un evento';
-  if (invite.userCount === 0) return 'Selecciona al menos un usuario';
+  if (!invite.eventId) return 'Seleccioná un evento';
+  if (invite.userCount === 0) return 'Seleccioná al menos un usuario';
   if (invite.role !== 'RPP') return null;
 
   const commission = Number(invite.commissionValue);
   if (!invite.commissionValue || commission <= 0) {
-    return 'Ingresa una comisión válida';
+    return 'Ingresá una comisión válida';
   }
   if (invite.commissionType === 'PERCENTAGE' && commission > 100) {
     return 'El porcentaje debe estar entre 0 y 100';

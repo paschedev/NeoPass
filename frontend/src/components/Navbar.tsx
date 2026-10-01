@@ -15,6 +15,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useStaffInvitation } from '@/hooks/useStaffInvitation';
 
+const SUPPORT_EMAIL = 'soporte@neopass.ar';
+
 export default function Navbar() {
   const { user, logout } = useCurrentUser();
   const isLoggedIn = !!user;
@@ -108,14 +110,14 @@ export default function Navbar() {
             href="/eventos"
             className="hidden md:block text-sm font-medium text-neutral-400 hover:text-white transition-colors"
           >
-            Descubrir Eventos
+            Descubrir eventos
           </Link>
           {user && (
             <Link
               href="/panel"
               className="hidden md:block text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors bg-indigo-500/10 px-3 py-1.5 rounded-full border border-indigo-500/20"
             >
-              Mi Panel
+              Mi panel
             </Link>
           )}
           <div className="hidden md:block w-px h-4 bg-white/10 mx-2" />
@@ -171,7 +173,7 @@ export default function Navbar() {
                         <div className="max-h-[300px] overflow-y-auto overscroll-contain">
                           {finalDisplayNotifs.length === 0 ? (
                             <div className="p-6 text-center text-sm text-neutral-500">
-                              No tienes notificaciones.
+                              No tenés notificaciones.
                             </div>
                           ) : (
                             finalDisplayNotifs.map((n) => {
@@ -293,7 +295,7 @@ export default function Navbar() {
                         href="/panel"
                         className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
                       >
-                        <LayoutDashboard className="w-4 h-4" /> Mi Panel
+                        <LayoutDashboard className="w-4 h-4" /> Mi panel
                       </Link>
                       <Link
                         href="/panel/perfil"
@@ -305,7 +307,7 @@ export default function Navbar() {
                       <div className="h-px w-full bg-white/5 my-1" />
 
                       <a
-                        href="mailto:paschedev@gmail.com"
+                        href={`mailto:${SUPPORT_EMAIL}`}
                         className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors w-full text-left"
                       >
                         <HelpCircle className="w-4 h-4" /> Soporte

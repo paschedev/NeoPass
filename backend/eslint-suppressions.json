@@ -13,9 +13,6 @@
     },
     "@typescript-eslint/no-unsafe-member-access": {
       "count": 6
-    },
-    "@typescript-eslint/no-unused-vars": {
-      "count": 2
     }
   },
   "src/auth/decorators/current-user.decorator.ts": {
@@ -47,11 +44,6 @@
       "count": 2
     }
   },
-  "src/media/media.service.ts": {
-    "@typescript-eslint/no-unused-vars": {
-      "count": 1
-    }
-  },
   "src/notifications/notifications.controller.ts": {
     "@typescript-eslint/no-unsafe-member-access": {
       "count": 4
@@ -62,11 +54,6 @@
       "count": 2
     },
     "@typescript-eslint/no-unsafe-member-access": {
-      "count": 1
-    }
-  },
-  "src/payments/payments.controller.ts": {
-    "@typescript-eslint/no-unused-vars": {
       "count": 1
     }
   },

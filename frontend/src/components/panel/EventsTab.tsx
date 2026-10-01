@@ -56,7 +56,7 @@ export default function EventsTab({
         <div>
           <h2 className="font-outfit text-2xl font-bold">Mis Eventos</h2>
           <p className="text-sm text-neutral-400">
-            Gestiona y analiza el rendimiento de tus eventos.
+            Gestioná y analizá el rendimiento de tus eventos.
           </p>
         </div>
       </div>
@@ -74,7 +74,7 @@ export default function EventsTab({
             Error al cargar eventos
           </h3>
           <p className="text-neutral-400 mb-6">
-            Hubo un problema de conexión. Por favor, intenta nuevamente.
+            Hubo un problema de conexión. Probá de nuevo.
           </p>
           <button
             onClick={onRetry}
@@ -89,10 +89,10 @@ export default function EventsTab({
             <CalendarIcon className="w-8 h-8 text-neutral-400" />
           </div>
           <h3 className="text-xl font-bold text-white mb-2">
-            Aún no tienes eventos
+            Todavía no tenés eventos
           </h3>
           <p className="text-neutral-400 mb-6">
-            Crea tu primer evento y comienza a vender entradas ahora mismo.
+            Creá tu primer evento y empezá a vender entradas ahora mismo.
           </p>
         </div>
       ) : (
@@ -144,7 +144,7 @@ export default function EventsTab({
                     </div>
                     <div className="bg-black/40 rounded-xl p-3 border border-white/5">
                       <div className="text-xs text-neutral-500 mb-1">
-                        Entradas Vendidas
+                        Entradas vendidas
                       </div>
                       <div className="text-lg font-bold text-white">{sold}</div>
                     </div>
@@ -161,7 +161,7 @@ export default function EventsTab({
                       href={`/panel/eventos/${event.id}/editar`}
                       className="flex-1 text-center bg-white/5 hover:bg-white/10 text-white py-2.5 rounded-xl text-sm font-medium transition-colors"
                     >
-                      Editar Evento
+                      Editar evento
                     </Link>
                   )}
                   <Link
@@ -169,7 +169,7 @@ export default function EventsTab({
                     target="_blank"
                     className="flex-1 text-center bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
                   >
-                    Ver Página <ExternalLink className="w-4 h-4" />
+                    Ver página <ExternalLink className="w-4 h-4" />
                   </Link>
                 </div>
               </div>

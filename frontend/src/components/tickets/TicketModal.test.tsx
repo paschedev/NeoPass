@@ -43,9 +43,9 @@ describe('TicketModal', () => {
   it('el QR arranca oculto y se revela al tocarlo', () => {
     renderModal();
 
-    fireEvent.click(screen.getByText('Toca para revelar'));
+    fireEvent.click(screen.getByText('Tocá para revelar'));
 
-    expect(screen.queryByText('Toca para revelar')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tocá para revelar')).not.toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Ocultar QR' }),
     ).toBeInTheDocument();
@@ -55,7 +55,7 @@ describe('TicketModal', () => {
     renderModal({ ...TICKET, status: 'REFUNDED' });
 
     expect(screen.getByText(/Entrada anulada/)).toBeInTheDocument();
-    expect(screen.queryByText('Toca para revelar')).not.toBeInTheDocument();
+    expect(screen.queryByText('Tocá para revelar')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: /Transferir/ }),
     ).not.toBeInTheDocument();
