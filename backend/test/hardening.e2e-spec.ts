@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import { v2 as cloudinary } from 'cloudinary';
 import request from 'supertest';
@@ -93,6 +94,42 @@ describe('Endurecimientos', () => {
         sign.mockRestore();
         logError.mockRestore();
       }
+    });
+  });
+
+  describe('IDs mal formados en la ruta', () => {
+    // Un ID que no es UUID no puede existir; con un carácter nulo, además, la
+    // base rechaza la consulta.
+    const MALFORMED_ID = 'no-es-un-id%00';
+
+    it.each([
+      ['get', '/events/:id', undefined],
+      ['get', '/events/:id/promoters', undefined],
+      ['get', '/events/organizer/:id', undefined],
+      ['put', '/events/:id', {}],
+      ['put', '/events/:id/batches', { batches: [] }],
+      ['post', '/events/:id/staff', { userId: randomUUID(), role: 'SCANNER' }],
+      ['get', '/events/:id/staff', undefined],
+      ['get', '/events/promoter/me/:id/stats', undefined],
+      ['put', '/events/staff/:id/accept', undefined],
+      ['put', '/events/staff/:id/reject', undefined],
+      ['post', '/tickets/:id/transfer', { targetUserId: randomUUID() }],
+      ['put', '/presets/:id', { name: 'Campo', price: 0 }],
+      ['delete', '/presets/:id', undefined],
+      ['put', '/notifications/:id/read', undefined],
+      ['delete', '/notifications/:id', undefined],
+    ] as const)('%s %s responde 404', async (method, path, body) => {
+      const organizer = await createUser(t.prisma, { role: 'ORGANIZER' });
+
+      const res = await request(t.app.getHttpServer())
+        [method](path.replace(':id', MALFORMED_ID))
+        .set('Authorization', authHeader(t.app, organizer))
+        .send(body)
+        .expect(404);
+
+      expect((res.body as { message: string }).message).toBe(
+        'No encontramos lo que buscás',
+      );
     });
   });
 

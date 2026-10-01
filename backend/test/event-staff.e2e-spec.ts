@@ -33,6 +33,18 @@ describe('staff de un evento', () => {
       );
   }
 
+  function invitePromoter(
+    organizer: User,
+    eventId: string,
+    userId: string,
+    commission: Record<string, unknown>,
+  ) {
+    return request(t.app.getHttpServer())
+      .post(`/events/${eventId}/staff`)
+      .set('Authorization', authHeader(t.app, organizer))
+      .send({ userId, role: 'PROMOTER', ...commission });
+  }
+
   function listStaff(organizer: User, eventId: string) {
     return request(t.app.getHttpServer())
       .get(`/events/${eventId}/staff`)
@@ -129,6 +141,105 @@ describe('staff de un evento', () => {
 
       await invite(organizer, event.id, randomUUID()).expect(404);
     });
+
+    it('invitar a un usuario con un ID mal formado da 400', async () => {
+      const { organizer, event } = await createOrganizerWithEvent(t.prisma);
+
+      const res = await invite(organizer, event.id, 'no-es-un-uuid').expect(
+        400,
+      );
+
+      expect((res.body as { message: string[] }).message).toEqual([
+        'Elegí a quién invitar',
+      ]);
+    });
+
+    it.each([
+      [
+        'un porcentaje mayor a 100',
+        { commissionType: 'PERCENTAGE', commissionValue: 100.1 },
+        'El porcentaje de comisión tiene que estar entre 0 y 100',
+      ],
+      [
+        'un porcentaje negativo',
+        { commissionType: 'PERCENTAGE', commissionValue: -1 },
+        'La comisión no puede ser negativa',
+      ],
+      [
+        'un monto fijo negativo',
+        { commissionType: 'FIXED', commissionValue: -1 },
+        'La comisión no puede ser negativa',
+      ],
+      [
+        'un monto fijo de más de $99.999.999,99',
+        { commissionType: 'FIXED', commissionValue: 100_000_000 },
+        'La comisión máxima es $99.999.999,99',
+      ],
+    ])(
+      'no invita a un promotor con %s de comisión',
+      async (_case, commission, message) => {
+        const { organizer, event } = await createOrganizerWithEvent(t.prisma);
+        const invitee = await createUser(t.prisma);
+
+        const res = await invitePromoter(
+          organizer,
+          event.id,
+          invitee.id,
+          commission,
+        ).expect(400);
+
+        // Un solo motivo, venga de la validación (lista) o de la regla (texto).
+        const body = res.body as { message: string | string[] };
+        expect([body.message].flat()).toEqual([message]);
+        expect(await t.prisma.eventStaff.count()).toBe(0);
+        expect(await t.prisma.notification.count()).toBe(0);
+      },
+    );
+
+    it.each([
+      ['el 100 %', { commissionType: 'PERCENTAGE', commissionValue: 100 }],
+      [
+        'un monto fijo de $99.999.999,99',
+        { commissionType: 'FIXED', commissionValue: 99_999_999.99 },
+      ],
+    ])('invita a un promotor con %s de comisión', async (_case, commission) => {
+      const { organizer, event } = await createOrganizerWithEvent(t.prisma);
+      const invitee = await createUser(t.prisma);
+
+      await invitePromoter(organizer, event.id, invitee.id, commission).expect(
+        201,
+      );
+
+      const staff = await t.prisma.eventStaff.findFirstOrThrow();
+      expect(staff.commissionType).toBe(commission.commissionType);
+      expect(Number(staff.commissionValue)).toBe(commission.commissionValue);
+    });
+
+    it.each(['SCANNER', 'MANAGER'] as const)(
+      'la comisión solo vale para promotores: a un %s se le ignora',
+      async (role) => {
+        const { organizer, event } = await createOrganizerWithEvent(t.prisma);
+        const invitee = await createUser(t.prisma);
+
+        await request(t.app.getHttpServer())
+          .post(`/events/${event.id}/staff`)
+          .set('Authorization', authHeader(t.app, organizer))
+          .send({
+            userId: invitee.id,
+            role,
+            commissionType: 'CUALQUIERA',
+            commissionValue: 'mucho',
+          })
+          .expect(201);
+
+        const staff = await t.prisma.eventStaff.findFirstOrThrow();
+        expect(staff).toMatchObject({
+          role,
+          commissionType: null,
+          commissionValue: null,
+        });
+      },
+    );
 
     it.each([
       [

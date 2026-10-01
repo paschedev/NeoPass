@@ -111,6 +111,46 @@ describe('Tandas y entradas: cada organizador toca solo las suyas', () => {
     expect(await reload()).toEqual(before);
   });
 
+  it('no acepta una tanda con un ID mal formado', async () => {
+    const { mine } = await twoOrganizers();
+    const before = await reload();
+
+    const res = await putBatches(mine.organizer, mine.event.id, [
+      {
+        id: 'no-es-un-uuid',
+        name: 'Preventa',
+        isVisible: true,
+        ticketTypes: [],
+      },
+    ]).expect(400);
+
+    expect((res.body as { message: string[] }).message).toEqual([
+      expect.stringContaining('La tanda no es válida'),
+    ]);
+    expect(await reload()).toEqual(before);
+  });
+
+  it('no acepta una entrada con un ID mal formado', async () => {
+    const { mine } = await twoOrganizers();
+    const before = await reload();
+
+    const res = await putBatches(mine.organizer, mine.event.id, [
+      {
+        id: mine.batch.id,
+        name: 'Preventa',
+        isVisible: true,
+        ticketTypes: [
+          { id: 'no-es-un-uuid', name: 'General', price: 1000, stock: 100 },
+        ],
+      },
+    ]).expect(400);
+
+    expect((res.body as { message: string[] }).message).toEqual([
+      expect.stringContaining('La entrada no es válida'),
+    ]);
+    expect(await reload()).toEqual(before);
+  });
+
   it('al editar el evento no puede tocar tandas ajenas', async () => {
     const { mine, other } = await twoOrganizers();
     const before = await reload();

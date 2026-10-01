@@ -7,19 +7,20 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { RequiredText } from '../../common/required-text.decorator';
 import { BatchDto } from './batch.dto';
 
 export class UpdateEventDto {
   @IsOptional()
-  @IsString()
+  @RequiredText('El título es obligatorio')
   title?: string;
 
   @IsOptional()
-  @IsString()
+  @RequiredText('La descripción es obligatoria')
   description?: string;
 
   @IsOptional()
-  @IsString()
+  @RequiredText('El flyer del evento es obligatorio')
   imageUrl?: string;
 
   @IsOptional()
@@ -35,11 +36,11 @@ export class UpdateEventDto {
   endDate?: string;
 
   @IsOptional()
-  @IsString()
+  @RequiredText('El nombre del lugar es obligatorio')
   venueName?: string;
 
   @IsOptional()
-  @IsString()
+  @RequiredText('La dirección es obligatoria')
   venueAddress?: string;
 
   @IsOptional()

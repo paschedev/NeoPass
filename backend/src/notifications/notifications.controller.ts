@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { ParseIdPipe } from '../common/parse-id.pipe';
 
 @Controller('notifications')
 export class NotificationsController {
@@ -28,13 +29,13 @@ export class NotificationsController {
 
   @UseGuards(JwtAuthGuard)
   @Put(':id/read')
-  markAsRead(@Param('id') id: string, @Req() req: any) {
+  markAsRead(@Param('id', ParseIdPipe) id: string, @Req() req: any) {
     return this.notificationsService.markAsRead(id, req.user.userId);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
-  remove(@Param('id') id: string, @Req() req: any) {
+  remove(@Param('id', ParseIdPipe) id: string, @Req() req: any) {
     return this.notificationsService.delete(id, req.user.userId);
   }
 }
