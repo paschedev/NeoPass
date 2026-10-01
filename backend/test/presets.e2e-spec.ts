@@ -52,4 +52,71 @@ describe('Presets de entradas', () => {
     expect(res.body).toEqual([]);
     expect(await t.prisma.ticketPreset.count()).toBe(0);
   });
+
+  describe('guardar una plantilla', () => {
+    const INVALID = [
+      ['sin nombre', { name: '' }, 'El nombre de la plantilla es obligatorio'],
+      [
+        'con el nombre en blanco',
+        { name: '   ' },
+        'El nombre de la plantilla es obligatorio',
+      ],
+      [
+        'con un nombre de más de 20 caracteres',
+        { name: 'x'.repeat(21) },
+        'El nombre de la plantilla puede tener hasta 20 caracteres',
+      ],
+      [
+        'con un precio de más de $99.999.999,99',
+        { price: 100_000_000 },
+        'El precio máximo es $99.999.999,99',
+      ],
+    ] as const;
+
+    it('el nombre se guarda sin espacios al principio ni al final', async () => {
+      const organizer = await createUser(t.prisma, { role: 'ORGANIZER' });
+
+      await request(t.app.getHttpServer())
+        .post('/presets')
+        .set('Authorization', authHeader(t.app, organizer))
+        .send({ name: '  Campo  ', price: 0 })
+        .expect(201);
+
+      const preset = await t.prisma.ticketPreset.findFirstOrThrow();
+      expect(preset.name).toBe('Campo');
+    });
+
+    it.each(INVALID)('no se crea %s', async (_case, invalid, message) => {
+      const organizer = await createUser(t.prisma, { role: 'ORGANIZER' });
+
+      const res = await request(t.app.getHttpServer())
+        .post('/presets')
+        .set('Authorization', authHeader(t.app, organizer))
+        .send({ name: 'Campo', price: 0, ...invalid })
+        .expect(400);
+
+      expect((res.body as { message: string[] }).message).toEqual([message]);
+      expect(await t.prisma.ticketPreset.count()).toBe(0);
+    });
+
+    it.each(INVALID)('no se edita %s', async (_case, invalid, message) => {
+      const organizer = await createUser(t.prisma, { role: 'ORGANIZER' });
+      const preset = await t.prisma.ticketPreset.create({
+        data: { organizerId: organizer.id, name: 'Campo', price: 0 },
+      });
+
+      const res = await request(t.app.getHttpServer())
+        .put(`/presets/${preset.id}`)
+        .set('Authorization', authHeader(t.app, organizer))
+        .send({ name: 'Campo', price: 0, ...invalid })
+        .expect(400);
+
+      expect((res.body as { message: string[] }).message).toEqual([message]);
+      expect(
+        await t.prisma.ticketPreset.findUniqueOrThrow({
+          where: { id: preset.id },
+        }),
+      ).toEqual(preset);
+    });
+  });
 });

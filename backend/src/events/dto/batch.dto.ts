@@ -5,11 +5,14 @@ import {
   IsNumber,
   IsInt,
   Min,
+  Max,
   IsArray,
   ValidateNested,
   IsBoolean,
 } from 'class-validator';
 import { Type } from 'class-transformer';
+import { MAX_AMOUNT } from '../../common/amounts';
+import { RequiredText } from '../../common/required-text.decorator';
 
 export class TicketTypeDto {
   @IsOptional()
@@ -20,17 +23,18 @@ export class TicketTypeDto {
   @IsString()
   tempId?: string;
 
-  @IsString({ message: 'El nombre de la entrada debe ser texto' })
+  @RequiredText('El nombre de la entrada es obligatorio')
   name: string;
 
   // The edit screen sends prices back as the API returns them: Decimal strings.
   @Type(() => Number)
   @IsNumber({}, { message: 'El precio debe ser un número' })
-  @Min(0)
+  @Min(0, { message: 'El precio no puede ser negativo' })
+  @Max(MAX_AMOUNT, { message: 'El precio máximo es $99.999.999,99' })
   price: number;
 
   @IsInt({ message: 'El stock debe ser un número entero mayor a 0' })
-  @Min(1)
+  @Min(1, { message: 'El stock tiene que ser mayor a 0' })
   stock: number;
 }
 
@@ -43,7 +47,7 @@ export class BatchDto {
   @IsString()
   tempId?: string;
 
-  @IsString({ message: 'El nombre de la tanda debe ser texto' })
+  @RequiredText('El nombre de la tanda es obligatorio')
   name: string;
 
   // Hidden batches are never sold; the rest sell within publishAt-closeAt.
