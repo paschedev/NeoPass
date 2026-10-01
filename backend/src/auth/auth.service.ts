@@ -155,7 +155,7 @@ export class AuthService {
       // Return success even if not found for security reasons
       return {
         message:
-          'Si el correo existe, se ha enviado un enlace de recuperación.',
+          'Si el correo existe, te enviamos un enlace para recuperar la contraseña.',
       };
     }
 
@@ -177,7 +177,8 @@ export class AuthService {
     });
 
     return {
-      message: 'Si el correo existe, se ha enviado un enlace de recuperación.',
+      message:
+        'Si el correo existe, te enviamos un enlace para recuperar la contraseña.',
     };
   }
 

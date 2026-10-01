@@ -22,6 +22,19 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { BatchDto } from './dto/batch.dto';
 
+// Role names as the organizer reads them (errors and notices in their panel).
+const STAFF_ROLE_LABEL: Record<StaffRole, string> = {
+  PROMOTER: 'promotor',
+  SCANNER: 'scanner',
+  MANAGER: 'encargado',
+};
+
+// The invitee reads it first: "RPP" is what their panel is called.
+const INVITED_ROLE_LABEL: Record<StaffRole, string> = {
+  ...STAFF_ROLE_LABEL,
+  PROMOTER: 'promotor (RPP)',
+};
+
 function assertEndAfterStart(startDate: Date, endDate: Date) {
   if (endDate <= startDate) {
     throw new BadRequestException(
@@ -216,7 +229,7 @@ export class EventsService {
     if (!user) throw new BadRequestException('Usuario no encontrado');
     if (!hasUsableMercadoPagoToken(user, new Date())) {
       throw new BadRequestException(
-        'Debes vincular Mercado Pago antes de crear un evento',
+        'Vinculá Mercado Pago antes de crear un evento',
       );
     }
     assertOwnBatchIds([], batches);
@@ -434,11 +447,13 @@ export class EventsService {
     );
     if (existing?.status === 'PENDING') {
       throw new ConflictException(
-        `El usuario ya tiene una invitación pendiente para el rol de ${role} en este evento.`,
+        `El usuario ya tiene una invitación pendiente como ${STAFF_ROLE_LABEL[role]} en este evento.`,
       );
     }
     if (existing?.status === 'ACCEPTED') {
-      throw new ConflictException(`El usuario ya es ${role} de este evento.`);
+      throw new ConflictException(
+        `El usuario ya es ${STAFF_ROLE_LABEL[role]} de este evento.`,
+      );
     }
 
     const staff = existing
@@ -455,19 +470,19 @@ export class EventsService {
           commissionValue,
         });
 
-    let commString = '';
+    let commission = '';
     if (role === 'PROMOTER' && commissionType && commissionValue) {
-      commString =
+      commission =
         commissionType === 'PERCENTAGE'
-          ? ` (${commissionValue}% por ticket)`
-          : ` ($${commissionValue} por ticket)`;
+          ? `, con ${commissionValue}% de comisión por entrada`
+          : `, con $${commissionValue} de comisión por entrada`;
     }
 
     await this.notificationsService.create({
       userId: user.id,
       type: 'STAFF_INVITE',
-      title: `Nueva invitación de Staff`,
-      message: `Has sido invitado${existing ? ' nuevamente' : ''} como ${role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} para el evento "${event.title}".${commString}`,
+      title: 'Nueva invitación',
+      message: `Te invitaron${existing ? ' de nuevo' : ''} como ${INVITED_ROLE_LABEL[role]} al evento "${event.title}"${commission}.`,
       eventId: event.id,
       metadata: {
         eventStaffId: staff.id,
@@ -612,8 +627,8 @@ export class EventsService {
     await this.notificationsService.create({
       userId: staff.event.organizerId,
       type: 'SYSTEM',
-      title: accepted ? 'Invitación Aceptada' : 'Invitación Rechazada',
-      message: `${staff.user.name} ha ${accepted ? 'aceptado' : 'rechazado'} tu invitación para ser ${staff.role === 'PROMOTER' ? 'Relaciones Públicas' : 'Escáner'} en "${staff.event.title}".`,
+      title: accepted ? 'Invitación aceptada' : 'Invitación rechazada',
+      message: `${staff.user.name} ${accepted ? 'aceptó' : 'rechazó'} tu invitación para ser ${STAFF_ROLE_LABEL[staff.role]} en "${staff.event.title}".`,
       eventId: staff.event.id,
     });
   }
