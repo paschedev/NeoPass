@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
+import { ARGENTINA_TIME_ZONE } from '../common/argentina-time-zone';
 
-const ARGENTINA_TIME_ZONE = 'America/Argentina/Buenos_Aires';
 const CHART_DAYS = 30;
 // Argentina has no daylight saving time: a day is always 24 h.
 const DAY_MS = 24 * 60 * 60 * 1000;
