@@ -97,6 +97,10 @@ export function buildEventSchema(
       endDate: z.string(),
       venueName: required('Poné el nombre del lugar'),
       venueAddress: required('Poné la dirección'),
+      // Ubicación en el mapa, opcional: los tres datos van juntos o vacíos.
+      venueCity: z.string().nullable(),
+      latitude: z.number().nullable(),
+      longitude: z.number().nullable(),
       batches: z.array(batchSchema),
     })
     .superRefine((values, ctx) => {
@@ -200,6 +204,9 @@ export type SavedEvent = {
   endDate: string;
   venueName: string | null;
   venueAddress: string | null;
+  venueCity?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   ticketBatches?: SavedBatch[];
 };
 
@@ -213,6 +220,9 @@ export function toEventFormInput(event: SavedEvent): EventFormInput {
     endDate: toDateTimeLocalInput(event.endDate),
     venueName: event.venueName ?? '',
     venueAddress: event.venueAddress ?? '',
+    venueCity: event.venueCity ?? null,
+    latitude: event.latitude ?? null,
+    longitude: event.longitude ?? null,
     batches: (event.ticketBatches ?? []).map((batch) => ({
       id: batch.id,
       name: batch.name,

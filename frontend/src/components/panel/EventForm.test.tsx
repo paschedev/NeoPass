@@ -8,6 +8,12 @@ import {
 } from '@testing-library/react';
 import { apiFetch } from '@/utils/api';
 import type { EventFormInput } from '@/utils/event-form';
+import {
+  fetchPlace,
+  isMapsEnabled,
+  mountLocationMap,
+  searchPlaces,
+} from '@/utils/google-maps';
 import toast from '@/utils/toast';
 import EventForm from './EventForm';
 
@@ -15,6 +21,13 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ back: vi.fn() }) }));
 vi.mock('@/utils/api', () => ({ apiFetch: vi.fn() }));
 vi.mock('@/utils/toast', () => ({
   default: { error: vi.fn(), success: vi.fn() },
+}));
+// Google Maps es un servicio externo: se simula entero.
+vi.mock('@/utils/google-maps', () => ({
+  isMapsEnabled: vi.fn(),
+  searchPlaces: vi.fn(),
+  fetchPlace: vi.fn(),
+  mountLocationMap: vi.fn(),
 }));
 
 const NOW = new Date('2026-10-01T12:00:00-03:00');
@@ -28,6 +41,9 @@ const saved: EventFormInput = {
   endDate: '2026-10-11T05:00',
   venueName: 'Club Central',
   venueAddress: 'Av. Siempre Viva 742',
+  venueCity: null,
+  latitude: null,
+  longitude: null,
   batches: [],
 };
 
@@ -157,6 +173,9 @@ describe('EventForm', () => {
       endDate: '2026-10-11T08:00:00.000Z',
       venueName: 'Club Central',
       venueAddress: 'Av. Siempre Viva 742',
+      venueCity: null,
+      latitude: null,
+      longitude: null,
       batches: [
         {
           ...savedBatch(),
@@ -465,6 +484,186 @@ describe('EventForm', () => {
       expect(saleCalls()[0][1]).toMatchObject({
         body: JSON.stringify({ action: 'HIDE' }),
       });
+    });
+  });
+
+  describe('ubicación en el mapa', () => {
+    const OBELISCO = { latitude: -34.6037389, longitude: -58.3815704 };
+    const SUGGESTION = {
+      id: 'lugar-1',
+      mainText: 'Teatro Gran Rex',
+      secondaryText: 'Av. Corrientes, Buenos Aires',
+    };
+    const PLACE = {
+      address: 'Av. Corrientes 857, C1043 Buenos Aires, Argentina',
+      city: 'Buenos Aires',
+      ...OBELISCO,
+    };
+    const LOCATED = { ...saved, venueCity: 'Buenos Aires', ...OBELISCO };
+
+    beforeEach(() => {
+      vi.mocked(isMapsEnabled).mockReturnValue(true);
+      vi.mocked(searchPlaces).mockResolvedValue([SUGGESTION]);
+      vi.mocked(fetchPlace).mockResolvedValue(PLACE);
+      vi.mocked(mountLocationMap).mockResolvedValue({
+        setCenter: vi.fn(),
+        destroy: vi.fn(),
+      });
+    });
+
+    const renderWith = (
+      values: EventFormInput,
+      phase: 'NOT_STARTED' | 'IN_PROGRESS' = 'NOT_STARTED',
+    ) => {
+      const onSubmit = vi.fn();
+      render(
+        <EventForm
+          mode="edit"
+          eventId="e1"
+          rules={{ phase, saved: values }}
+          defaultValues={values}
+          onSubmit={onSubmit}
+        />,
+      );
+      return onSubmit;
+    };
+
+    const typeAddress = (text: string) =>
+      fireEvent.change(screen.getByLabelText('Dirección'), {
+        target: { value: text },
+      });
+
+    const submitted = async (onSubmit: ReturnType<typeof vi.fn>) => {
+      fireEvent.click(screen.getByRole('button', { name: /guardar/i }));
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+      return onSubmit.mock.calls[0][0] as Record<string, unknown>;
+    };
+
+    it('al escribir la dirección ofrece los lugares que encuentra Google', async () => {
+      renderWith(saved);
+
+      typeAddress('Gran Rex');
+
+      const option = await screen.findByRole('option', {
+        name: /Teatro Gran Rex/,
+      });
+      expect(option).toHaveTextContent('Av. Corrientes, Buenos Aires');
+      expect(searchPlaces).toHaveBeenCalledWith('Gran Rex');
+      expect(screen.getByText('Google Maps')).toBeInTheDocument();
+    });
+
+    it('elegir un lugar completa la dirección y la ciudad, y el evento se guarda con su ubicación', async () => {
+      const onSubmit = renderWith(saved);
+
+      typeAddress('Gran Rex');
+      fireEvent.click(await screen.findByRole('option', { name: /Gran Rex/ }));
+
+      await waitFor(() =>
+        expect(screen.getByLabelText('Dirección')).toHaveValue(PLACE.address),
+      );
+      expect(fetchPlace).toHaveBeenCalledWith('lugar-1');
+      expect(screen.queryByRole('option')).not.toBeInTheDocument();
+      expect(screen.getByText(/Ciudad: Buenos Aires/)).toBeInTheDocument();
+      expect(await submitted(onSubmit)).toMatchObject({
+        venueName: 'Club Central',
+        venueAddress: PLACE.address,
+        venueCity: 'Buenos Aires',
+        ...OBELISCO,
+      });
+    });
+
+    it('si el nombre del lugar está vacío, lo completa con el del lugar elegido', async () => {
+      renderWith({ ...saved, venueName: '' });
+
+      typeAddress('Gran Rex');
+      fireEvent.click(await screen.findByRole('option', { name: /Gran Rex/ }));
+
+      await waitFor(() =>
+        expect(screen.getByLabelText('Nombre del lugar')).toHaveValue(
+          'Teatro Gran Rex',
+        ),
+      );
+    });
+
+    it('mover el mapa ajusta el punto exacto que se guarda', async () => {
+      const onSubmit = renderWith(LOCATED);
+      await waitFor(() => expect(mountLocationMap).toHaveBeenCalled());
+      const [, center, onMove] = vi.mocked(mountLocationMap).mock.calls[0];
+      expect(center).toEqual(OBELISCO);
+
+      onMove({ latitude: -34.61, longitude: -58.39 });
+
+      expect(await submitted(onSubmit)).toMatchObject({
+        venueCity: 'Buenos Aires',
+        latitude: -34.61,
+        longitude: -58.39,
+      });
+    });
+
+    it('quitar la ubicación deja solo la dirección escrita', async () => {
+      const onSubmit = renderWith(LOCATED);
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Quitar ubicación del mapa' }),
+      );
+
+      expect(await submitted(onSubmit)).toMatchObject({
+        venueAddress: 'Av. Siempre Viva 742',
+        venueCity: null,
+        latitude: null,
+        longitude: null,
+      });
+    });
+
+    it('escribir la dirección a mano, sin elegir un lugar, guarda el evento sin ubicación', async () => {
+      const onSubmit = renderWith(saved);
+
+      typeAddress('Ruta 9 km 50, portón verde');
+      await screen.findByRole('option', { name: /Gran Rex/ });
+
+      expect(await submitted(onSubmit)).toMatchObject({
+        venueAddress: 'Ruta 9 km 50, portón verde',
+        venueCity: null,
+        latitude: null,
+        longitude: null,
+      });
+    });
+
+    it('si Google no responde, la dirección se puede escribir igual', async () => {
+      vi.mocked(searchPlaces).mockRejectedValue(new Error('sin conexión'));
+      const onSubmit = renderWith(saved);
+
+      typeAddress('Calle Falsa 123');
+      await waitFor(() => expect(searchPlaces).toHaveBeenCalled());
+
+      expect(screen.queryByRole('option')).not.toBeInTheDocument();
+      expect(await submitted(onSubmit)).toMatchObject({
+        venueAddress: 'Calle Falsa 123',
+      });
+    });
+
+    it('sin la clave de Google la dirección es un campo de texto común', async () => {
+      vi.mocked(isMapsEnabled).mockReturnValue(false);
+      const onSubmit = renderWith(saved);
+
+      typeAddress('Av. Corrientes 857');
+
+      expect(await submitted(onSubmit)).toMatchObject({
+        venueAddress: 'Av. Corrientes 857',
+        latitude: null,
+      });
+      expect(searchPlaces).not.toHaveBeenCalled();
+      expect(mountLocationMap).not.toHaveBeenCalled();
+    });
+
+    it('con el evento en curso la ubicación queda fija: no se busca, no se mueve ni se quita', () => {
+      renderWith({ ...LOCATED, startDate: '2026-10-01T10:00' }, 'IN_PROGRESS');
+
+      expect(screen.getByLabelText('Dirección')).toHaveAttribute('readonly');
+      expect(
+        screen.queryByRole('button', { name: 'Quitar ubicación del mapa' }),
+      ).not.toBeInTheDocument();
+      expect(mountLocationMap).not.toHaveBeenCalled();
     });
   });
 });

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import toast from '@/utils/toast';
 import CustomSelect from '@/components/CustomSelect';
+import VenueMap from '@/components/events/VenueMap';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { TURNSTILE_OPTIONS } from '@/utils/captcha';
 import { apiFetch } from '@/utils/api';
@@ -229,6 +230,12 @@ function EventContent() {
                 </div>
               </div>
             </div>
+
+            <VenueMap
+              latitude={event.latitude}
+              longitude={event.longitude}
+              venueName={event.venueName}
+            />
           </div>
 
           <div>

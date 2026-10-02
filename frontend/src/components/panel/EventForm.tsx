@@ -17,6 +17,7 @@ import {
   type EventFormOutput,
 } from '@/utils/event-form';
 import FlyerField from './FlyerField';
+import VenueLocationField from './VenueLocationField';
 
 const EMPTY_EVENT: EventFormInput = {
   title: '',
@@ -27,6 +28,9 @@ const EMPTY_EVENT: EventFormInput = {
   endDate: '',
   venueName: '',
   venueAddress: '',
+  venueCity: null,
+  latitude: null,
+  longitude: null,
   batches: [],
 };
 
@@ -278,14 +282,12 @@ export default function EventForm({
             label="Dirección"
             error={errors.venueAddress?.message}
           >
-            <input
-              id="venueAddress"
-              type="text"
-              readOnly={inProgress}
-              placeholder="Ej: Av. Principal 1234, CABA"
-              className={fieldClass(errors.venueAddress?.message)}
-              {...register('venueAddress')}
-            />
+            <FormProvider {...form}>
+              <VenueLocationField
+                readOnly={inProgress}
+                className={fieldClass(errors.venueAddress?.message)}
+              />
+            </FormProvider>
           </Field>
         </div>
       </Section>

@@ -20,6 +20,9 @@ const valid: EventFormInput = {
   endDate: '2026-10-11T05:00',
   venueName: 'Club Central',
   venueAddress: 'Av. Siempre Viva 742',
+  venueCity: null,
+  latitude: null,
+  longitude: null,
   batches: [],
 };
 
@@ -64,6 +67,9 @@ describe('buildEventSchema', () => {
       endDate: '',
       venueName: '',
       venueAddress: '',
+      venueCity: null,
+      latitude: null,
+      longitude: null,
       batches: [],
     };
 
@@ -331,6 +337,9 @@ describe('toEventFormInput', () => {
       endDate: '2026-10-11T05:00',
       venueName: '',
       venueAddress: 'Calle 1',
+      venueCity: null,
+      latitude: null,
+      longitude: null,
       batches: [
         {
           id: 'b1',
@@ -342,6 +351,47 @@ describe('toEventFormInput', () => {
           ticketTypes: [{ ...general, stock: '100' }],
         },
       ],
+    });
+  });
+});
+
+describe('ubicación en el mapa', () => {
+  const location = {
+    venueCity: 'Buenos Aires',
+    latitude: -34.6037389,
+    longitude: -58.3815704,
+  };
+  const savedEvent = {
+    title: 'Fiesta',
+    description: 'Desc',
+    imageUrl: null,
+    youtubeLink: null,
+    startDate: '2026-10-11T01:00:00.000Z',
+    endDate: '2026-10-11T08:00:00.000Z',
+    venueName: 'Club',
+    venueAddress: 'Calle 1',
+  };
+
+  it('es opcional: un evento sin ubicación es válido', () => {
+    expect(errorsOf(valid)).toEqual({});
+  });
+
+  it('carga la ubicación guardada del evento', () => {
+    expect(toEventFormInput({ ...savedEvent, ...location })).toMatchObject(
+      location,
+    );
+  });
+
+  it('la manda al guardar, y sin ubicación manda los tres datos vacíos', () => {
+    const schema = buildEventSchema({ phase: 'NOT_STARTED' }, clock);
+
+    expect(
+      toEventPayload(schema.parse({ ...valid, ...location })),
+    ).toMatchObject(location);
+    expect(toEventPayload(schema.parse(valid))).toMatchObject({
+      venueCity: null,
+      latitude: null,
+      longitude: null,
     });
   });
 });
@@ -362,6 +412,9 @@ describe('toEventPayload', () => {
       endDate: '2026-10-11T08:00:00.000Z',
       venueName: 'Club Central',
       venueAddress: 'Av. Siempre Viva 742',
+      venueCity: null,
+      latitude: null,
+      longitude: null,
       batches: [
         {
           tempId: 'nueva',
