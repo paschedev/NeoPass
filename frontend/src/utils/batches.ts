@@ -48,16 +48,20 @@ export function getBatchSaleStatus(
   return hasAvailable ? 'ON_SALE' : 'SOLD_OUT';
 }
 
-// "Finalizar venta ya": la venta termina ahora. Un inicio todavía futuro se
-// descarta, porque si no la tanda empezaría después de terminar.
-export function endBatchSaleNow<T extends SaleWindow>(batch: T, now: Date): T {
-  const startsLater =
-    batch.publishAt !== null && new Date(batch.publishAt) > now;
-  return {
-    ...batch,
-    publishAt: startsLater ? null : batch.publishAt,
-    closeAt: now.toISOString(),
-  };
+export type BatchSaleAction = 'END' | 'REOPEN' | 'HIDE' | 'SHOW';
+
+// Acciones que se aplican en el momento sobre una tanda guardada (el backend
+// decide: src/events/batch-sale-action.ts). Antes de que empiece el evento,
+// ocultar y mostrar se cambian en el formulario; en curso es la única forma.
+export function getBatchSaleActions(
+  batch: Pick<BatchForStatus, 'isVisible' | 'closeAt'>,
+  now: Date,
+  eventInProgress: boolean,
+): BatchSaleAction[] {
+  const ended = batch.closeAt !== null && new Date(batch.closeAt) <= now;
+  const sale: BatchSaleAction = ended ? 'REOPEN' : 'END';
+  if (!eventInProgress) return [sale];
+  return [sale, batch.isVisible ? 'HIDE' : 'SHOW'];
 }
 
 export function defaultSaleStart(now: Date): string {

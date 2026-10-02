@@ -8,10 +8,14 @@ import {
 } from '@testing-library/react';
 import { apiFetch } from '@/utils/api';
 import type { EventFormInput } from '@/utils/event-form';
+import toast from '@/utils/toast';
 import EventForm from './EventForm';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ back: vi.fn() }) }));
 vi.mock('@/utils/api', () => ({ apiFetch: vi.fn() }));
+vi.mock('@/utils/toast', () => ({
+  default: { error: vi.fn(), success: vi.fn() },
+}));
 
 const NOW = new Date('2026-10-01T12:00:00-03:00');
 
@@ -231,16 +235,21 @@ describe('EventForm', () => {
     ).toHaveLength(1);
   });
 
-  it('en curso: el inicio y el lugar quedan fijos y las tandas deshabilitadas', () => {
-    const started = { ...saved, startDate: '2026-10-01T10:00' };
+  const renderInProgress = (batches: FormBatch[] = []) => {
+    const started = { ...saved, startDate: '2026-10-01T10:00', batches };
     render(
       <EventForm
         mode="edit"
+        eventId="e1"
         rules={{ phase: 'IN_PROGRESS', saved: started }}
         defaultValues={started}
         onSubmit={vi.fn()}
       />,
     );
+  };
+
+  it('en curso: el inicio y el lugar quedan fijos y no se pueden agregar ni editar tandas', () => {
+    renderInProgress([savedBatch()]);
 
     expect(screen.getByText(/el evento está en curso/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Inicio')).toHaveAttribute('readonly');
@@ -249,6 +258,213 @@ describe('EventForm', () => {
     );
     expect(screen.getByLabelText('Dirección')).toHaveAttribute('readonly');
     expect(screen.getByLabelText('Fin')).not.toHaveAttribute('readonly');
-    expect(screen.getByRole('group', { name: 'Tandas' })).toBeDisabled();
+    expect(screen.getByLabelText('Nombre de la tanda')).toBeDisabled();
+    expect(screen.getByPlaceholderText('Nombre de la entrada')).toBeDisabled();
+    expect(
+      screen.queryByRole('button', { name: /nueva tanda/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  describe('acciones de venta de una tanda', () => {
+    const SALE_PATH = '/events/e1/batches/b1/sale';
+    const ENDED_AT = '2026-10-01T15:00:00.000Z';
+
+    const renderSaved = (batches: FormBatch[], onSubmit = vi.fn()) => {
+      const values = { ...saved, batches };
+      render(
+        <EventForm
+          mode="edit"
+          eventId="e1"
+          rules={{ phase: 'NOT_STARTED', saved: values }}
+          defaultValues={values}
+          onSubmit={onSubmit}
+        />,
+      );
+      return onSubmit;
+    };
+
+    // El servidor responde cómo quedó la tanda.
+    const serverAnswers = (answer: Response) =>
+      vi
+        .mocked(apiFetch)
+        .mockImplementation(async (path) =>
+          path.endsWith('/sale') ? answer : Response.json([]),
+        );
+
+    const saleCalls = () =>
+      vi.mocked(apiFetch).mock.calls.filter(([path]) => path.endsWith('/sale'));
+
+    const confirm = (name: RegExp) =>
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', { name }),
+      );
+
+    it('finalizar la venta pide confirmación, y cancelar no cambia nada', () => {
+      renderSaved([savedBatch()]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Finalizar venta' }));
+
+      const dialog = screen.getByRole('dialog');
+      expect(
+        within(dialog).getByText('¿Finalizar la venta de «Preventa»?'),
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByText(/quienes ya están pagando/i),
+      ).toBeInTheDocument();
+
+      confirm(/cancelar/i);
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(saleCalls()).toHaveLength(0);
+      expect(screen.getByText('A la venta')).toBeInTheDocument();
+    });
+
+    it('al confirmar, la venta termina en el momento sin guardar el formulario', async () => {
+      serverAnswers(
+        Response.json({
+          id: 'b1',
+          isVisible: true,
+          publishAt: null,
+          closeAt: ENDED_AT,
+        }),
+      );
+      const onSubmit = renderSaved([savedBatch()]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Finalizar venta' }));
+      confirm(/finalizar venta/i);
+
+      expect(await screen.findByText('Finalizada')).toBeInTheDocument();
+      expect(saleCalls()).toEqual([
+        [SALE_PATH, { method: 'PUT', body: JSON.stringify({ action: 'END' }) }],
+      ]);
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Reabrir venta' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(/la venta de la tanda termina al guardar/i),
+      ).not.toBeInTheDocument();
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it('guardar el formulario después conserva el fin de venta que puso el servidor', async () => {
+      serverAnswers(
+        Response.json({
+          id: 'b1',
+          isVisible: true,
+          publishAt: null,
+          closeAt: ENDED_AT,
+        }),
+      );
+      const onSubmit = renderSaved([savedBatch()]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Finalizar venta' }));
+      confirm(/finalizar venta/i);
+      await screen.findByText('Finalizada');
+      fireEvent.click(screen.getByRole('button', { name: /guardar/i }));
+
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+      expect(onSubmit.mock.calls[0][0].batches[0]).toMatchObject({
+        id: 'b1',
+        closeAt: ENDED_AT,
+      });
+    });
+
+    it('una venta finalizada se puede reabrir', async () => {
+      serverAnswers(
+        Response.json({
+          id: 'b1',
+          isVisible: true,
+          publishAt: null,
+          closeAt: null,
+        }),
+      );
+      renderSaved([savedBatch({ closeAt: '2026-10-01T10:00:00.000Z' })]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Reabrir venta' }));
+      confirm(/reabrir venta/i);
+
+      expect(await screen.findByText('A la venta')).toBeInTheDocument();
+      expect(saleCalls()[0][1]).toMatchObject({
+        body: JSON.stringify({ action: 'REOPEN' }),
+      });
+    });
+
+    it('si el servidor rechaza la acción muestra el motivo y la tanda queda igual', async () => {
+      serverAnswers(
+        Response.json(
+          { message: 'Un evento finalizado no se puede editar' },
+          { status: 409 },
+        ),
+      );
+      renderSaved([savedBatch()]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Finalizar venta' }));
+      confirm(/finalizar venta/i);
+
+      await waitFor(() =>
+        expect(toast.error).toHaveBeenCalledWith(
+          'Un evento finalizado no se puede editar',
+        ),
+      );
+      expect(screen.getByText('A la venta')).toBeInTheDocument();
+    });
+
+    it('antes de que empiece el evento, ocultar se hace desde Visibilidad y no como acción', () => {
+      renderSaved([savedBatch()]);
+
+      expect(
+        screen.queryByRole('button', { name: 'Ocultar tanda' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('una tanda nueva, todavía sin guardar, no tiene acciones', () => {
+      renderSaved([savedBatch({ id: undefined, tempId: 'nueva' })]);
+
+      expect(
+        screen.queryByRole('button', { name: 'Finalizar venta' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('con el evento en curso se puede finalizar la venta aunque la tanda esté bloqueada', async () => {
+      serverAnswers(
+        Response.json({
+          id: 'b1',
+          isVisible: true,
+          publishAt: null,
+          closeAt: ENDED_AT,
+        }),
+      );
+      renderInProgress([savedBatch()]);
+
+      const endSale = screen.getByRole('button', { name: 'Finalizar venta' });
+      expect(endSale).toBeEnabled();
+      fireEvent.click(endSale);
+      confirm(/finalizar venta/i);
+
+      expect(await screen.findByText('Finalizada')).toBeInTheDocument();
+    });
+
+    it('con el evento en curso se puede ocultar la tanda', async () => {
+      serverAnswers(
+        Response.json({
+          id: 'b1',
+          isVisible: false,
+          publishAt: null,
+          closeAt: null,
+        }),
+      );
+      renderInProgress([savedBatch()]);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Ocultar tanda' }));
+      confirm(/ocultar tanda/i);
+
+      expect(
+        await screen.findByRole('button', { name: 'Mostrar tanda' }),
+      ).toBeEnabled();
+      expect(saleCalls()[0][1]).toMatchObject({
+        body: JSON.stringify({ action: 'HIDE' }),
+      });
+    });
   });
 });
