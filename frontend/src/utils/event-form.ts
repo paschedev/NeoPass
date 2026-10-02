@@ -99,6 +99,7 @@ export function buildEventSchema(
       venueAddress: required('Poné la dirección'),
       // Ubicación en el mapa, opcional: los tres datos van juntos o vacíos.
       venueCity: z.string().nullable(),
+      venuePlaceId: z.string().nullable(),
       latitude: z.number().nullable(),
       longitude: z.number().nullable(),
       batches: z.array(batchSchema),
@@ -205,6 +206,7 @@ export type SavedEvent = {
   venueName: string | null;
   venueAddress: string | null;
   venueCity?: string | null;
+  venuePlaceId?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   ticketBatches?: SavedBatch[];
@@ -221,6 +223,7 @@ export function toEventFormInput(event: SavedEvent): EventFormInput {
     venueName: event.venueName ?? '',
     venueAddress: event.venueAddress ?? '',
     venueCity: event.venueCity ?? null,
+    venuePlaceId: event.venuePlaceId ?? null,
     latitude: event.latitude ?? null,
     longitude: event.longitude ?? null,
     batches: (event.ticketBatches ?? []).map((batch) => ({

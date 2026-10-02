@@ -7,6 +7,12 @@ import {
 } from './maps';
 
 const obelisco = { latitude: -34.6037389, longitude: -58.3815704 };
+// El mismo punto elegido de la lista de Google.
+const obeliscoPlace = {
+  ...obelisco,
+  venuePlaceId: 'ChIJS4Xb0z_LvJURM1UCa7Y8t7k',
+  venueAddress: 'Av. 9 de Julio s/n, Buenos Aires',
+};
 
 describe('hasMapLocation', () => {
   it('un evento tiene ubicación en el mapa solo con sus dos coordenadas', () => {
@@ -19,15 +25,36 @@ describe('hasMapLocation', () => {
 });
 
 describe('getDirectionsUrl', () => {
-  it('abre Google Maps en la coordenada del lugar', () => {
-    expect(getDirectionsUrl(obelisco)).toBe(
+  it('con un lugar de Google abre su ficha, buscado por su dirección y no por coordenadas', () => {
+    const url = new URL(getDirectionsUrl(obeliscoPlace));
+
+    expect(url.origin + url.pathname).toBe(
+      'https://www.google.com/maps/search/',
+    );
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      api: '1',
+      query: 'Av. 9 de Julio s/n, Buenos Aires',
+      query_place_id: 'ChIJS4Xb0z_LvJURM1UCa7Y8t7k',
+    });
+  });
+
+  it('un punto marcado a mano se abre por su coordenada', () => {
+    expect(getDirectionsUrl({ ...obelisco, venuePlaceId: null })).toBe(
       'https://www.google.com/maps/search/?api=1&query=-34.6037389%2C-58.3815704',
     );
   });
 });
 
 describe('getEmbedMapUrl', () => {
-  it('arma el mapa embebido con el punto del lugar, en español y para Argentina', () => {
+  it('con un lugar de Google muestra su ficha', () => {
+    const url = new URL(getEmbedMapUrl(obeliscoPlace, 'clave-publica'));
+
+    expect(url.searchParams.get('q')).toBe(
+      'place_id:ChIJS4Xb0z_LvJURM1UCa7Y8t7k',
+    );
+  });
+
+  it('un punto marcado a mano se muestra por su coordenada, en español y para Argentina', () => {
     const url = new URL(getEmbedMapUrl(obelisco, 'clave-publica'));
 
     expect(url.origin + url.pathname).toBe(

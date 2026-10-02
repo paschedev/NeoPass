@@ -30,6 +30,7 @@ export type EventFormValues = {
   venueName: string;
   venueAddress: string;
   venueCity: string | null;
+  venuePlaceId: string | null;
   latitude: number | null;
   longitude: number | null;
   batches: unknown[];

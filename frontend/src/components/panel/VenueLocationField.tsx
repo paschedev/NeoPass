@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MapPin, X } from 'lucide-react';
+import { MapPin, Move, X } from 'lucide-react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import type { EventFormInput } from '@/utils/event-form';
 import {
@@ -19,26 +19,25 @@ const SEARCH_DELAY_MS = 300;
 const MIN_SEARCH_LENGTH = 3;
 const PLACE_ERROR = 'No pudimos ubicar ese lugar en el mapa';
 
-// Mapa con el punto fijo en el centro: se ajusta moviendo el mapa por debajo.
+// Mapa con el punto fijo en el centro. Ajustable, se mueve el mapa por debajo.
 function LocationMapPicker({
   location,
+  adjustable,
   onMove,
 }: {
   location: MapLocation;
+  adjustable: boolean;
   onMove: (location: MapLocation) => void;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const map = useRef<LocationMap | null>(null);
-  const initial = useRef({ location, onMove });
+  const initial = useRef({ location, adjustable, onMove });
 
   useEffect(() => {
     if (!container.current) return;
     let unmounted = false;
-    mountLocationMap(
-      container.current,
-      initial.current.location,
-      initial.current.onMove,
-    )
+    const { location: center, ...options } = initial.current;
+    mountLocationMap(container.current, center, options)
       .then((mounted) => {
         if (unmounted) mounted.destroy();
         else map.current = mounted;
@@ -56,6 +55,10 @@ function LocationMapPicker({
     map.current?.setCenter({ latitude, longitude });
   }, [latitude, longitude]);
 
+  useEffect(() => {
+    map.current?.setAdjustable(adjustable);
+  }, [adjustable]);
+
   return (
     <div className="relative h-56 bg-neutral-900">
       <div ref={container} className="absolute inset-0" />
@@ -68,8 +71,10 @@ function LocationMapPicker({
 }
 
 // Dirección del evento. Con Google Maps disponible busca lugares mientras se
-// escribe; elegir uno guarda además el punto en el mapa y la ciudad. Es
-// opcional: una dirección escrita a mano queda sin mapa.
+// escribe; elegir uno guarda además el lugar de Google, su punto y la ciudad, y
+// Google Maps lo muestra por su nombre. El mapa queda fijo salvo que se pida
+// ajustar el punto a mano: ese punto ya no es el lugar y se ve por coordenadas.
+// Es opcional: una dirección escrita a mano queda sin mapa.
 export default function VenueLocationField({
   readOnly,
   className,
@@ -80,11 +85,12 @@ export default function VenueLocationField({
 }) {
   const { register, setValue, getValues, control } =
     useFormContext<EventFormInput>();
-  const [latitude, longitude, venueCity] = useWatch({
+  const [latitude, longitude, venueCity, venuePlaceId] = useWatch({
     control,
-    name: ['latitude', 'longitude', 'venueCity'],
+    name: ['latitude', 'longitude', 'venueCity', 'venuePlaceId'],
   });
   const [suggestions, setSuggestions] = useState<PlaceSuggestion[]>([]);
+  const [adjusting, setAdjusting] = useState(false);
   const searchTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const lastSearch = useRef(0);
 
@@ -134,6 +140,8 @@ export default function VenueLocationField({
         shouldDirty: true,
       });
       setLocation(place, place.city);
+      setValue('venuePlaceId', place.placeId, { shouldDirty: true });
+      setAdjusting(false);
       if (!getValues('venueName').trim()) {
         setValue('venueName', suggestion.mainText, {
           shouldValidate: true,
@@ -146,11 +154,28 @@ export default function VenueLocationField({
     }
   };
 
+  // Un punto movido a mano deja de ser el lugar de Google elegido.
+  const moveByHand = (moved: MapLocation) => {
+    setLocation(moved);
+    setValue('venuePlaceId', null, { shouldDirty: true });
+  };
+
   const removeLocation = () => {
     setValue('latitude', null, { shouldDirty: true });
     setValue('longitude', null, { shouldDirty: true });
     setValue('venueCity', null, { shouldDirty: true });
+    setValue('venuePlaceId', null, { shouldDirty: true });
+    setAdjusting(false);
   };
+
+  const isGooglePlace = Boolean(venuePlaceId);
+  const hint = !searchable
+    ? 'La página del evento muestra este punto en el mapa.'
+    : !isGooglePlace
+      ? 'Punto marcado a mano: Google Maps lo muestra por coordenadas. Mové el mapa para ajustarlo.'
+      : adjusting
+        ? 'Mové el mapa hasta el punto exacto. Si lo movés, Google Maps va a mostrar el punto por coordenadas en lugar del nombre del lugar.'
+        : 'Google Maps va a mostrar la ficha de este lugar.';
 
   const addressField = register('venueAddress');
 
@@ -226,27 +251,35 @@ export default function VenueLocationField({
           {searchable && (
             <LocationMapPicker
               location={location}
-              onMove={(moved) => setLocation(moved)}
+              adjustable={!isGooglePlace || adjusting}
+              onMove={moveByHand}
             />
           )}
-          <div className="flex items-center justify-between gap-3 px-4 py-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3">
             <p className="text-sm text-neutral-300">
               {venueCity ? `Ciudad: ${venueCity}` : 'Ubicación marcada'}
-              <span className="block text-xs text-neutral-500">
-                {searchable
-                  ? 'Mové el mapa para dejar el pin en el punto exacto.'
-                  : 'La página del evento muestra este punto en el mapa.'}
-              </span>
+              <span className="block text-xs text-neutral-500">{hint}</span>
             </p>
             {!readOnly && (
-              <button
-                type="button"
-                onClick={removeLocation}
-                aria-label="Quitar ubicación del mapa"
-                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/15 text-xs font-medium text-neutral-200 hover:bg-white/10 transition-colors"
-              >
-                <X className="w-3.5 h-3.5" /> Quitar
-              </button>
+              <div className="flex gap-2 shrink-0">
+                {searchable && isGooglePlace && !adjusting && (
+                  <button
+                    type="button"
+                    onClick={() => setAdjusting(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/15 text-xs font-medium text-neutral-200 hover:bg-white/10 transition-colors"
+                  >
+                    <Move className="w-3.5 h-3.5" /> Ajustar el punto a mano
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={removeLocation}
+                  aria-label="Quitar ubicación del mapa"
+                  className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-white/15 text-xs font-medium text-neutral-200 hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" /> Quitar
+                </button>
+              </div>
             )}
           </div>
         </div>

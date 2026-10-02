@@ -29,6 +29,7 @@ const EMPTY_EVENT: EventFormInput = {
   venueName: '',
   venueAddress: '',
   venueCity: null,
+  venuePlaceId: null,
   latitude: null,
   longitude: null,
   batches: [],

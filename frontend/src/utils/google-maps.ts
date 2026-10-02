@@ -11,12 +11,15 @@ export type PlaceSuggestion = {
 };
 
 export type PickedPlace = MapLocation & {
+  placeId: string;
   address: string;
   city: string | null;
 };
 
 export type LocationMap = {
   setCenter: (location: MapLocation) => void;
+  // Si se puede mover el mapa para ajustar el punto.
+  setAdjustable: (adjustable: boolean) => void;
   destroy: () => void;
 };
 
@@ -89,6 +92,7 @@ export async function fetchPlace(id: string): Promise<PickedPlace | null> {
   session = null;
   if (!place.location) return null;
   return {
+    placeId: prediction.placeId,
     address: place.formattedAddress ?? prediction.text.text,
     city: getCityFromAddress(place.addressComponents ?? []),
     latitude: roundCoordinate(place.location.lat()),
@@ -104,12 +108,20 @@ const toLatLng = ({ latitude, longitude }: MapLocation) => ({
 const samePoint = (a: MapLocation, b: MapLocation) =>
   a.latitude === b.latitude && a.longitude === b.longitude;
 
-// Mapa para ajustar el punto exacto: el punto es siempre el centro, y `onMove`
-// avisa cuando quien edita deja de mover el mapa.
+const gestures = (adjustable: boolean) => ({
+  gestureHandling: adjustable ? 'greedy' : 'none',
+  zoomControl: adjustable,
+});
+
+// Mapa del punto del evento: el punto es siempre el centro. Si es ajustable,
+// se mueve el mapa por debajo y `onMove` avisa cuando se deja de mover.
 export async function mountLocationMap(
   element: HTMLElement,
   center: MapLocation,
-  onMove: (location: MapLocation) => void,
+  {
+    adjustable,
+    onMove,
+  }: { adjustable: boolean; onMove: (location: MapLocation) => void },
 ): Promise<LocationMap> {
   configure();
   const { Map } = await importLibrary('maps');
@@ -117,9 +129,9 @@ export async function mountLocationMap(
     center: toLatLng(center),
     zoom: 17,
     disableDefaultUI: true,
-    zoomControl: true,
     clickableIcons: false,
-    gestureHandling: 'greedy',
+    keyboardShortcuts: false,
+    ...gestures(adjustable),
   });
 
   let current = center;
@@ -140,6 +152,9 @@ export async function mountLocationMap(
       if (samePoint(location, current)) return;
       current = location;
       map.setCenter(toLatLng(location));
+    },
+    setAdjustable(adjustable) {
+      map.setOptions(gestures(adjustable));
     },
     destroy() {
       listener.remove();

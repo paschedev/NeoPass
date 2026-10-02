@@ -42,6 +42,7 @@ const saved: EventFormInput = {
   venueName: 'Club Central',
   venueAddress: 'Av. Siempre Viva 742',
   venueCity: null,
+  venuePlaceId: null,
   latitude: null,
   longitude: null,
   batches: [],
@@ -174,6 +175,7 @@ describe('EventForm', () => {
       venueName: 'Club Central',
       venueAddress: 'Av. Siempre Viva 742',
       venueCity: null,
+      venuePlaceId: null,
       latitude: null,
       longitude: null,
       batches: [
@@ -495,21 +497,38 @@ describe('EventForm', () => {
       secondaryText: 'Av. Corrientes, Buenos Aires',
     };
     const PLACE = {
+      placeId: 'ChIJ-gran-rex',
       address: 'Av. Corrientes 857, C1043 Buenos Aires, Argentina',
       city: 'Buenos Aires',
       ...OBELISCO,
     };
-    const LOCATED = { ...saved, venueCity: 'Buenos Aires', ...OBELISCO };
+    // Guardado con un lugar elegido de la lista de Google.
+    const LOCATED = {
+      ...saved,
+      venueCity: 'Buenos Aires',
+      venuePlaceId: 'ChIJ-gran-rex',
+      ...OBELISCO,
+    };
+    // Guardado con un punto marcado a mano.
+    const CUSTOM = { ...LOCATED, venuePlaceId: null };
+    const mapControls = {
+      setCenter: vi.fn(),
+      setAdjustable: vi.fn(),
+      destroy: vi.fn(),
+    };
 
     beforeEach(() => {
       vi.mocked(isMapsEnabled).mockReturnValue(true);
       vi.mocked(searchPlaces).mockResolvedValue([SUGGESTION]);
       vi.mocked(fetchPlace).mockResolvedValue(PLACE);
-      vi.mocked(mountLocationMap).mockResolvedValue({
-        setCenter: vi.fn(),
-        destroy: vi.fn(),
-      });
+      vi.mocked(mountLocationMap).mockResolvedValue(mapControls);
     });
+
+    const mountedMap = async () => {
+      await waitFor(() => expect(mountLocationMap).toHaveBeenCalled());
+      const [, center, options] = vi.mocked(mountLocationMap).mock.calls[0];
+      return { center, ...options };
+    };
 
     const renderWith = (
       values: EventFormInput,
@@ -568,7 +587,39 @@ describe('EventForm', () => {
         venueName: 'Club Central',
         venueAddress: PLACE.address,
         venueCity: 'Buenos Aires',
+        venuePlaceId: 'ChIJ-gran-rex',
         ...OBELISCO,
+      });
+    });
+
+    it('con un lugar de Google el mapa queda fijo, para no perder el lugar por tocarlo sin querer', async () => {
+      renderWith(LOCATED);
+
+      expect(await mountedMap()).toMatchObject({
+        center: OBELISCO,
+        adjustable: false,
+      });
+      expect(
+        screen.getByText(/Google Maps va a mostrar la ficha de este lugar/),
+      ).toBeInTheDocument();
+    });
+
+    it('ajustar el punto a mano avisa que se verá por coordenadas, y al mover el mapa se guarda el punto sin el lugar', async () => {
+      const onSubmit = renderWith(LOCATED);
+      const { onMove } = await mountedMap();
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Ajustar el punto a mano' }),
+      );
+
+      expect(mapControls.setAdjustable).toHaveBeenCalledWith(true);
+      expect(screen.getByText(/por coordenadas/)).toBeInTheDocument();
+      onMove({ latitude: -34.61, longitude: -58.39 });
+      expect(await submitted(onSubmit)).toMatchObject({
+        venuePlaceId: null,
+        latitude: -34.61,
+        longitude: -58.39,
+        venueCity: 'Buenos Aires',
       });
     });
 
@@ -585,11 +636,14 @@ describe('EventForm', () => {
       );
     });
 
-    it('mover el mapa ajusta el punto exacto que se guarda', async () => {
-      const onSubmit = renderWith(LOCATED);
-      await waitFor(() => expect(mountLocationMap).toHaveBeenCalled());
-      const [, center, onMove] = vi.mocked(mountLocationMap).mock.calls[0];
+    it('un punto marcado a mano se sigue ajustando moviendo el mapa', async () => {
+      const onSubmit = renderWith(CUSTOM);
+      const { center, adjustable, onMove } = await mountedMap();
       expect(center).toEqual(OBELISCO);
+      expect(adjustable).toBe(true);
+      expect(
+        screen.queryByRole('button', { name: 'Ajustar el punto a mano' }),
+      ).not.toBeInTheDocument();
 
       onMove({ latitude: -34.61, longitude: -58.39 });
 
@@ -610,6 +664,7 @@ describe('EventForm', () => {
       expect(await submitted(onSubmit)).toMatchObject({
         venueAddress: 'Av. Siempre Viva 742',
         venueCity: null,
+        venuePlaceId: null,
         latitude: null,
         longitude: null,
       });
@@ -624,6 +679,7 @@ describe('EventForm', () => {
       expect(await submitted(onSubmit)).toMatchObject({
         venueAddress: 'Ruta 9 km 50, portón verde',
         venueCity: null,
+        venuePlaceId: null,
         latitude: null,
         longitude: null,
       });
