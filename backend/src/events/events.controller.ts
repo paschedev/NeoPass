@@ -16,6 +16,7 @@ import { Roles } from '../auth/roles.decorator';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { UpdateBatchesDto } from './dto/update-batches.dto';
+import { BatchSaleActionDto } from './dto/batch-sale-action.dto';
 import { AddStaffDto } from './dto/add-staff.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ListEventsQueryDto } from './dto/list-events-query.dto';
@@ -103,6 +104,23 @@ export class EventsController {
     @CurrentUser('userId') userId: string,
   ) {
     return this.eventsService.updateBatches(eventId, userId, body.batches);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ORGANIZER', 'ADMIN')
+  @Put(':id/batches/:batchId/sale')
+  changeBatchSale(
+    @Param('id', ParseIdPipe) eventId: string,
+    @Param('batchId', ParseIdPipe) batchId: string,
+    @Body() body: BatchSaleActionDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.eventsService.changeBatchSale(
+      eventId,
+      userId,
+      batchId,
+      body.action,
+    );
   }
 
   // --- STAFF ENDPOINTS ---

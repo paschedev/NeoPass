@@ -50,6 +50,9 @@ export class EventsRepository {
         endDate: true,
         venueName: true,
         venueAddress: true,
+        venueCity: true,
+        latitude: true,
+        longitude: true,
         status: true,
         neoPassFeePercentage: true,
         // Hidden batches never leave the database on the public endpoint.
@@ -96,7 +99,10 @@ export class EventsRepository {
     return this.prisma.event.findUnique({
       where: { id },
       include: {
-        ticketBatches: { include: { ticketTypes: true } },
+        ticketBatches: {
+          orderBy: { createdAt: 'asc' },
+          include: { ticketTypes: true },
+        },
         ticketTypes: true,
       },
     });
@@ -113,7 +119,10 @@ export class EventsRepository {
     return this.prisma.event.findMany({
       where: { organizerId },
       include: {
-        ticketBatches: { include: { ticketTypes: true } },
+        ticketBatches: {
+          orderBy: { createdAt: 'asc' },
+          include: { ticketTypes: true },
+        },
         ticketTypes: true,
       },
       orderBy: { createdAt: 'desc' },
@@ -127,6 +136,21 @@ export class EventsRepository {
         where: { id: eventId },
         include: { ticketBatches: { include: { ticketTypes: true } } },
       });
+    });
+  }
+
+  async updateBatchSale(
+    eventId: string,
+    batchId: string,
+    data: Pick<
+      Prisma.TicketBatchUpdateInput,
+      'isVisible' | 'publishAt' | 'closeAt'
+    >,
+  ) {
+    return this.prisma.ticketBatch.update({
+      where: { id: batchId, eventId },
+      data,
+      select: { id: true, isVisible: true, publishAt: true, closeAt: true },
     });
   }
 

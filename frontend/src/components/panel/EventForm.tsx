@@ -17,6 +17,7 @@ import {
   type EventFormOutput,
 } from '@/utils/event-form';
 import FlyerField from './FlyerField';
+import VenueLocationField from './VenueLocationField';
 
 const EMPTY_EVENT: EventFormInput = {
   title: '',
@@ -27,6 +28,9 @@ const EMPTY_EVENT: EventFormInput = {
   endDate: '',
   venueName: '',
   venueAddress: '',
+  venueCity: null,
+  latitude: null,
+  longitude: null,
   batches: [],
 };
 
@@ -88,11 +92,14 @@ function Section({
 // mismas reglas de fechas que el backend según el momento del evento.
 export default function EventForm({
   mode,
+  eventId,
   rules,
   defaultValues = EMPTY_EVENT,
   onSubmit,
 }: {
   mode: 'create' | 'edit';
+  // Al editar: habilita las acciones de venta de cada tanda guardada.
+  eventId?: string;
   // Se leen al montar: la página arma el formulario con el evento ya cargado.
   rules: EventDateRules;
   defaultValues?: EventFormInput;
@@ -141,7 +148,8 @@ export default function EventForm({
           <p>
             El evento está en curso: podés cambiar los textos, la imagen y
             extender el fin. El inicio, el lugar y las tandas quedan fijos, y la
-            venta sigue.
+            venta sigue. De cada tanda podés finalizar o reabrir la venta, y
+            ocultarla o mostrarla.
           </p>
         </div>
       )}
@@ -274,26 +282,24 @@ export default function EventForm({
             label="Dirección"
             error={errors.venueAddress?.message}
           >
-            <input
-              id="venueAddress"
-              type="text"
-              readOnly={inProgress}
-              placeholder="Ej: Av. Principal 1234, CABA"
-              className={fieldClass(errors.venueAddress?.message)}
-              {...register('venueAddress')}
-            />
+            <FormProvider {...form}>
+              <VenueLocationField
+                readOnly={inProgress}
+                className={fieldClass(errors.venueAddress?.message)}
+              />
+            </FormProvider>
           </Field>
         </div>
       </Section>
 
       <div className="mt-12 pt-12 border-t border-white/10">
-        <fieldset
-          aria-label="Tandas"
-          disabled={inProgress}
-          className="min-w-0 disabled:opacity-60"
-        >
+        <fieldset aria-label="Tandas" className="min-w-0">
           <FormProvider {...form}>
-            <TandasManager saved={rules.saved?.batches} />
+            <TandasManager
+              saved={rules.saved?.batches}
+              eventId={eventId}
+              locked={inProgress}
+            />
           </FormProvider>
         </fieldset>
       </div>

@@ -18,9 +18,11 @@ import { getEventPhase } from './event-phase';
 import { PromoterClicksService } from './promoter-clicks.service';
 import { hasUsableMercadoPagoToken } from '../payments/mercadopago-token';
 import { planBatchChanges } from './batch-changes';
+import { BatchSaleAction, planBatchSaleAction } from './batch-sale-action';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { BatchDto } from './dto/batch.dto';
+import { EventLocationDto } from './dto/event-location.dto';
 
 // Role names as the organizer reads them (errors and notices in their panel).
 const STAFF_ROLE_LABEL: Record<StaffRole, string> = {
@@ -49,7 +51,24 @@ type EventForEdit = {
   endDate: Date;
   venueName: string | null;
   venueAddress: string | null;
+  venueCity: string | null;
+  latitude: number | null;
+  longitude: number | null;
 };
+
+// The map location is both coordinates or none: a single one, or one cleared
+// without the other, would leave the event pointing nowhere.
+function assertCompleteLocation({ latitude, longitude }: EventLocationDto) {
+  const sent = [latitude, longitude].filter((value) => value !== undefined);
+  const complete =
+    sent.length === 0 ||
+    (sent.length === 2 && (latitude === null) === (longitude === null));
+  if (!complete) {
+    throw new BadRequestException(
+      'La ubicación en el mapa necesita latitud y longitud',
+    );
+  }
+}
 
 // Finished and cancelled events are read only; an event whose end already
 // passed counts as finished even before the cron marks it.
@@ -65,8 +84,23 @@ function assertEditable(event: EventForEdit, now: Date) {
   return phase;
 }
 
+const VENUE_FIELDS = [
+  'venueName',
+  'venueAddress',
+  'venueCity',
+  'latitude',
+  'longitude',
+] as const;
+
 const BATCHES_LOCKED_MESSAGE =
   'El evento ya empezó: las tandas no se pueden cambiar (la venta sigue)';
+
+const ALREADY_APPLIED_MESSAGE: Record<BatchSaleAction, string> = {
+  END: 'La venta de esta tanda ya está finalizada',
+  REOPEN: 'La venta de esta tanda no está finalizada',
+  HIDE: 'La tanda ya está oculta',
+  SHOW: 'La tanda ya está visible',
+};
 
 // Once the event starts, buyers already hold tickets for its start and venue:
 // only texts and the image change, the end can only move later and the
@@ -75,11 +109,9 @@ function assertInProgressChanges(event: EventForEdit, changes: UpdateEventDto) {
   const changesStart =
     changes.startDate !== undefined &&
     new Date(changes.startDate).getTime() !== event.startDate.getTime();
-  const changesVenue =
-    (changes.venueName !== undefined &&
-      changes.venueName !== event.venueName) ||
-    (changes.venueAddress !== undefined &&
-      changes.venueAddress !== event.venueAddress);
+  const changesVenue = VENUE_FIELDS.some(
+    (field) => changes[field] !== undefined && changes[field] !== event[field],
+  );
   if (changesStart || changesVenue) {
     throw new ConflictException(
       'El evento ya empezó: el inicio y el lugar no se pueden cambiar',
@@ -233,6 +265,7 @@ export class EventsService {
       );
     }
     assertOwnBatchIds([], batches);
+    assertCompleteLocation(data);
     const startDate = new Date(data.startDate);
     if (startDate <= new Date()) {
       throw new BadRequestException('La fecha de inicio tiene que ser futura');
@@ -263,6 +296,7 @@ export class EventsService {
     const event = await this.findOneForOrganizer(id, organizerId);
     const now = new Date();
     const phase = assertEditable(event, now);
+    assertCompleteLocation(changes);
     const startDate = changes.startDate
       ? new Date(changes.startDate)
       : event.startDate;
@@ -334,6 +368,25 @@ export class EventsService {
       eventId,
       planBatchChanges(eventContext.ticketBatches, batchesData),
     );
+  }
+
+  // Ends or reopens the sale of one batch, or hides or shows it, right away.
+  // Unlike the rest of the batch, this also works while the event is running.
+  async changeBatchSale(
+    eventId: string,
+    organizerId: string,
+    batchId: string,
+    action: BatchSaleAction,
+  ) {
+    const event = await this.findOneForOrganizer(eventId, organizerId);
+    const now = new Date();
+    assertEditable(event, now);
+    const batch = event.ticketBatches.find(({ id }) => id === batchId);
+    if (!batch) throw new NotFoundException('Tanda no encontrada');
+
+    const change = planBatchSaleAction(batch, action, now);
+    if (!change) throw new ConflictException(ALREADY_APPLIED_MESSAGE[action]);
+    return this.eventsRepository.updateBatchSale(eventId, batchId, change);
   }
 
   // Sold and reserved tickets keep their place in the stock, and a ticket type

@@ -108,6 +108,7 @@ export default function EditarEventoPage() {
 
       <EventForm
         mode="edit"
+        eventId={String(id)}
         rules={{ phase: loaded.phase, saved: loaded.values }}
         defaultValues={loaded.values}
         onSubmit={updateEvent}

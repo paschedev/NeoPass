@@ -62,6 +62,9 @@ describe('buildEventUpdate', () => {
     endDate: at(30),
     venueName: 'Club',
     venueAddress: 'Calle 123',
+    venueCity: 'Buenos Aires',
+    latitude: -34.6037389,
+    longitude: -58.3815704,
     batches: [{ name: 'Preventa' }],
   };
 
@@ -69,7 +72,7 @@ describe('buildEventUpdate', () => {
     expect(buildEventUpdate(values, 'NOT_STARTED')).toEqual(values);
   });
 
-  it('en curso no manda el inicio, el lugar ni las tandas', () => {
+  it('en curso no manda el inicio, el lugar, su ubicación ni las tandas', () => {
     expect(buildEventUpdate(values, 'IN_PROGRESS')).toEqual({
       title: 'Fiesta',
       description: 'Descripción',

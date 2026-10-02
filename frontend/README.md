@@ -19,6 +19,7 @@ Están en `.env.example`. Son públicas (Next.js las incluye en el código del n
 
 - `NEXT_PUBLIC_API_URL`: URL del backend.
 - `NEXT_PUBLIC_TURNSTILE_SITE_KEY`: site key de Cloudflare Turnstile.
+- `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (opcional): clave de Google Maps Platform, restringida por dominio y a las APIs Maps JavaScript, Places (New) y Maps Embed. Sin ella la dirección del evento es un campo de texto y la página del evento no muestra el mapa (el botón "Cómo llegar" funciona igual).
 
 ## Scripts
 
