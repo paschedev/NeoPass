@@ -35,7 +35,7 @@ function eventBody(overrides: Record<string, unknown> = {}) {
   return {
     title: 'Evento nuevo',
     description: 'Descripción',
-    imageUrl: 'https://res.cloudinary.com/neopass/image/upload/flyer.jpg',
+    imageUrl: 'https://res.cloudinary.com/test-cloud/image/upload/flyer.jpg',
     startDate: start.toISOString(),
     endDate: new Date(start.getTime() + 6 * HOUR_MS).toISOString(),
     venueName: 'Club',

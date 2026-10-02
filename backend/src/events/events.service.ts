@@ -10,6 +10,7 @@ import {
   InvitationAnswer,
 } from './repositories/events.repository';
 import { UserRepository } from '../auth/repositories/user.repository';
+import { ConfigService } from '@nestjs/config';
 import { StaffRole, CommissionType, Prisma } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { buildRevenueChart } from './revenue-chart';
@@ -18,6 +19,7 @@ import { getEventPhase } from './event-phase';
 import { PromoterClicksService } from './promoter-clicks.service';
 import { hasUsableMercadoPagoToken } from '../payments/mercadopago-token';
 import { planBatchChanges } from './batch-changes';
+import { isOwnFlyerUrl } from './flyer-url';
 import { BatchSaleAction, planBatchSaleAction } from './batch-sale-action';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -216,12 +218,26 @@ function assertOwnBatchIds(
 
 @Injectable()
 export class EventsService {
+  private readonly cloudinaryUrl: string;
+
   constructor(
     private readonly eventsRepository: EventsRepository,
     private readonly userRepository: UserRepository,
     private readonly notificationsService: NotificationsService,
     private readonly promoterClicks: PromoterClicksService,
-  ) {}
+    config: ConfigService,
+  ) {
+    this.cloudinaryUrl = config.getOrThrow<string>('CLOUDINARY_URL');
+  }
+
+  private assertOwnFlyer(imageUrl: string | undefined) {
+    if (
+      imageUrl !== undefined &&
+      !isOwnFlyerUrl(imageUrl, this.cloudinaryUrl)
+    ) {
+      throw new BadRequestException('Subí el flyer desde NeoPass');
+    }
+  }
 
   async findPublicPage(page: number, limit: number) {
     const { items, total } = await this.eventsRepository.findPublicPage(
@@ -276,6 +292,7 @@ export class EventsService {
         'Vinculá Mercado Pago antes de crear un evento',
       );
     }
+    this.assertOwnFlyer(data.imageUrl);
     assertOwnBatchIds([], batches);
     assertCompleteLocation(data);
     const startDate = new Date(data.startDate);
@@ -308,6 +325,7 @@ export class EventsService {
     const event = await this.findOneForOrganizer(id, organizerId);
     const now = new Date();
     const phase = assertEditable(event, now);
+    this.assertOwnFlyer(changes.imageUrl);
     assertCompleteLocation(changes);
     const startDate = changes.startDate
       ? new Date(changes.startDate)

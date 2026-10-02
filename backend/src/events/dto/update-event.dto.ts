@@ -1,59 +1,58 @@
-import {
-  IsString,
-  IsOptional,
-  IsDateString,
-  IsIn,
-  IsArray,
-  ValidateNested,
-} from 'class-validator';
+import { IsArray, IsOptional, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
-import { RequiredText } from '../../common/required-text.decorator';
+import { NotNullIfSent } from '../../common/not-null-if-sent.decorator';
 import { BatchDto } from './batch.dto';
 import { EventLocationDto } from './event-location.dto';
+import {
+  EventDate,
+  EventDescription,
+  EventStatusField,
+  EventTitle,
+  FlyerUrl,
+  VenueAddress,
+  VenueName,
+  YoutubeLink,
+} from './event-fields';
 
+// Every field can be left out; the required ones can't be sent empty (null).
 export class UpdateEventDto extends EventLocationDto {
-  @IsOptional()
-  @RequiredText('El título es obligatorio')
+  @NotNullIfSent()
+  @EventTitle()
   title?: string;
 
-  @IsOptional()
-  @RequiredText('La descripción es obligatoria')
+  @NotNullIfSent()
+  @EventDescription()
   description?: string;
 
-  @IsOptional()
-  @RequiredText('El flyer del evento es obligatorio')
+  @NotNullIfSent()
+  @FlyerUrl()
   imageUrl?: string;
 
-  @IsOptional()
-  @IsString()
-  youtubeLink?: string;
+  @YoutubeLink()
+  youtubeLink?: string | null;
 
-  @IsOptional()
-  @IsDateString()
+  @NotNullIfSent()
+  @EventDate('La fecha de inicio debe ser válida')
   startDate?: string;
 
-  @IsOptional()
-  @IsDateString()
+  @NotNullIfSent()
+  @EventDate('La fecha de fin debe ser válida')
   endDate?: string;
 
-  @IsOptional()
-  @RequiredText('El nombre del lugar es obligatorio')
+  @NotNullIfSent()
+  @VenueName()
   venueName?: string;
 
-  @IsOptional()
-  @RequiredText('La dirección es obligatoria')
+  @NotNullIfSent()
+  @VenueAddress()
   venueAddress?: string;
 
-  @IsOptional()
-  @IsString()
-  // FINISHED is set by the cron; cancelling needs refunds, which don't exist yet.
-  @IsIn(['DRAFT', 'PUBLISHED'], {
-    message: 'El estado tiene que ser borrador o publicado',
-  })
+  @NotNullIfSent()
+  @EventStatusField()
   status?: 'DRAFT' | 'PUBLISHED';
 
   @IsOptional()
-  @IsArray()
+  @IsArray({ message: 'Las tandas no son válidas' })
   @ValidateNested({ each: true })
   @Type(() => BatchDto)
   batches?: BatchDto[];

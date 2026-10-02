@@ -1,50 +1,47 @@
-import {
-  IsString,
-  IsOptional,
-  IsDateString,
-  IsIn,
-  ValidateNested,
-  IsArray,
-} from 'class-validator';
+import { ValidateNested, IsArray } from 'class-validator';
 import { Type } from 'class-transformer';
-import { RequiredText } from '../../common/required-text.decorator';
 import { BatchDto } from './batch.dto';
 import { EventLocationDto } from './event-location.dto';
+import {
+  EventDate,
+  EventDescription,
+  EventStatusField,
+  EventTitle,
+  FlyerUrl,
+  VenueAddress,
+  VenueName,
+  YoutubeLink,
+} from './event-fields';
 
 export class CreateEventDto extends EventLocationDto {
-  @RequiredText('El título es obligatorio')
+  @EventTitle()
   title: string;
 
-  @RequiredText('La descripción es obligatoria')
+  @EventDescription()
   description: string;
 
-  @RequiredText('El flyer del evento es obligatorio')
+  @FlyerUrl()
   imageUrl: string;
 
-  @IsOptional()
-  @IsString()
-  youtubeLink?: string;
+  @YoutubeLink()
+  youtubeLink?: string | null;
 
-  @IsDateString({}, { message: 'La fecha de inicio debe ser válida' })
+  @EventDate('La fecha de inicio debe ser válida')
   startDate: string;
 
-  @IsDateString({}, { message: 'La fecha de fin debe ser válida' })
+  @EventDate('La fecha de fin debe ser válida')
   endDate: string;
 
-  @RequiredText('El nombre del lugar es obligatorio')
+  @VenueName()
   venueName: string;
 
-  @RequiredText('La dirección es obligatoria')
+  @VenueAddress()
   venueAddress: string;
 
-  @IsString()
-  // FINISHED is set by the cron; cancelling needs refunds, which don't exist yet.
-  @IsIn(['DRAFT', 'PUBLISHED'], {
-    message: 'El estado tiene que ser borrador o publicado',
-  })
+  @EventStatusField()
   status: 'DRAFT' | 'PUBLISHED';
 
-  @IsArray()
+  @IsArray({ message: 'Las tandas no son válidas' })
   @ValidateNested({ each: true })
   @Type(() => BatchDto)
   batches: BatchDto[];

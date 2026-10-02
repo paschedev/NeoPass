@@ -3,7 +3,7 @@ import { Type } from 'class-transformer';
 import { BatchDto } from './batch.dto';
 
 export class UpdateBatchesDto {
-  @IsArray()
+  @IsArray({ message: 'Las tandas no son válidas' })
   @ValidateNested({ each: true })
   @Type(() => BatchDto)
   batches: BatchDto[];
