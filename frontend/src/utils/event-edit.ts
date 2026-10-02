@@ -29,11 +29,14 @@ export type EventFormValues = {
   endDate: string;
   venueName: string;
   venueAddress: string;
+  venueCity: string | null;
+  latitude: number | null;
+  longitude: number | null;
   batches: unknown[];
 };
 
-// Con el evento en curso, el inicio, el lugar y las tandas quedan fijos: no se
-// mandan, y el backend rechaza cualquier cambio en ellos.
+// Con el evento en curso, el inicio, el lugar (con su ubicación en el mapa) y
+// las tandas quedan fijos: no se mandan, y el backend rechaza cualquier cambio.
 export function buildEventUpdate(values: EventFormValues, phase: EventPhase) {
   if (phase !== 'IN_PROGRESS') return values;
   const { title, description, imageUrl, youtubeLink, endDate } = values;
