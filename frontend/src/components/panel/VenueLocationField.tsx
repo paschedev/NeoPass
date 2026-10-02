@@ -188,6 +188,9 @@ export default function VenueLocationField({
             <div
               role="listbox"
               aria-label="Lugares encontrados"
+              // Safari no enfoca un botón al tocarlo: sin esto la dirección
+              // pierde el foco, la lista se cierra y la elección no llega.
+              onMouseDown={(event) => event.preventDefault()}
               className="max-h-64 overflow-y-auto overscroll-contain"
             >
               {suggestions.map((suggestion) => (
