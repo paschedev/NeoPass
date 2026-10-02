@@ -1,7 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { authHeader } from './utils/auth';
-import { createOrganizerWithEvent, createUser } from './utils/factories';
+import {
+  createBatch,
+  createOrganizerWithEvent,
+  createUser,
+} from './utils/factories';
 import { createTestApp, TestApp } from './utils/test-app';
 import { resetDb } from './utils/test-database';
 
@@ -76,6 +80,41 @@ describe('Eventos del organizador', () => {
       };
       expect(body.id).toBe(event.id);
       expect(body.ticketBatches[0].ticketTypes).toHaveLength(1);
+    });
+
+    it('las tandas se ven en el orden en que se crearon, aunque después se hayan editado', async () => {
+      const { organizer, event, batch } = await createOrganizerWithEvent(
+        t.prisma,
+      );
+      const older = await createBatch(t.prisma, {
+        eventId: event.id,
+        name: 'Anticipada',
+      });
+      await t.prisma.ticketBatch.update({
+        where: { id: older.batch.id },
+        data: { createdAt: new Date(batch.createdAt.getTime() - DAY_MS) },
+      });
+
+      const get = (path: string) =>
+        request(t.app.getHttpServer())
+          .get(path)
+          .set('Authorization', authHeader(t.app, organizer))
+          .expect(200);
+      type WithBatches = { ticketBatches: { name: string }[] };
+      const names = (found: WithBatches) =>
+        found.ticketBatches.map(({ name }) => name);
+
+      const detail = await get(`/events/organizer/${event.id}`);
+      const list = await get('/events/organizer/me');
+
+      expect(names(detail.body as WithBatches)).toEqual([
+        'Anticipada',
+        'Preventa',
+      ]);
+      expect(names((list.body as WithBatches[])[0])).toEqual([
+        'Anticipada',
+        'Preventa',
+      ]);
     });
 
     it('otro organizador no puede verlo', async () => {

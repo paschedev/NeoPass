@@ -18,6 +18,7 @@ import { getEventPhase } from './event-phase';
 import { PromoterClicksService } from './promoter-clicks.service';
 import { hasUsableMercadoPagoToken } from '../payments/mercadopago-token';
 import { planBatchChanges } from './batch-changes';
+import { BatchSaleAction, planBatchSaleAction } from './batch-sale-action';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { BatchDto } from './dto/batch.dto';
@@ -67,6 +68,13 @@ function assertEditable(event: EventForEdit, now: Date) {
 
 const BATCHES_LOCKED_MESSAGE =
   'El evento ya empezó: las tandas no se pueden cambiar (la venta sigue)';
+
+const ALREADY_APPLIED_MESSAGE: Record<BatchSaleAction, string> = {
+  END: 'La venta de esta tanda ya está finalizada',
+  REOPEN: 'La venta de esta tanda no está finalizada',
+  HIDE: 'La tanda ya está oculta',
+  SHOW: 'La tanda ya está visible',
+};
 
 // Once the event starts, buyers already hold tickets for its start and venue:
 // only texts and the image change, the end can only move later and the
@@ -334,6 +342,25 @@ export class EventsService {
       eventId,
       planBatchChanges(eventContext.ticketBatches, batchesData),
     );
+  }
+
+  // Ends or reopens the sale of one batch, or hides or shows it, right away.
+  // Unlike the rest of the batch, this also works while the event is running.
+  async changeBatchSale(
+    eventId: string,
+    organizerId: string,
+    batchId: string,
+    action: BatchSaleAction,
+  ) {
+    const event = await this.findOneForOrganizer(eventId, organizerId);
+    const now = new Date();
+    assertEditable(event, now);
+    const batch = event.ticketBatches.find(({ id }) => id === batchId);
+    if (!batch) throw new NotFoundException('Tanda no encontrada');
+
+    const change = planBatchSaleAction(batch, action, now);
+    if (!change) throw new ConflictException(ALREADY_APPLIED_MESSAGE[action]);
+    return this.eventsRepository.updateBatchSale(eventId, batchId, change);
   }
 
   // Sold and reserved tickets keep their place in the stock, and a ticket type

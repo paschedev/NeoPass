@@ -11,9 +11,14 @@ import type { EventFormInput } from '@/utils/event-form';
 // Tandas del evento dentro de EventForm (useFieldArray sobre `batches`).
 export default function TandasManager({
   saved = [],
+  eventId,
+  locked = false,
 }: {
   // Tandas guardadas del evento que se edita, para avisar solo lo que cambia.
   saved?: { id?: string; closeAt: string | null }[];
+  eventId?: string;
+  // Con el evento en curso no se agregan ni se editan tandas.
+  locked?: boolean;
 }) {
   const [presets, setPresets] = useState<TicketPreset[]>([]);
   const { control } = useFormContext<EventFormInput>();
@@ -61,13 +66,15 @@ export default function TandasManager({
             Administrá las tandas de venta, precios y disponibilidad.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={addBatch}
-          className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" /> Nueva Tanda
-        </button>
+        {!locked && (
+          <button
+            type="button"
+            onClick={addBatch}
+            className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" /> Nueva Tanda
+          </button>
+        )}
       </div>
 
       {simultaneous.length > 0 && (
@@ -94,13 +101,15 @@ export default function TandasManager({
           <p className="text-neutral-400">
             No hay tandas configuradas para este evento.
           </p>
-          <button
-            type="button"
-            onClick={addBatch}
-            className="text-pink-400 hover:text-pink-300 text-sm font-medium mt-2"
-          >
-            Creá tu primera tanda
-          </button>
+          {!locked && (
+            <button
+              type="button"
+              onClick={addBatch}
+              className="text-pink-400 hover:text-pink-300 text-sm font-medium mt-2"
+            >
+              Creá tu primera tanda
+            </button>
+          )}
         </div>
       ) : (
         <div className="space-y-6">
@@ -111,6 +120,8 @@ export default function TandasManager({
               presets={presets}
               eventEnd={eventEnd}
               savedCloseAt={batch.id ? savedCloseAt.get(batch.id) : undefined}
+              eventId={eventId}
+              locked={locked}
               onRemove={() => remove(index)}
             />
           ))}

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   defaultSaleEnd,
   defaultSaleStart,
-  endBatchSaleNow,
+  getBatchSaleActions,
   getBatchSaleStatus,
   getBatchWindowErrors,
   getSimultaneousBatches,
@@ -52,24 +52,32 @@ describe('getBatchSaleStatus', () => {
   });
 });
 
-describe('endBatchSaleNow', () => {
-  it('termina la venta en este momento', () => {
-    expect(endBatchSaleNow(batch({ closeAt: at(5) }), now).closeAt).toBe(
-      now.toISOString(),
+describe('getBatchSaleActions', () => {
+  it('una tanda que vende, o que todavía no empezó, se puede finalizar', () => {
+    expect(getBatchSaleActions(batch({}), now, false)).toEqual(['END']);
+    expect(getBatchSaleActions(batch({ closeAt: at(5) }), now, false)).toEqual([
+      'END',
+    ]);
+    expect(
+      getBatchSaleActions(batch({ publishAt: at(5) }), now, false),
+    ).toEqual(['END']);
+  });
+
+  it('una tanda con la venta finalizada se puede reabrir', () => {
+    expect(getBatchSaleActions(batch({ closeAt: at(-1) }), now, false)).toEqual(
+      ['REOPEN'],
     );
   });
 
-  it('conserva un inicio de venta que ya pasó', () => {
-    expect(endBatchSaleNow(batch({ publishAt: at(-5) }), now).publishAt).toBe(
-      at(-5),
-    );
-  });
-
-  it('descarta un inicio de venta futuro, así la tanda queda finalizada', () => {
-    const ended = endBatchSaleNow(batch({ publishAt: at(5) }), now);
-
-    expect(ended.publishAt).toBeNull();
-    expect(getBatchSaleStatus(ended, now)).toBe('ENDED');
+  it('con el evento en curso además se puede ocultar o mostrar', () => {
+    expect(getBatchSaleActions(batch({}), now, true)).toEqual(['END', 'HIDE']);
+    expect(
+      getBatchSaleActions(
+        batch({ isVisible: false, closeAt: at(-1) }),
+        now,
+        true,
+      ),
+    ).toEqual(['REOPEN', 'SHOW']);
   });
 });
 
