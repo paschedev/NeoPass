@@ -50,6 +50,9 @@ export class EventsRepository {
         endDate: true,
         venueName: true,
         venueAddress: true,
+        venueCity: true,
+        latitude: true,
+        longitude: true,
         status: true,
         neoPassFeePercentage: true,
         // Hidden batches never leave the database on the public endpoint.
