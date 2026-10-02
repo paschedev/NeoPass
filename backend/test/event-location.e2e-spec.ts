@@ -7,13 +7,26 @@ import { resetDb } from './utils/test-database';
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
-// Obelisco, Buenos Aires.
+// El Obelisco, elegido de la lista de Google: guarda su identificador.
 const LOCATION = {
   latitude: -34.6037389,
   longitude: -58.3815704,
   venueCity: 'Buenos Aires',
+  venuePlaceId: 'ChIJS4Xb0z_LvJURM1UCa7Y8t7k',
 };
-const NO_LOCATION = { latitude: null, longitude: null, venueCity: null };
+// Un punto marcado a mano: Google no lo conoce como lugar.
+const CUSTOM_POINT = {
+  latitude: -34.4581234,
+  longitude: -58.9145678,
+  venueCity: 'Pilar',
+  venuePlaceId: null,
+};
+const NO_LOCATION = {
+  latitude: null,
+  longitude: null,
+  venueCity: null,
+  venuePlaceId: null,
+};
 
 type Organizer = Parameters<typeof authHeader>[1];
 
@@ -72,14 +85,15 @@ describe('Ubicación del evento en el mapa', () => {
     const res = await request(t.app.getHttpServer())
       .get(`/events/${eventId}`)
       .expect(200);
-    const { latitude, longitude, venueCity } = res.body as typeof LOCATION;
-    return { latitude, longitude, venueCity };
+    const { latitude, longitude, venueCity, venuePlaceId } =
+      res.body as typeof LOCATION;
+    return { latitude, longitude, venueCity, venuePlaceId };
   }
 
   async function savedLocation(eventId: string) {
-    const { latitude, longitude, venueCity } =
+    const { latitude, longitude, venueCity, venuePlaceId } =
       await t.prisma.event.findUniqueOrThrow({ where: { id: eventId } });
-    return { latitude, longitude, venueCity };
+    return { latitude, longitude, venueCity, venuePlaceId };
   }
 
   async function eventWithLocation() {
@@ -99,6 +113,15 @@ describe('Ubicación del evento en el mapa', () => {
 
       const { id } = res.body as { id: string };
       expect(await publicLocation(id)).toEqual(LOCATION);
+    });
+
+    it('un punto marcado a mano se guarda sin lugar de Google', async () => {
+      const { organizer } = await createOrganizerWithEvent(t.prisma);
+
+      const res = await create(organizer, CUSTOM_POINT).expect(201);
+
+      const { id } = res.body as { id: string };
+      expect(await publicLocation(id)).toEqual(CUSTOM_POINT);
     });
 
     it('la ubicación es opcional: sin ella el evento se crea igual', async () => {
@@ -132,6 +155,18 @@ describe('Ubicación del evento en el mapa', () => {
         { latitude: 'sur', longitude: 'oeste' },
       ],
       ['ciudad demasiado larga', { ...LOCATION, venueCity: 'a'.repeat(101) }],
+      [
+        'un lugar de Google sin su punto en el mapa',
+        { venuePlaceId: 'ChIJabc' },
+      ],
+      [
+        'un identificador de lugar con caracteres raros',
+        { ...LOCATION, venuePlaceId: 'ChIJ<script>' },
+      ],
+      [
+        'un identificador de lugar demasiado largo',
+        { ...LOCATION, venuePlaceId: 'a'.repeat(513) },
+      ],
     ])('rechaza %s y no crea el evento', async (_case, location) => {
       const { organizer } = await createOrganizerWithEvent(t.prisma);
 
@@ -148,6 +183,14 @@ describe('Ubicación del evento en el mapa', () => {
       await edit(organizer, event.id, LOCATION).expect(200);
 
       expect(await savedLocation(event.id)).toEqual(LOCATION);
+    });
+
+    it('se puede pasar de un lugar de Google a un punto marcado a mano', async () => {
+      const { organizer, event } = await eventWithLocation();
+
+      await edit(organizer, event.id, CUSTOM_POINT).expect(200);
+
+      expect(await savedLocation(event.id)).toEqual(CUSTOM_POINT);
     });
 
     it('se puede quitar la ubicación', async () => {
@@ -199,6 +242,7 @@ describe('Ubicación del evento en el mapa', () => {
       ['moverla', { latitude: -31.4, longitude: -64.18 }],
       ['quitarla', NO_LOCATION],
       ['cambiar la ciudad', { venueCity: 'Córdoba' }],
+      ['pasarla a un punto marcado a mano', CUSTOM_POINT],
     ])('no deja %s', async (_case, changes) => {
       const { organizer, event } = await eventInProgress();
 

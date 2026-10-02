@@ -136,6 +136,7 @@ model Event {
   venueCapacity Int?
   latitude      Float?
   longitude     Float?
+  venuePlaceId  String?
 
   imageUrl    String?
   youtubeLink String?
