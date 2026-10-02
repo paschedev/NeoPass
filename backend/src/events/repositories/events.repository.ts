@@ -130,6 +130,21 @@ export class EventsRepository {
     });
   }
 
+  async updateBatchSale(
+    eventId: string,
+    batchId: string,
+    data: Pick<
+      Prisma.TicketBatchUpdateInput,
+      'isVisible' | 'publishAt' | 'closeAt'
+    >,
+  ) {
+    return this.prisma.ticketBatch.update({
+      where: { id: batchId, eventId },
+      data,
+      select: { id: true, isVisible: true, publishAt: true, closeAt: true },
+    });
+  }
+
   // Event fields and batches in one transaction: a failed batch leaves the
   // event as it was, instead of half edited.
   async updateWithBatches(
