@@ -278,7 +278,8 @@ describe('Tandas con estado de venta calculado', () => {
         .send({
           title: 'Evento nuevo',
           description: 'Descripción',
-          imageUrl: 'https://res.cloudinary.com/neopass/image/upload/flyer.jpg',
+          imageUrl:
+            'https://res.cloudinary.com/test-cloud/image/upload/flyer.jpg',
           startDate: startDate.toISOString(),
           endDate: endDate.toISOString(),
           venueName: 'Club',

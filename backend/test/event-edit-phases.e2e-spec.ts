@@ -103,7 +103,8 @@ describe('Editar un evento según su momento', () => {
       await put(organizer, `/events/${event.id}`, {
         title: 'Título nuevo',
         description: 'Descripción nueva',
-        imageUrl: 'https://res.cloudinary.com/neopass/image/upload/nueva.jpg',
+        imageUrl:
+          'https://res.cloudinary.com/test-cloud/image/upload/nueva.jpg',
       }).expect(200);
 
       const saved = await savedEvent(event.id);
@@ -304,7 +305,8 @@ describe('Editar un evento según su momento', () => {
           .send({
             title: 'Evento nuevo',
             description: 'Descripción',
-            imageUrl: 'https://res.cloudinary.com/neopass/image/upload/f.jpg',
+            imageUrl:
+              'https://res.cloudinary.com/test-cloud/image/upload/f.jpg',
             startDate: start.toISOString(),
             endDate: new Date(start.getTime() + 6 * HOUR_MS).toISOString(),
             venueName: 'Club',
