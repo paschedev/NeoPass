@@ -96,7 +96,10 @@ export class EventsRepository {
     return this.prisma.event.findUnique({
       where: { id },
       include: {
-        ticketBatches: { include: { ticketTypes: true } },
+        ticketBatches: {
+          orderBy: { createdAt: 'asc' },
+          include: { ticketTypes: true },
+        },
         ticketTypes: true,
       },
     });
@@ -113,7 +116,10 @@ export class EventsRepository {
     return this.prisma.event.findMany({
       where: { organizerId },
       include: {
-        ticketBatches: { include: { ticketTypes: true } },
+        ticketBatches: {
+          orderBy: { createdAt: 'asc' },
+          include: { ticketTypes: true },
+        },
         ticketTypes: true,
       },
       orderBy: { createdAt: 'desc' },
