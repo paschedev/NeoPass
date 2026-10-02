@@ -9,8 +9,9 @@ import {
 import { Type } from 'class-transformer';
 import { RequiredText } from '../../common/required-text.decorator';
 import { BatchDto } from './batch.dto';
+import { EventLocationDto } from './event-location.dto';
 
-export class UpdateEventDto {
+export class UpdateEventDto extends EventLocationDto {
   @IsOptional()
   @RequiredText('El título es obligatorio')
   title?: string;
