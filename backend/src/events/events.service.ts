@@ -54,11 +54,17 @@ type EventForEdit = {
   venueCity: string | null;
   latitude: number | null;
   longitude: number | null;
+  venuePlaceId: string | null;
 };
 
 // The map location is both coordinates or none: a single one, or one cleared
-// without the other, would leave the event pointing nowhere.
-function assertCompleteLocation({ latitude, longitude }: EventLocationDto) {
+// without the other, would leave the event pointing nowhere. A Google place
+// comes with its point.
+function assertCompleteLocation({
+  latitude,
+  longitude,
+  venuePlaceId,
+}: EventLocationDto) {
   const sent = [latitude, longitude].filter((value) => value !== undefined);
   const complete =
     sent.length === 0 ||
@@ -66,6 +72,11 @@ function assertCompleteLocation({ latitude, longitude }: EventLocationDto) {
   if (!complete) {
     throw new BadRequestException(
       'La ubicación en el mapa necesita latitud y longitud',
+    );
+  }
+  if (venuePlaceId && (latitude == null || longitude == null)) {
+    throw new BadRequestException(
+      'El lugar elegido en el mapa necesita su latitud y longitud',
     );
   }
 }
@@ -90,6 +101,7 @@ const VENUE_FIELDS = [
   'venueCity',
   'latitude',
   'longitude',
+  'venuePlaceId',
 ] as const;
 
 const BATCHES_LOCKED_MESSAGE =

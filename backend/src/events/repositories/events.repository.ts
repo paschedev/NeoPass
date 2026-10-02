@@ -53,6 +53,7 @@ export class EventsRepository {
         venueCity: true,
         latitude: true,
         longitude: true,
+        venuePlaceId: true,
         status: true,
         neoPassFeePercentage: true,
         // Hidden batches never leave the database on the public endpoint.
