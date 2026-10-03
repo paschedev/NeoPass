@@ -5,6 +5,21 @@ import { BatchChanges } from '../batch-changes';
 
 export type InvitationAnswer = Extract<StaffStatus, 'ACCEPTED' | 'REJECTED'>;
 
+// Who holds each ticket now (after transfers) and how it is going; never the
+// QR code, which is the ticket itself.
+const ATTENDEE_SELECT = {
+  id: true,
+  status: true,
+  usedAt: true,
+  user: { select: { name: true, email: true } },
+  ticketType: { select: { name: true, batch: { select: { name: true } } } },
+} satisfies Prisma.TicketSelect;
+
+const ATTENDEE_ORDER: Prisma.TicketOrderByWithRelationInput[] = [
+  { user: { name: 'asc' } },
+  { createdAt: 'asc' },
+];
+
 const PAYMENT_HISTORY = {
   orderBy: { createdAt: 'desc' },
   select: { amount: true, note: true, createdAt: true },
@@ -441,6 +456,61 @@ export class EventsRepository {
     });
 
     return staff;
+  }
+
+  async findEventAttendees(
+    eventId: string,
+    { search, skip, take }: { search?: string; skip: number; take: number },
+  ) {
+    const where: Prisma.TicketWhereInput = {
+      ticketType: { eventId },
+      ...(search && {
+        OR: [
+          { user: { name: { contains: search, mode: 'insensitive' } } },
+          { user: { email: { contains: search, mode: 'insensitive' } } },
+        ],
+      }),
+    };
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.ticket.findMany({
+        where,
+        select: ATTENDEE_SELECT,
+        orderBy: ATTENDEE_ORDER,
+        skip,
+        take,
+      }),
+      this.prisma.ticket.count({ where }),
+    ]);
+    return { items, total };
+  }
+
+  async findAllEventAttendees(eventId: string) {
+    return this.prisma.ticket.findMany({
+      where: { ticketType: { eventId } },
+      select: ATTENDEE_SELECT,
+      orderBy: ATTENDEE_ORDER,
+    });
+  }
+
+  async countTicketsByTypeAndStatus(eventId: string) {
+    const rows = await this.prisma.ticket.groupBy({
+      by: ['ticketTypeId', 'status'],
+      where: { ticketType: { eventId } },
+      _count: { _all: true },
+    });
+    return rows.map(({ ticketTypeId, status, _count }) => ({
+      ticketTypeId,
+      status,
+      count: _count._all,
+    }));
+  }
+
+  async findEventTicketTypes(eventId: string) {
+    return this.prisma.ticketType.findMany({
+      where: { eventId },
+      orderBy: [{ batch: { createdAt: 'asc' } }, { name: 'asc' }],
+      select: { id: true, name: true, batch: { select: { name: true } } },
+    });
   }
 
   // Promoters of the event with what they sold (paid orders) and the payments
