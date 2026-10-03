@@ -9,6 +9,6 @@ export class LoginDto {
   password: string;
 
   @IsOptional()
-  @IsString()
+  @IsString({ message: 'Completá la verificación de seguridad' })
   captchaToken?: string;
 }

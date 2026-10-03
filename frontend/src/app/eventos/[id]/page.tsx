@@ -234,7 +234,9 @@ function EventContent() {
             <VenueMap
               latitude={event.latitude}
               longitude={event.longitude}
+              venuePlaceId={event.venuePlaceId}
               venueName={event.venueName}
+              venueAddress={event.venueAddress}
             />
           </div>
 

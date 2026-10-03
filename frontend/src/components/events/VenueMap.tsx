@@ -7,13 +7,17 @@ import { getDirectionsUrl, getEmbedMapUrl, hasMapLocation } from '@/utils/maps';
 export default function VenueMap({
   latitude,
   longitude,
+  venuePlaceId,
   venueName,
+  venueAddress,
 }: {
   latitude?: number | null;
   longitude?: number | null;
+  venuePlaceId?: string | null;
   venueName?: string | null;
+  venueAddress?: string | null;
 }) {
-  const location = { latitude, longitude };
+  const location = { latitude, longitude, venuePlaceId, venueAddress };
   if (!hasMapLocation(location)) return null;
   const apiKey = getMapsApiKey();
 

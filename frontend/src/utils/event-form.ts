@@ -20,6 +20,28 @@ export type EventDateRules = {
 
 const required = (message: string) => z.string().trim().min(1, message);
 
+// Espejo de backend/src/events/event-limits.ts.
+const EVENT_LIMITS = {
+  title: 60,
+  description: 2000,
+  venueName: 60,
+  venueAddress: 120,
+  batchName: 30,
+  ticketTypeName: 30,
+  stock: 100_000,
+} as const;
+
+const limitedText = (message: string, max: number, tooLong: string) =>
+  required(message).max(max, tooLong);
+
+const YOUTUBE_HOSTS = [
+  'youtube.com',
+  'www.youtube.com',
+  'm.youtube.com',
+  'youtu.be',
+];
+const YOUTUBE_MESSAGE = 'El link tiene que ser de un video de YouTube';
+
 // Los inputs numéricos guardan texto; vacío no es 0.
 const numberInput = (emptyMessage: string) =>
   z.union([z.string(), z.number()]).transform((value, ctx) => {
@@ -38,7 +60,11 @@ const ticketTypeSchema = z
   .object({
     id: z.string().optional(),
     tempId: z.string().optional(),
-    name: required('Poné el nombre de la entrada'),
+    name: limitedText(
+      'Poné el nombre de la entrada',
+      EVENT_LIMITS.ticketTypeName,
+      `El nombre de la entrada puede tener hasta ${EVENT_LIMITS.ticketTypeName} caracteres`,
+    ),
     price: numberInput('Poné el precio (0 si es gratis)').pipe(
       z
         .number()
@@ -49,7 +75,8 @@ const ticketTypeSchema = z
       z
         .number()
         .int('El stock tiene que ser un número entero')
-        .min(1, 'El stock tiene que ser mayor a 0'),
+        .min(1, 'El stock tiene que ser mayor a 0')
+        .max(EVENT_LIMITS.stock, 'El stock máximo es 100.000'),
     ),
     sold: z.number().optional(),
     reserved: z.number().optional(),
@@ -68,7 +95,11 @@ const ticketTypeSchema = z
 const batchSchema = z.object({
   id: z.string().optional(),
   tempId: z.string().optional(),
-  name: required('Poné el nombre de la tanda'),
+  name: limitedText(
+    'Poné el nombre de la tanda',
+    EVENT_LIMITS.batchName,
+    `El nombre de la tanda puede tener hasta ${EVENT_LIMITS.batchName} caracteres`,
+  ),
   isVisible: z.boolean(),
   publishAt: z.string().nullable(),
   closeAt: z.string().nullable(),
@@ -86,19 +117,42 @@ export function buildEventSchema(
   );
   return z
     .object({
-      title: required('Poné el nombre del evento'),
-      description: required('Contá de qué trata el evento'),
+      title: limitedText(
+        'Poné el nombre del evento',
+        EVENT_LIMITS.title,
+        `El título puede tener hasta ${EVENT_LIMITS.title} caracteres`,
+      ),
+      description: limitedText(
+        'Contá de qué trata el evento',
+        EVENT_LIMITS.description,
+        `La descripción puede tener hasta ${EVENT_LIMITS.description} caracteres`,
+      ),
       imageUrl: required('Subí el flyer del evento'),
       youtubeLink: z.union([
         z.literal(''),
-        z.url({ error: 'El link de YouTube no es válido' }),
+        z.url({
+          protocol: /^https?$/,
+          hostname: new RegExp(
+            `^(${YOUTUBE_HOSTS.map((host) => host.replaceAll('.', '\\.')).join('|')})$`,
+          ),
+          error: YOUTUBE_MESSAGE,
+        }),
       ]),
       startDate: z.string(),
       endDate: z.string(),
-      venueName: required('Poné el nombre del lugar'),
-      venueAddress: required('Poné la dirección'),
+      venueName: limitedText(
+        'Poné el nombre del lugar',
+        EVENT_LIMITS.venueName,
+        `El nombre del lugar puede tener hasta ${EVENT_LIMITS.venueName} caracteres`,
+      ),
+      venueAddress: limitedText(
+        'Poné la dirección',
+        EVENT_LIMITS.venueAddress,
+        `La dirección puede tener hasta ${EVENT_LIMITS.venueAddress} caracteres`,
+      ),
       // Ubicación en el mapa, opcional: los tres datos van juntos o vacíos.
       venueCity: z.string().nullable(),
+      venuePlaceId: z.string().nullable(),
       latitude: z.number().nullable(),
       longitude: z.number().nullable(),
       batches: z.array(batchSchema),
@@ -205,6 +259,7 @@ export type SavedEvent = {
   venueName: string | null;
   venueAddress: string | null;
   venueCity?: string | null;
+  venuePlaceId?: string | null;
   latitude?: number | null;
   longitude?: number | null;
   ticketBatches?: SavedBatch[];
@@ -221,6 +276,7 @@ export function toEventFormInput(event: SavedEvent): EventFormInput {
     venueName: event.venueName ?? '',
     venueAddress: event.venueAddress ?? '',
     venueCity: event.venueCity ?? null,
+    venuePlaceId: event.venuePlaceId ?? null,
     latitude: event.latitude ?? null,
     longitude: event.longitude ?? null,
     batches: (event.ticketBatches ?? []).map((batch) => ({

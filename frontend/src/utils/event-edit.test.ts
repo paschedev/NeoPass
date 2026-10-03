@@ -63,6 +63,7 @@ describe('buildEventUpdate', () => {
     venueName: 'Club',
     venueAddress: 'Calle 123',
     venueCity: 'Buenos Aires',
+    venuePlaceId: 'ChIJS4Xb0z_LvJURM1UCa7Y8t7k',
     latitude: -34.6037389,
     longitude: -58.3815704,
     batches: [{ name: 'Preventa' }],

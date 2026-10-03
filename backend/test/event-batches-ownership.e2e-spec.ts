@@ -184,7 +184,8 @@ describe('Tandas y entradas: cada organizador toca solo las suyas', () => {
       .send({
         title: 'Evento nuevo',
         description: 'Descripción',
-        imageUrl: 'https://res.cloudinary.com/neopass/image/upload/flyer.jpg',
+        imageUrl:
+          'https://res.cloudinary.com/test-cloud/image/upload/flyer.jpg',
         startDate: EVENT_START.toISOString(),
         endDate: new Date(
           EVENT_START.getTime() + 6 * 3600 * 1000,

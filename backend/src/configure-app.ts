@@ -1,7 +1,13 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import {
+  BadRequestException,
+  INestApplication,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Express } from 'express';
 import helmet from 'helmet';
+import { NullCharactersPipe } from './common/null-characters.pipe';
+import { validationMessages } from './common/validation-messages';
 
 // Configuración HTTP compartida entre main.ts y los tests e2e,
 // para que los tests corran contra la misma app que producción.
@@ -11,7 +17,15 @@ export function configureApp(app: INestApplication) {
   const server = app.getHttpAdapter().getInstance() as Express;
   server.set('trust proxy', 1);
   app.use(helmet());
-  app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
+  app.useGlobalPipes(
+    new NullCharactersPipe(),
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      exceptionFactory: (errors) =>
+        new BadRequestException(validationMessages(errors)),
+    }),
+  );
   const frontendUrl = app.get(ConfigService).getOrThrow<string>('FRONTEND_URL');
   app.enableCors({
     origin: [

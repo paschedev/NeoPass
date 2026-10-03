@@ -21,6 +21,7 @@ const valid: EventFormInput = {
   venueName: 'Club Central',
   venueAddress: 'Av. Siempre Viva 742',
   venueCity: null,
+  venuePlaceId: null,
   latitude: null,
   longitude: null,
   batches: [],
@@ -68,6 +69,7 @@ describe('buildEventSchema', () => {
       venueName: '',
       venueAddress: '',
       venueCity: null,
+      venuePlaceId: null,
       latitude: null,
       longitude: null,
       batches: [],
@@ -84,12 +86,46 @@ describe('buildEventSchema', () => {
     });
   });
 
-  it('el link de YouTube es opcional, pero si se completa tiene que ser un link', () => {
+  it('el link de YouTube es opcional, pero si se completa tiene que ser de YouTube', () => {
     expect(
       errorsOf({ ...valid, youtubeLink: 'https://youtu.be/abc123' }),
     ).toEqual({});
+    expect(
+      errorsOf({ ...valid, youtubeLink: 'https://www.youtube.com/watch?v=x' }),
+    ).toEqual({});
     expect(errorsOf({ ...valid, youtubeLink: 'mi video' })).toEqual({
-      youtubeLink: 'El link de YouTube no es válido',
+      youtubeLink: 'El link tiene que ser de un video de YouTube',
+    });
+    expect(
+      errorsOf({ ...valid, youtubeLink: 'https://vimeo.com/123456' }),
+    ).toEqual({
+      youtubeLink: 'El link tiene que ser de un video de YouTube',
+    });
+  });
+
+  it('cada texto tiene el mismo largo máximo que acepta el servidor', () => {
+    expect(
+      errorsOf({
+        ...valid,
+        title: 'a'.repeat(60),
+        description: 'a'.repeat(2000),
+        venueName: 'a'.repeat(60),
+        venueAddress: 'a'.repeat(120),
+      }),
+    ).toEqual({});
+    expect(
+      errorsOf({
+        ...valid,
+        title: 'a'.repeat(61),
+        description: 'a'.repeat(2001),
+        venueName: 'a'.repeat(61),
+        venueAddress: 'a'.repeat(121),
+      }),
+    ).toEqual({
+      title: 'El título puede tener hasta 60 caracteres',
+      description: 'La descripción puede tener hasta 2000 caracteres',
+      venueName: 'El nombre del lugar puede tener hasta 60 caracteres',
+      venueAddress: 'La dirección puede tener hasta 120 caracteres',
     });
   });
 
@@ -219,6 +255,28 @@ describe('tandas del formulario', () => {
     });
   });
 
+  it('el nombre de la tanda y el de la entrada tienen hasta 30 caracteres, y el stock hasta 100.000', () => {
+    expect(
+      errorsOf({
+        ...valid,
+        batches: [
+          batch({
+            name: 'a'.repeat(31),
+            ticketTypes: [
+              { name: 'a'.repeat(31), price: '1000', stock: '100001' },
+              { name: 'a'.repeat(30), price: '1000', stock: '100000' },
+            ],
+          }),
+        ],
+      }),
+    ).toEqual({
+      'batches.0.name': 'El nombre de la tanda puede tener hasta 30 caracteres',
+      'batches.0.ticketTypes.0.name':
+        'El nombre de la entrada puede tener hasta 30 caracteres',
+      'batches.0.ticketTypes.0.stock': 'El stock máximo es 100.000',
+    });
+  });
+
   it('el precio no puede superar $99.999.999,99', () => {
     expect(
       errorsOf({
@@ -338,6 +396,7 @@ describe('toEventFormInput', () => {
       venueName: '',
       venueAddress: 'Calle 1',
       venueCity: null,
+      venuePlaceId: null,
       latitude: null,
       longitude: null,
       batches: [
@@ -358,6 +417,7 @@ describe('toEventFormInput', () => {
 describe('ubicación en el mapa', () => {
   const location = {
     venueCity: 'Buenos Aires',
+    venuePlaceId: 'ChIJS4Xb0z_LvJURM1UCa7Y8t7k',
     latitude: -34.6037389,
     longitude: -58.3815704,
   };
@@ -390,6 +450,7 @@ describe('ubicación en el mapa', () => {
     ).toMatchObject(location);
     expect(toEventPayload(schema.parse(valid))).toMatchObject({
       venueCity: null,
+      venuePlaceId: null,
       latitude: null,
       longitude: null,
     });
@@ -413,6 +474,7 @@ describe('toEventPayload', () => {
       venueName: 'Club Central',
       venueAddress: 'Av. Siempre Viva 742',
       venueCity: null,
+      venuePlaceId: null,
       latitude: null,
       longitude: null,
       batches: [

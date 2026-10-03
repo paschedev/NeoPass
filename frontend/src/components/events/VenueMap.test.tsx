@@ -30,6 +30,28 @@ describe('VenueMap', () => {
     expect(link).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
+  it('con un lugar de Google, el mapa y el botón muestran ese lugar', () => {
+    vi.mocked(getMapsApiKey).mockReturnValue('clave-publica');
+
+    render(
+      <VenueMap
+        {...OBELISCO}
+        venuePlaceId="ChIJ-obelisco"
+        venueAddress="Av. 9 de Julio s/n"
+        venueName="Club Central"
+      />,
+    );
+
+    expect(screen.getByTitle('Mapa de Club Central')).toHaveAttribute(
+      'src',
+      expect.stringContaining('q=place_id%3AChIJ-obelisco'),
+    );
+    expect(screen.getByRole('link', { name: /cómo llegar/i })).toHaveAttribute(
+      'href',
+      expect.stringContaining('query_place_id=ChIJ-obelisco'),
+    );
+  });
+
   it('sin la clave de Google no muestra el mapa, pero sí el botón', () => {
     vi.mocked(getMapsApiKey).mockReturnValue('');
 

@@ -33,7 +33,7 @@ export class CreateOrderDto {
   // Not @IsUUID: a malformed referral link must not block the purchase; the
   // service only keeps it if it is an accepted promoter of the event.
   @IsOptional()
-  @IsString()
+  @IsString({ message: 'El promotor no es válido' })
   promoterId?: string;
 
   @IsArray({ message: 'Elegí al menos una entrada' })

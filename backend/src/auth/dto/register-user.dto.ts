@@ -34,7 +34,7 @@ export class RegisterUserDto {
   role: string;
 
   @IsOptional()
-  @IsString()
+  @IsString({ message: 'Completá la verificación de seguridad' })
   captchaToken?: string;
 
   // Organizer specific fields

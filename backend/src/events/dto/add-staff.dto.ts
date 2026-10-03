@@ -14,15 +14,18 @@ export class AddStaffDto {
   @IsUUID('all', { message: 'Elegí a quién invitar' })
   userId: string;
 
-  @IsString()
-  @IsIn(['MANAGER', 'SCANNER', 'PROMOTER'])
+  @IsIn(['MANAGER', 'SCANNER', 'PROMOTER'], {
+    message: 'Elegí un rol válido para el staff',
+  })
   role: StaffRole;
 
   @ValidateIf((o) => o.role === 'PROMOTER')
   @IsString({
     message: 'El tipo de comisión es obligatorio para los promotores',
   })
-  @IsIn(['PERCENTAGE', 'FIXED'])
+  @IsIn(['PERCENTAGE', 'FIXED'], {
+    message: 'La comisión tiene que ser un porcentaje o un monto fijo',
+  })
   commissionType?: CommissionType;
 
   @ValidateIf((o) => o.role === 'PROMOTER')
