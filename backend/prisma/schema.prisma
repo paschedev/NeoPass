@@ -102,14 +102,15 @@ model User {
   passwordChangedAt    DateTime?
 
   // Relations
-  orders           Order[]
-  tickets          Ticket[] // Tickets currently owned by the user
-  checkIns         CheckIn[] // Scans performed by this user
-  organizedEvents  Event[]           @relation("EventOrganizer")
-  organizerProfile OrganizerProfile?
-  eventStaff       EventStaff[]
-  ticketPresets    TicketPreset[]    @relation("OrganizerPresets")
-  notifications    Notification[]
+  orders                     Order[]
+  tickets                    Ticket[] // Tickets currently owned by the user
+  checkIns                   CheckIn[] // Scans performed by this user
+  organizedEvents            Event[]           @relation("EventOrganizer")
+  organizerProfile           OrganizerProfile?
+  eventStaff                 EventStaff[]
+  promoterPaymentsRegistered PromoterPayment[]
+  ticketPresets              TicketPreset[]    @relation("OrganizerPresets")
+  notifications              Notification[]
 }
 
 model OrganizerProfile {
@@ -323,9 +324,12 @@ model EventStaff {
   clicks          Int             @default(0)
   totalPaid       Decimal         @default(0) @db.Decimal(10, 2)
 
-  event  Event   @relation(fields: [eventId], references: [id])
-  user   User    @relation(fields: [userId], references: [id])
-  orders Order[] @relation("OrderPromoter")
+  event    Event             @relation(fields: [eventId], references: [id])
+  user     User              @relation(fields: [userId], references: [id])
+  orders   Order[]           @relation("OrderPromoter")
+  // Payments to a promoter, as the organizer records them (they happen
+  // outside NeoPass). totalPaid is their sum.
+  payments PromoterPayment[]
 
   @@unique([eventId, userId, role])
   @@index([eventId])
@@ -352,4 +356,18 @@ model Notification {
 
   @@index([userId])
   @@index([eventId])
+}
+
+model PromoterPayment {
+  id        String   @id @default(uuid())
+  amount    Decimal  @db.Decimal(10, 2)
+  note      String?
+  createdAt DateTime @default(now())
+
+  eventStaffId   String
+  eventStaff     EventStaff @relation(fields: [eventStaffId], references: [id])
+  registeredById String
+  registeredBy   User       @relation(fields: [registeredById], references: [id])
+
+  @@index([eventStaffId])
 }

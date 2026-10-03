@@ -26,6 +26,8 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { BatchDto } from './dto/batch.dto';
 import { EventLocationDto } from './dto/event-location.dto';
+import { RegisterPromoterPaymentDto } from './dto/register-promoter-payment.dto';
+import { formatPesos } from '../common/amounts';
 
 // Role names as the organizer reads them (errors and notices in their panel).
 const STAFF_ROLE_LABEL: Record<StaffRole, string> = {
@@ -39,6 +41,16 @@ const INVITED_ROLE_LABEL: Record<StaffRole, string> = {
   ...STAFF_ROLE_LABEL,
   PROMOTER: 'promotor (RPP)',
 };
+
+const toPaymentRecord = ({
+  amount,
+  note,
+  createdAt,
+}: {
+  amount: Prisma.Decimal;
+  note: string | null;
+  createdAt: Date;
+}) => ({ amount: amount.toNumber(), note, createdAt });
 
 function assertEndAfterStart(startDate: Date, endDate: Date) {
   if (endDate <= startDate) {
@@ -629,6 +641,73 @@ export class EventsService {
     return staff;
   }
 
+  // Promoters of the event with what they sold, earned and were paid. The
+  // payments happen outside NeoPass: the organizer records them here.
+  async getEventPromoters(eventId: string, organizerId: string) {
+    await this.findOneForOrganizer(eventId, organizerId);
+    const promoters = await this.eventsRepository.findEventPromoters(eventId);
+    return promoters.map(
+      ({ user, orders, payments, totalEarned, totalPaid, ...promoter }) => ({
+        id: promoter.id,
+        status: promoter.status,
+        name: user.name,
+        email: user.email,
+        commissionType: promoter.commissionType,
+        commissionValue: promoter.commissionValue?.toNumber() ?? null,
+        ticketsSold: orders
+          .flatMap((order) => order.orderItems)
+          .reduce((sum, item) => sum + item.quantity, 0),
+        salesAmount: Prisma.Decimal.sum(
+          0,
+          ...orders.map((order) => order.ticketAmount),
+        ).toNumber(),
+        totalEarned: totalEarned.toNumber(),
+        totalPaid: totalPaid.toNumber(),
+        balance: totalEarned.minus(totalPaid).toNumber(),
+        payments: payments.map(toPaymentRecord),
+      }),
+    );
+  }
+
+  async registerPromoterPayment(
+    eventId: string,
+    organizerId: string,
+    staffId: string,
+    { amount, note }: RegisterPromoterPaymentDto,
+  ) {
+    await this.findOneForOrganizer(eventId, organizerId);
+    const promoter = await this.eventsRepository.findEventPromoterTotals(
+      eventId,
+      staffId,
+    );
+    if (!promoter) throw new NotFoundException('RPP no encontrado');
+
+    const recorded = await this.eventsRepository.registerPromoterPayment({
+      eventStaffId: staffId,
+      amount: new Prisma.Decimal(amount),
+      note: note ?? null,
+      registeredById: organizerId,
+    });
+    if (!recorded) {
+      // Read again: another payment may have just taken the balance.
+      const current = await this.eventsRepository.findEventPromoterTotals(
+        eventId,
+        staffId,
+      );
+      const balance = current
+        ? current.totalEarned.minus(current.totalPaid).toNumber()
+        : 0;
+      throw new ConflictException(
+        `El pago supera lo que se le debe (${formatPesos(Math.max(0, balance))})`,
+      );
+    }
+    return {
+      ...toPaymentRecord(recorded.payment),
+      totalPaid: recorded.totalPaid.toNumber(),
+      balance: recorded.totalEarned.minus(recorded.totalPaid).toNumber(),
+    };
+  }
+
   async getEventStaff(eventId: string, organizerId: string) {
     await this.findOneForOrganizer(eventId, organizerId);
     return this.eventsRepository.getEventStaffByEvent(eventId);
@@ -702,6 +781,9 @@ export class EventsService {
       staffId: staff.id,
       eventName: staff.event.title,
       totalEarned: Number(staff.totalEarned),
+      totalPaid: staff.totalPaid.toNumber(),
+      balance: staff.totalEarned.minus(staff.totalPaid).toNumber(),
+      payments: staff.payments.map(toPaymentRecord),
       totalTicketsSold,
       clicks: staff.clicks,
       recentSales,
