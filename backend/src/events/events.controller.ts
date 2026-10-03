@@ -52,6 +52,16 @@ export class EventsController {
     return this.eventsService.getOrganizerStats(userId);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ORGANIZER', 'ADMIN')
+  @Get('organizer/:id/sales')
+  getEventSales(
+    @Param('id', ParseIdPipe) id: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.eventsService.getEventSales(id, userId);
+  }
+
   // After the fixed organizer/* routes so it doesn't swallow them.
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ORGANIZER', 'ADMIN')
