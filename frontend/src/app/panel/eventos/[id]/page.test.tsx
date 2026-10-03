@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { apiFetch } from '@/utils/api';
 import EventDetailPage from './page';
 
@@ -9,7 +9,7 @@ vi.mock('@/utils/api', () => ({ apiFetch: vi.fn() }));
 describe('Detalle del evento', () => {
   afterEach(() => vi.clearAllMocks());
 
-  it('pide las ventas y los RPPs del evento y los muestra', async () => {
+  it('pide las ventas, el ingreso, los RPPs y los asistentes del evento y los muestra', async () => {
     const sales = Response.json({
       event: {
         id: 'event-1',
@@ -30,9 +30,16 @@ describe('Detalle del evento', () => {
       },
       batches: [],
     });
-    vi.mocked(apiFetch).mockImplementation(async (path) =>
-      path.endsWith('/sales') ? sales : Response.json([]),
-    );
+    vi.mocked(apiFetch).mockImplementation(async (path) => {
+      if (path.endsWith('/sales')) return sales;
+      if (path.endsWith('/check-ins')) {
+        return Response.json({ checkedIn: 0, total: 0, byTicketType: [] });
+      }
+      if (path.includes('/attendees')) {
+        return Response.json({ items: [], total: 0, page: 1, limit: 50 });
+      }
+      return Response.json([]);
+    });
 
     render(<EventDetailPage />);
 
@@ -41,6 +48,13 @@ describe('Detalle del evento', () => {
     ).toBeInTheDocument();
     expect(
       await screen.findByText('Este evento no tiene RPPs.'),
+    ).toBeInTheDocument();
+    const doors = await screen.findByRole('region', {
+      name: 'Ingreso en puerta',
+    });
+    expect(await within(doors).findByText('0 de 0')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Todavía no hay entradas emitidas.'),
     ).toBeInTheDocument();
     expect(apiFetch).toHaveBeenCalledWith('/events/organizer/event-1/sales');
     expect(apiFetch).toHaveBeenCalledWith(
