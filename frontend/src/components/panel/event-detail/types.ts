@@ -35,3 +35,19 @@ export interface EventSales {
     }[];
   }[];
 }
+
+// Respuesta de GET /events/organizer/:id/promoters.
+export interface EventPromoter {
+  id: string;
+  status: string;
+  name: string;
+  email: string;
+  commissionType: string | null;
+  commissionValue: number | null;
+  ticketsSold: number;
+  salesAmount: number;
+  totalEarned: number;
+  totalPaid: number;
+  balance: number;
+  payments: { amount: number; note: string | null; createdAt: string }[];
+}

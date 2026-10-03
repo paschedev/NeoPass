@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   formatCompactNumber,
   formatCurrency,
+  formatDayMonthTime,
   formatRelativeDate,
   formatShortDateTime,
   fromDateTimeLocalInput,
@@ -88,5 +89,11 @@ describe('inputs datetime-local', () => {
 describe('formatShortDateTime', () => {
   it('muestra día/mes y hora en la hora de Argentina', () => {
     expect(formatShortDateTime('2026-10-12T23:05:00Z')).toBe('12/10 20:05');
+  });
+});
+
+describe('formatDayMonthTime', () => {
+  it('muestra el día, el mes abreviado y la hora en la hora de Argentina', () => {
+    expect(formatDayMonthTime('2026-10-02T15:00:00Z')).toBe('2 oct, 12:00');
   });
 });

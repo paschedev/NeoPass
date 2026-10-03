@@ -9,28 +9,29 @@ vi.mock('@/utils/api', () => ({ apiFetch: vi.fn() }));
 describe('Detalle del evento', () => {
   afterEach(() => vi.clearAllMocks());
 
-  it('pide las ventas del evento y las muestra', async () => {
-    vi.mocked(apiFetch).mockResolvedValue(
-      Response.json({
-        event: {
-          id: 'event-1',
-          title: 'Fiesta de primavera',
-          status: 'PUBLISHED',
-          startDate: '2030-10-10T01:00:00.000Z',
-          endDate: '2030-10-10T08:00:00.000Z',
-          venueName: 'Club Central',
-          venueAddress: 'Av. Corrientes 1234',
-        },
-        totals: {
-          revenue: 0,
-          sold: 0,
-          reserved: 0,
-          capacity: 100,
-          checkedIn: 0,
-          refundedOrders: 0,
-        },
-        batches: [],
-      }),
+  it('pide las ventas y los RPPs del evento y los muestra', async () => {
+    const sales = Response.json({
+      event: {
+        id: 'event-1',
+        title: 'Fiesta de primavera',
+        status: 'PUBLISHED',
+        startDate: '2030-10-10T01:00:00.000Z',
+        endDate: '2030-10-10T08:00:00.000Z',
+        venueName: 'Club Central',
+        venueAddress: 'Av. Corrientes 1234',
+      },
+      totals: {
+        revenue: 0,
+        sold: 0,
+        reserved: 0,
+        capacity: 100,
+        checkedIn: 0,
+        refundedOrders: 0,
+      },
+      batches: [],
+    });
+    vi.mocked(apiFetch).mockImplementation(async (path) =>
+      path.endsWith('/sales') ? sales : Response.json([]),
     );
 
     render(<EventDetailPage />);
@@ -38,7 +39,13 @@ describe('Detalle del evento', () => {
     expect(
       await screen.findByRole('heading', { name: 'Fiesta de primavera' }),
     ).toBeInTheDocument();
+    expect(
+      await screen.findByText('Este evento no tiene RPPs.'),
+    ).toBeInTheDocument();
     expect(apiFetch).toHaveBeenCalledWith('/events/organizer/event-1/sales');
+    expect(apiFetch).toHaveBeenCalledWith(
+      '/events/organizer/event-1/promoters',
+    );
   });
 
   it.each([403, 404])(
