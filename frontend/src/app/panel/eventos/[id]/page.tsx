@@ -4,8 +4,11 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import EventSalesView from '@/components/panel/event-detail/EventSalesView';
 import PromoterPayouts from '@/components/panel/event-detail/PromoterPayouts';
+import CheckInProgress from '@/components/panel/event-detail/CheckInProgress';
+import AttendeeList from '@/components/panel/event-detail/AttendeeList';
 import type { EventSales } from '@/components/panel/event-detail/types';
 import { apiFetch } from '@/utils/api';
+import { getEventPhase } from '@/utils/event-edit';
 
 type Loaded =
   | { state: 'loading' }
@@ -13,8 +16,8 @@ type Loaded =
   | { state: 'missing' }
   | { state: 'failed' };
 
-// Detalle del evento para su organizador: ventas y RPPs (y más adelante
-// asistentes). Reemplaza el "Ver página" de Mis eventos.
+// Detalle del evento para su organizador: ventas, ingreso en puerta, RPPs y
+// asistentes. Reemplaza el "Ver página" de Mis eventos.
 export default function EventDetailPage() {
   const { id } = useParams();
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
@@ -72,7 +75,14 @@ export default function EventDetailPage() {
       {loaded.state === 'ready' && (
         <div className="space-y-10">
           <EventSalesView sales={loaded.sales} />
+          <CheckInProgress
+            eventId={loaded.sales.event.id}
+            live={
+              getEventPhase(loaded.sales.event, new Date()) === 'IN_PROGRESS'
+            }
+          />
           <PromoterPayouts eventId={loaded.sales.event.id} />
+          <AttendeeList eventId={loaded.sales.event.id} />
         </div>
       )}
     </div>

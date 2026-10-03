@@ -11,12 +11,18 @@ import {
 } from './repositories/events.repository';
 import { UserRepository } from '../auth/repositories/user.repository';
 import { ConfigService } from '@nestjs/config';
-import { StaffRole, CommissionType, Prisma } from '@prisma/client';
+import {
+  StaffRole,
+  CommissionType,
+  Prisma,
+  TicketStatus,
+} from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { buildRevenueChart } from './revenue-chart';
 import { getBatchSaleStatus } from './batch-sale-status';
 import { getEventPhase } from './event-phase';
 import { buildEventSales } from './event-sales';
+import { attendeesCsv, summarizeCheckIns } from './attendees';
 import { PromoterClicksService } from './promoter-clicks.service';
 import { hasUsableMercadoPagoToken } from '../payments/mercadopago-token';
 import { planBatchChanges } from './batch-changes';
@@ -27,6 +33,7 @@ import { UpdateEventDto } from './dto/update-event.dto';
 import { BatchDto } from './dto/batch.dto';
 import { EventLocationDto } from './dto/event-location.dto';
 import { RegisterPromoterPaymentDto } from './dto/register-promoter-payment.dto';
+import { ListAttendeesQueryDto } from './dto/list-attendees-query.dto';
 import { formatPesos } from '../common/amounts';
 
 // Role names as the organizer reads them (errors and notices in their panel).
@@ -41,6 +48,20 @@ const INVITED_ROLE_LABEL: Record<StaffRole, string> = {
   ...STAFF_ROLE_LABEL,
   PROMOTER: 'promotor (RPP)',
 };
+
+const toAttendee = (ticket: {
+  status: TicketStatus;
+  usedAt: Date | null;
+  user: { name: string; email: string } | null;
+  ticketType: { name: string; batch: { name: string } | null };
+}) => ({
+  name: ticket.user?.name ?? null,
+  email: ticket.user?.email ?? null,
+  ticketType: ticket.ticketType.name,
+  batch: ticket.ticketType.batch?.name ?? null,
+  status: ticket.status,
+  checkedInAt: ticket.usedAt,
+});
 
 const toPaymentRecord = ({
   amount,
@@ -639,6 +660,44 @@ export class EventsService {
     });
 
     return staff;
+  }
+
+  // Holders of the event's tickets, as the organizer decided to see them: name
+  // and email of whoever holds each ticket now.
+  async getEventAttendees(
+    eventId: string,
+    organizerId: string,
+    { q, page, limit }: ListAttendeesQueryDto,
+  ) {
+    await this.findOneForOrganizer(eventId, organizerId);
+    const { items, total } = await this.eventsRepository.findEventAttendees(
+      eventId,
+      { search: q?.trim() || undefined, skip: (page - 1) * limit, take: limit },
+    );
+    return {
+      items: items.map(({ id, ...ticket }) => ({
+        ticketId: id,
+        ...toAttendee(ticket),
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async exportEventAttendees(eventId: string, organizerId: string) {
+    await this.findOneForOrganizer(eventId, organizerId);
+    const tickets = await this.eventsRepository.findAllEventAttendees(eventId);
+    return attendeesCsv(tickets.map(toAttendee));
+  }
+
+  async getEventCheckIns(eventId: string, organizerId: string) {
+    await this.findOneForOrganizer(eventId, organizerId);
+    const [ticketTypes, counts] = await Promise.all([
+      this.eventsRepository.findEventTicketTypes(eventId),
+      this.eventsRepository.countTicketsByTypeAndStatus(eventId),
+    ]);
+    return summarizeCheckIns(ticketTypes, counts);
   }
 
   // Promoters of the event with what they sold, earned and were paid. The

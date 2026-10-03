@@ -8,6 +8,7 @@ import {
   UseGuards,
   Query,
   Ip,
+  Header,
 } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -18,6 +19,7 @@ import { UpdateEventDto } from './dto/update-event.dto';
 import { UpdateBatchesDto } from './dto/update-batches.dto';
 import { BatchSaleActionDto } from './dto/batch-sale-action.dto';
 import { RegisterPromoterPaymentDto } from './dto/register-promoter-payment.dto';
+import { ListAttendeesQueryDto } from './dto/list-attendees-query.dto';
 import { AddStaffDto } from './dto/add-staff.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ListEventsQueryDto } from './dto/list-events-query.dto';
@@ -61,6 +63,39 @@ export class EventsController {
     @CurrentUser('userId') userId: string,
   ) {
     return this.eventsService.getEventSales(id, userId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ORGANIZER', 'ADMIN')
+  @Get('organizer/:id/attendees')
+  getEventAttendees(
+    @Param('id', ParseIdPipe) id: string,
+    @Query() query: ListAttendeesQueryDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.eventsService.getEventAttendees(id, userId, query);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ORGANIZER', 'ADMIN')
+  @Get('organizer/:id/attendees/export')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="asistentes.csv"')
+  exportEventAttendees(
+    @Param('id', ParseIdPipe) id: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.eventsService.exportEventAttendees(id, userId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ORGANIZER', 'ADMIN')
+  @Get('organizer/:id/check-ins')
+  getEventCheckIns(
+    @Param('id', ParseIdPipe) id: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.eventsService.getEventCheckIns(id, userId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
