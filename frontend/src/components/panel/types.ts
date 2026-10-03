@@ -27,6 +27,8 @@ export interface OrganizerEvent {
   endDate: string;
   venueName: string | null;
   ticketTypes: { sold: number; price: number | string }[];
+  // Lo cobrado por las entradas (órdenes pagadas), no vendidas × precio actual.
+  revenue: number;
 }
 
 // Respuesta de GET /events/organizer/staff.

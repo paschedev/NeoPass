@@ -5,6 +5,11 @@ import { BatchChanges } from '../batch-changes';
 
 export type InvitationAnswer = Extract<StaffStatus, 'ACCEPTED' | 'REJECTED'>;
 
+const PAYMENT_HISTORY = {
+  orderBy: { createdAt: 'desc' },
+  select: { amount: true, note: true, createdAt: true },
+} satisfies Prisma.EventStaff$paymentsArgs;
+
 // Public = published and not over yet.
 function publicEventWhere(now: Date): Prisma.EventWhereInput {
   return { status: 'PUBLISHED', endDate: { gt: now } };
@@ -241,6 +246,53 @@ export class EventsRepository {
     });
   }
 
+  // What buyers paid for each ticket type of the event, by paid order: the
+  // price at purchase, not the current one.
+  async sumPaidRevenueByTicketType(eventId: string) {
+    const rows = await this.prisma.$queryRaw<
+      { ticketTypeId: string; revenue: Prisma.Decimal }[]
+    >`
+      SELECT oi."ticketTypeId", SUM(oi."unitPrice" * oi.quantity) AS revenue
+      FROM "OrderItem" oi
+      JOIN "Order" o ON o.id = oi."orderId"
+      JOIN "TicketType" tt ON tt.id = oi."ticketTypeId"
+      WHERE o.status = 'PAID' AND tt."eventId" = ${eventId}
+      GROUP BY oi."ticketTypeId"`;
+    return new Map(rows.map((row) => [row.ticketTypeId, row.revenue]));
+  }
+
+  // The same, per event, for every event of the organizer.
+  async sumPaidRevenueByEvent(organizerId: string) {
+    const rows = await this.prisma.$queryRaw<
+      { eventId: string; revenue: Prisma.Decimal }[]
+    >`
+      SELECT tt."eventId", SUM(oi."unitPrice" * oi.quantity) AS revenue
+      FROM "OrderItem" oi
+      JOIN "Order" o ON o.id = oi."orderId"
+      JOIN "TicketType" tt ON tt.id = oi."ticketTypeId"
+      JOIN "Event" e ON e.id = tt."eventId"
+      WHERE o.status = 'PAID' AND e."organizerId" = ${organizerId}
+      GROUP BY tt."eventId"`;
+    return new Map(rows.map((row) => [row.eventId, row.revenue]));
+  }
+
+  async countCheckedInTickets(eventId: string) {
+    return this.prisma.ticket.count({
+      where: { status: 'USED', ticketType: { eventId } },
+    });
+  }
+
+  // Orders whose approved payment was later refunded or charged back.
+  async countRefundedOrders(eventId: string) {
+    return this.prisma.order.count({
+      where: {
+        status: 'CANCELLED',
+        payment: { status: 'REFUNDED' },
+        orderItems: { some: { ticketType: { eventId } } },
+      },
+    });
+  }
+
   // Face value of the tickets of every paid order of the organizer's events,
   // as charged: a later price change doesn't rewrite it.
   async sumPaidTicketAmountForOrganizer(organizerId: string) {
@@ -384,9 +436,75 @@ export class EventsRepository {
           },
           orderBy: { createdAt: 'desc' },
         },
+        payments: PAYMENT_HISTORY,
       },
     });
 
     return staff;
+  }
+
+  // Promoters of the event with what they sold (paid orders) and the payments
+  // the organizer recorded.
+  async findEventPromoters(eventId: string) {
+    return this.prisma.eventStaff.findMany({
+      where: { eventId, role: 'PROMOTER' },
+      orderBy: { user: { name: 'asc' } },
+      select: {
+        id: true,
+        status: true,
+        commissionType: true,
+        commissionValue: true,
+        totalEarned: true,
+        totalPaid: true,
+        user: { select: { name: true, email: true } },
+        orders: {
+          where: { status: 'PAID' },
+          select: {
+            ticketAmount: true,
+            orderItems: { select: { quantity: true } },
+          },
+        },
+        payments: PAYMENT_HISTORY,
+      },
+    });
+  }
+
+  async findEventPromoterTotals(eventId: string, staffId: string) {
+    return this.prisma.eventStaff.findFirst({
+      where: { id: staffId, eventId, role: 'PROMOTER' },
+      select: { totalEarned: true, totalPaid: true },
+    });
+  }
+
+  // Records the payment only if it fits in what is still owed, in the same
+  // transaction that adds it to totalPaid. Returns null when it doesn't fit,
+  // also when another payment recorded at the same time took the balance.
+  async registerPromoterPayment({
+    eventStaffId,
+    amount,
+    note,
+    registeredById,
+  }: {
+    eventStaffId: string;
+    amount: Prisma.Decimal;
+    note: string | null;
+    registeredById: string;
+  }) {
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.$executeRaw`
+        UPDATE "EventStaff" SET "totalPaid" = "totalPaid" + ${amount.toFixed(2)}::numeric
+        WHERE id = ${eventStaffId}
+          AND "totalEarned" - "totalPaid" >= ${amount.toFixed(2)}::numeric`;
+      if (updated === 0) return null;
+      const payment = await tx.promoterPayment.create({
+        data: { eventStaffId, amount, note, registeredById },
+        select: PAYMENT_HISTORY.select,
+      });
+      const totals = await tx.eventStaff.findUniqueOrThrow({
+        where: { id: eventStaffId },
+        select: { totalEarned: true, totalPaid: true },
+      });
+      return { payment, ...totals };
+    });
   }
 }

@@ -17,6 +17,7 @@ import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { UpdateBatchesDto } from './dto/update-batches.dto';
 import { BatchSaleActionDto } from './dto/batch-sale-action.dto';
+import { RegisterPromoterPaymentDto } from './dto/register-promoter-payment.dto';
 import { AddStaffDto } from './dto/add-staff.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ListEventsQueryDto } from './dto/list-events-query.dto';
@@ -50,6 +51,43 @@ export class EventsController {
   @Get('organizer/stats')
   getOrganizerStats(@CurrentUser('userId') userId: string) {
     return this.eventsService.getOrganizerStats(userId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ORGANIZER', 'ADMIN')
+  @Get('organizer/:id/sales')
+  getEventSales(
+    @Param('id', ParseIdPipe) id: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.eventsService.getEventSales(id, userId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ORGANIZER', 'ADMIN')
+  @Get('organizer/:id/promoters')
+  getEventPromoters(
+    @Param('id', ParseIdPipe) id: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.eventsService.getEventPromoters(id, userId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ORGANIZER', 'ADMIN')
+  @Post('organizer/:id/promoters/:staffId/payments')
+  registerPromoterPayment(
+    @Param('id', ParseIdPipe) id: string,
+    @Param('staffId', ParseIdPipe) staffId: string,
+    @Body() body: RegisterPromoterPaymentDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.eventsService.registerPromoterPayment(
+      id,
+      userId,
+      staffId,
+      body,
+    );
   }
 
   // After the fixed organizer/* routes so it doesn't swallow them.
