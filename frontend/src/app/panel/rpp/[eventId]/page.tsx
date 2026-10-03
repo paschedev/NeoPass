@@ -16,6 +16,7 @@ import toast from '@/utils/toast';
 import { apiFetch } from '@/utils/api';
 import { toCsvCell } from '@/utils/csv';
 import { formatCurrency, formatRelativeDate } from '@/utils/format';
+import PromoterPaymentsSummary from '@/components/rpp/PromoterPaymentsSummary';
 
 export default function RppEventDetailsPage() {
   const { eventId } = useParams();
@@ -26,6 +27,13 @@ export default function RppEventDetailsPage() {
     totalEarned: 0,
     totalTicketsSold: 0,
     clicks: 0,
+    totalPaid: 0,
+    balance: 0,
+    payments: [] as {
+      amount: number;
+      note: string | null;
+      createdAt: string;
+    }[],
     staffId: '',
     recentSales: [] as any[],
   });
@@ -187,6 +195,12 @@ export default function RppEventDetailsPage() {
           </div>
         </div>
       </div>
+
+      <PromoterPaymentsSummary
+        totalPaid={stats.totalPaid}
+        balance={stats.balance}
+        payments={stats.payments}
+      />
 
       {/* Sales Log */}
       <div className="flex-1 bg-white/5 border border-white/10 rounded-2xl overflow-hidden flex flex-col">

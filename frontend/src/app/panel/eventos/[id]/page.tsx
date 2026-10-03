@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import EventSalesView from '@/components/panel/event-detail/EventSalesView';
+import PromoterPayouts from '@/components/panel/event-detail/PromoterPayouts';
 import type { EventSales } from '@/components/panel/event-detail/types';
 import { apiFetch } from '@/utils/api';
 
@@ -12,7 +13,7 @@ type Loaded =
   | { state: 'missing' }
   | { state: 'failed' };
 
-// Detalle del evento para su organizador (ventas, y más adelante RPPs y
+// Detalle del evento para su organizador: ventas y RPPs (y más adelante
 // asistentes). Reemplaza el "Ver página" de Mis eventos.
 export default function EventDetailPage() {
   const { id } = useParams();
@@ -68,7 +69,12 @@ export default function EventDetailPage() {
           </button>
         </div>
       )}
-      {loaded.state === 'ready' && <EventSalesView sales={loaded.sales} />}
+      {loaded.state === 'ready' && (
+        <div className="space-y-10">
+          <EventSalesView sales={loaded.sales} />
+          <PromoterPayouts eventId={loaded.sales.event.id} />
+        </div>
+      )}
     </div>
   );
 }
