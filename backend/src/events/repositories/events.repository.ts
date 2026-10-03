@@ -241,6 +241,53 @@ export class EventsRepository {
     });
   }
 
+  // What buyers paid for each ticket type of the event, by paid order: the
+  // price at purchase, not the current one.
+  async sumPaidRevenueByTicketType(eventId: string) {
+    const rows = await this.prisma.$queryRaw<
+      { ticketTypeId: string; revenue: Prisma.Decimal }[]
+    >`
+      SELECT oi."ticketTypeId", SUM(oi."unitPrice" * oi.quantity) AS revenue
+      FROM "OrderItem" oi
+      JOIN "Order" o ON o.id = oi."orderId"
+      JOIN "TicketType" tt ON tt.id = oi."ticketTypeId"
+      WHERE o.status = 'PAID' AND tt."eventId" = ${eventId}
+      GROUP BY oi."ticketTypeId"`;
+    return new Map(rows.map((row) => [row.ticketTypeId, row.revenue]));
+  }
+
+  // The same, per event, for every event of the organizer.
+  async sumPaidRevenueByEvent(organizerId: string) {
+    const rows = await this.prisma.$queryRaw<
+      { eventId: string; revenue: Prisma.Decimal }[]
+    >`
+      SELECT tt."eventId", SUM(oi."unitPrice" * oi.quantity) AS revenue
+      FROM "OrderItem" oi
+      JOIN "Order" o ON o.id = oi."orderId"
+      JOIN "TicketType" tt ON tt.id = oi."ticketTypeId"
+      JOIN "Event" e ON e.id = tt."eventId"
+      WHERE o.status = 'PAID' AND e."organizerId" = ${organizerId}
+      GROUP BY tt."eventId"`;
+    return new Map(rows.map((row) => [row.eventId, row.revenue]));
+  }
+
+  async countCheckedInTickets(eventId: string) {
+    return this.prisma.ticket.count({
+      where: { status: 'USED', ticketType: { eventId } },
+    });
+  }
+
+  // Orders whose approved payment was later refunded or charged back.
+  async countRefundedOrders(eventId: string) {
+    return this.prisma.order.count({
+      where: {
+        status: 'CANCELLED',
+        payment: { status: 'REFUNDED' },
+        orderItems: { some: { ticketType: { eventId } } },
+      },
+    });
+  }
+
   // Face value of the tickets of every paid order of the organizer's events,
   // as charged: a later price change doesn't rewrite it.
   async sumPaidTicketAmountForOrganizer(organizerId: string) {

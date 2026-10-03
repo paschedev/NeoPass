@@ -16,6 +16,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { buildRevenueChart } from './revenue-chart';
 import { getBatchSaleStatus } from './batch-sale-status';
 import { getEventPhase } from './event-phase';
+import { buildEventSales } from './event-sales';
 import { PromoterClicksService } from './promoter-clicks.service';
 import { hasUsableMercadoPagoToken } from '../payments/mercadopago-token';
 import { planBatchChanges } from './batch-changes';
@@ -368,8 +369,47 @@ export class EventsService {
     );
   }
 
+  // Each event carries what was collected for its tickets (paid orders).
   async findByOrganizer(userId: string) {
-    return this.eventsRepository.findByOrganizer(userId);
+    const [events, revenueByEvent] = await Promise.all([
+      this.eventsRepository.findByOrganizer(userId),
+      this.eventsRepository.sumPaidRevenueByEvent(userId),
+    ]);
+    return events.map((event) => ({
+      ...event,
+      revenue: (
+        revenueByEvent.get(event.id) ?? new Prisma.Decimal(0)
+      ).toNumber(),
+    }));
+  }
+
+  // Sales detail of one event for its organizer: totals and each batch and
+  // ticket type.
+  async getEventSales(eventId: string, organizerId: string) {
+    const event = await this.findOneForOrganizer(eventId, organizerId);
+    const [revenueByTicketType, checkedIn, refundedOrders] = await Promise.all([
+      this.eventsRepository.sumPaidRevenueByTicketType(eventId),
+      this.eventsRepository.countCheckedInTickets(eventId),
+      this.eventsRepository.countRefundedOrders(eventId),
+    ]);
+    const { totals, batches } = buildEventSales(
+      event,
+      revenueByTicketType,
+      new Date(),
+    );
+    return {
+      event: {
+        id: event.id,
+        title: event.title,
+        status: event.status,
+        startDate: event.startDate,
+        endDate: event.endDate,
+        venueName: event.venueName,
+        venueAddress: event.venueAddress,
+      },
+      totals: { ...totals, checkedIn, refundedOrders },
+      batches,
+    };
   }
 
   async updateBatches(

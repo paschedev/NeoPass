@@ -2,37 +2,18 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import {
-  Calendar as CalendarIcon,
-  ExternalLink,
-  MapPin,
-  X,
-} from 'lucide-react';
+import { BarChart3, Calendar as CalendarIcon, MapPin, X } from 'lucide-react';
 import { closedEventLabel, getEventPhase } from '@/utils/event-edit';
+import {
+  DEFAULT_STATUS_STYLE,
+  EVENT_STATUS_LABELS,
+  EVENT_STATUS_STYLES,
+} from '@/utils/event-status';
 import { formatCurrency } from '@/utils/format';
 import type { OrganizerEvent } from './types';
 
-const STATUS_STYLES: Record<string, string> = {
-  PUBLISHED: 'bg-emerald-500/10 text-emerald-400',
-  DRAFT: 'bg-amber-500/10 text-amber-400',
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  PUBLISHED: 'PUBLICADO',
-  DRAFT: 'BORRADOR',
-  FINISHED: 'FINALIZADO',
-  CANCELLED: 'CANCELADO',
-};
-
-function salesSummary(event: OrganizerEvent) {
-  return event.ticketTypes.reduce(
-    (summary, type) => ({
-      sold: summary.sold + type.sold,
-      revenue: summary.revenue + type.sold * Number(type.price),
-    }),
-    { sold: 0, revenue: 0 },
-  );
-}
+const ticketsSold = (event: OrganizerEvent) =>
+  event.ticketTypes.reduce((total, type) => total + type.sold, 0);
 
 // Pestaña "Mis Eventos" del panel del organizador.
 export default function EventsTab({
@@ -98,7 +79,7 @@ export default function EventsTab({
       ) : (
         <div className="grid grid-cols-1 gap-6">
           {events.map((event) => {
-            const { sold, revenue } = salesSummary(event);
+            const sold = ticketsSold(event);
             return (
               <div
                 key={event.id}
@@ -108,9 +89,9 @@ export default function EventsTab({
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <span
-                        className={`px-2.5 py-1 text-[10px] font-semibold rounded-md uppercase ${STATUS_STYLES[event.status] ?? 'bg-white/10 text-neutral-400'}`}
+                        className={`px-2.5 py-1 text-[10px] font-semibold rounded-md uppercase ${EVENT_STATUS_STYLES[event.status] ?? DEFAULT_STATUS_STYLE}`}
                       >
-                        {STATUS_LABELS[event.status] ?? event.status}
+                        {EVENT_STATUS_LABELS[event.status] ?? event.status}
                       </span>
                       <span className="text-xs text-neutral-400">
                         {new Date(event.startDate).toLocaleDateString('es-AR', {
@@ -139,7 +120,7 @@ export default function EventsTab({
                         Ingresos
                       </div>
                       <div className="text-lg font-bold text-emerald-400">
-                        {formatCurrency(revenue)}
+                        {formatCurrency(event.revenue)}
                       </div>
                     </div>
                     <div className="bg-black/40 rounded-xl p-3 border border-white/5">
@@ -165,11 +146,10 @@ export default function EventsTab({
                     </Link>
                   )}
                   <Link
-                    href={`/eventos/${event.id}`}
-                    target="_blank"
+                    href={`/panel/eventos/${event.id}`}
                     className="flex-1 text-center bg-indigo-600 hover:bg-indigo-500 text-white py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
                   >
-                    Ver página <ExternalLink className="w-4 h-4" />
+                    <BarChart3 className="w-4 h-4" /> Ver detalle
                   </Link>
                 </div>
               </div>
