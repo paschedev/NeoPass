@@ -17,6 +17,7 @@ function organizerEvent(overrides: Partial<OrganizerEvent>): OrganizerEvent {
     endDate: at(30),
     venueName: 'Club',
     ticketTypes: [],
+    revenue: 0,
     ...overrides,
   };
 }
@@ -35,6 +36,33 @@ function renderTab(event: OrganizerEvent) {
 describe('EventsTab', () => {
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('cada evento lleva a su detalle, en vez de a la página pública', () => {
+    vi.useFakeTimers({ now, toFake: ['Date'] });
+    renderTab(organizerEvent({ status: 'FINISHED' }));
+
+    expect(screen.getByRole('link', { name: 'Ver detalle' })).toHaveAttribute(
+      'href',
+      '/panel/eventos/event-1',
+    );
+    expect(
+      screen.queryByRole('link', { name: /ver página/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('muestra lo recaudado que informa el servidor y las entradas vendidas', () => {
+    vi.useFakeTimers({ now, toFake: ['Date'] });
+    renderTab(
+      organizerEvent({
+        revenue: 2000,
+        // El precio actual cambió después de vender: no cuenta.
+        ticketTypes: [{ sold: 2, price: '5000' }],
+      }),
+    );
+
+    expect(screen.getByText('$2.000')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
   });
 
   it('deja editar un evento que no terminó', () => {
