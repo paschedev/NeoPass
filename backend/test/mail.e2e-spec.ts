@@ -1,6 +1,7 @@
 import { Job } from 'bullmq';
 import request from 'supertest';
-import { MailService } from '../src/mail/mail.service';
+import { MailProcessor } from '../src/mail/mail.processor';
+import { FreeTicketsEmailJob, MailService } from '../src/mail/mail.service';
 import { PaymentsProcessor } from '../src/payments/payments.processor';
 import { PaymentsService } from '../src/payments/payments.service';
 import { mercadoPagoMock } from './mocks/mercadopago';
@@ -97,6 +98,40 @@ describe('Mails', () => {
       );
       expect(email.html).not.toContain('undefined');
       expect(email.text).toContain('https://app.neopass.test/panel/tickets');
+    });
+
+    it('el mail de QR free sale desde entradas@ con cada QR inline y el botón a la página del evento', async () => {
+      await new MailProcessor(t.app.get(MailService)).process({
+        id: 'job-1',
+        name: 'send-free-tickets',
+        data: {
+          to: 'ana@neopass.test',
+          name: null,
+          organizerName: 'Martina',
+          eventId: 'evento-1',
+          validUntil: null,
+          tickets: [
+            {
+              id: 'ticket-1',
+              qrCode: 'qr-secreto',
+              eventName: 'Fiesta Bresh',
+              ticketTypeName: 'General',
+            },
+          ],
+        },
+      } as Job<FreeTicketsEmailJob>);
+
+      const [email] = resendMock.send.mock.calls[0] as [SentEmail];
+      expect(email.from).toContain('entradas@neopass.ar');
+      expect(email.subject).toBe(
+        'Martina te mandó una entrada para Fiesta Bresh',
+      );
+      expect(email.html).toContain(
+        'href="https://app.neopass.test/eventos/evento-1"',
+      );
+      const [attachment] = email.attachments ?? [];
+      expect(email.html).toContain(`cid:${attachment.contentId}`);
+      expect(attachment.content.subarray(0, 4)).toEqual(PNG_SIGNATURE);
     });
 
     it('el mail de recuperación de contraseña sale desde soporte@ con el enlace y versión en texto', async () => {

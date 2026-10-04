@@ -5,6 +5,7 @@ import { JobsOptions, Queue } from 'bullmq';
 import * as qrcode from 'qrcode';
 import { Resend } from 'resend';
 import { SUPPORT_EMAIL, TICKETS_EMAIL } from './mail-addresses';
+import { freeTicketsEmail } from './templates/free-tickets-email';
 import { passwordResetEmail } from './templates/password-reset-email';
 import {
   qrContentId,
@@ -27,6 +28,16 @@ export interface TicketsEmailJob {
   tickets: TicketForMail[];
 }
 
+export interface FreeTicketsEmailJob {
+  to: string;
+  name: string | null;
+  organizerName: string;
+  eventId: string;
+  // ISO date; null when the tickets are valid for the whole event.
+  validUntil: string | null;
+  tickets: TicketForMail[];
+}
+
 export interface PasswordResetEmailJob {
   to: string;
   name: string;
@@ -37,6 +48,7 @@ export interface PasswordResetEmailJob {
 export class MailService {
   private resend: Resend;
   private readonly ticketsUrl: string;
+  private readonly frontendUrl: string;
   private readonly logger = new Logger(MailService.name);
 
   constructor(
@@ -44,10 +56,8 @@ export class MailService {
     @InjectQueue('mail') private readonly mailQueue: Queue,
   ) {
     this.resend = new Resend(config.getOrThrow<string>('RESEND_API_KEY'));
-    this.ticketsUrl = new URL(
-      '/panel/tickets',
-      config.getOrThrow<string>('FRONTEND_URL'),
-    ).toString();
+    this.frontendUrl = config.getOrThrow<string>('FRONTEND_URL');
+    this.ticketsUrl = new URL('/panel/tickets', this.frontendUrl).toString();
   }
 
   // `jobId` makes it idempotent: queuing the same order twice sends one mail.
@@ -58,25 +68,46 @@ export class MailService {
     });
   }
 
+  async queueFreeTicketsEmail(job: FreeTicketsEmailJob, jobId: string) {
+    await this.mailQueue.add('send-free-tickets', job, {
+      ...MAIL_JOB_OPTIONS,
+      jobId,
+    });
+  }
+
   async queuePasswordResetEmail(job: PasswordResetEmailJob) {
     await this.mailQueue.add('send-password-reset', job, MAIL_JOB_OPTIONS);
   }
 
   async sendTicketsEmail(to: string, name: string, tickets: TicketForMail[]) {
-    const attachments = await Promise.all(
-      tickets.map(async (ticket) => ({
-        filename: `entrada-${ticket.id}.png`,
-        content: await qrcode.toBuffer(ticket.qrCode, { width: 440 }),
-        contentType: 'image/png',
-        contentId: qrContentId(ticket.id),
-      })),
-    );
-
     await this.send({
       from: TICKETS_SENDER,
       to,
       ...ticketsEmail({ name, tickets, ticketsUrl: this.ticketsUrl }),
-      attachments,
+      attachments: await qrAttachments(tickets),
+    });
+  }
+
+  async sendFreeTicketsEmail({
+    to,
+    name,
+    organizerName,
+    eventId,
+    validUntil,
+    tickets,
+  }: FreeTicketsEmailJob) {
+    const eventUrl = new URL(`/eventos/${eventId}`, this.frontendUrl);
+    await this.send({
+      from: TICKETS_SENDER,
+      to,
+      ...freeTicketsEmail({
+        name,
+        organizerName,
+        validUntil,
+        tickets,
+        eventUrl: eventUrl.toString(),
+      }),
+      attachments: await qrAttachments(tickets),
     });
   }
 
@@ -96,4 +127,16 @@ export class MailService {
     }
     this.logger.log(`Email "${email.subject}" sent with ID ${data?.id}`);
   }
+}
+
+// The QR goes as an inline image (CID): Gmail blocks `data:` images.
+function qrAttachments(tickets: TicketForMail[]) {
+  return Promise.all(
+    tickets.map(async (ticket) => ({
+      filename: `entrada-${ticket.id}.png`,
+      content: await qrcode.toBuffer(ticket.qrCode, { width: 440 }),
+      contentType: 'image/png',
+      contentId: qrContentId(ticket.id),
+    })),
+  );
 }

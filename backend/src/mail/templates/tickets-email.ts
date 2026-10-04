@@ -29,15 +29,21 @@ export function qrContentId(ticketId: string): string {
   return `qr-${ticketId}`;
 }
 
+// Weekday, day, month, hour and minute of a date in Argentina's time zone.
+export function argentinaDateParts(date: Date): Record<string, string> {
+  const parts: Record<string, string> = {};
+  for (const { type, value } of eventDateFormat.formatToParts(date)) {
+    parts[type] = value;
+  }
+  return parts;
+}
+
 function formatEventDate(isoDate?: string): string | null {
   if (!isoDate) return null;
   const date = new Date(isoDate);
   if (Number.isNaN(date.getTime())) return null;
 
-  const parts: Record<string, string> = {};
-  for (const { type, value } of eventDateFormat.formatToParts(date)) {
-    parts[type] = value;
-  }
+  const parts = argentinaDateParts(date);
   const weekday =
     parts.weekday.charAt(0).toUpperCase() + parts.weekday.slice(1);
   return `${weekday} ${parts.day} de ${parts.month} · ${parts.hour}:${parts.minute} h`;
@@ -48,6 +54,39 @@ function formatVenue(ticket: TicketForMail): string | null {
     .filter(Boolean)
     .join(', ');
   return [ticket.venueName, address].filter(Boolean).join(' · ') || null;
+}
+
+// Date and place of the event, one line for each one that is known.
+export function eventDetailLines(event: TicketForMail): string[] {
+  return [formatEventDate(event.eventStartDate), formatVenue(event)].filter(
+    (line): line is string => line !== null,
+  );
+}
+
+export function eventHeaderHtml(event: TicketForMail): string {
+  return `<h2 style="margin: 0 0 4px; font-size: 18px; line-height: 24px; color: #18181b;">${escapeHtml(event.eventName)}</h2>
+      ${eventDetailLines(event)
+        .map(
+          (line) =>
+            `<p style="margin: 0; font-size: 14px; line-height: 20px; color: #52525b;">${escapeHtml(line)}</p>`,
+        )
+        .join('')}`;
+}
+
+export function ticketCardsHtml(tickets: TicketForMail[]): string {
+  return tickets
+    .map(
+      (ticket) => `
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 16px 0 0; border: 1px solid #e4e4e7; border-radius: 12px;">
+        <tr>
+          <td align="center" style="padding: 20px;">
+            <p style="margin: 0 0 12px; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: #52525b;">${escapeHtml(ticket.ticketTypeName)}</p>
+            <img src="cid:${qrContentId(ticket.id)}" alt="Código QR de tu entrada" width="220" height="220" style="display: block; margin: 0 auto;">
+          </td>
+        </tr>
+      </table>`,
+    )
+    .join('');
 }
 
 // One order has tickets of a single event, so the event comes from the first.
@@ -62,39 +101,15 @@ export function ticketsEmail({
 }): { subject: string; html: string; text: string } {
   const single = tickets.length === 1;
   const event = tickets.length > 0 ? tickets[0] : undefined;
-  const eventDetails = event
-    ? [formatEventDate(event.eventStartDate), formatVenue(event)].filter(
-        (line): line is string => line !== null,
-      )
-    : [];
+  const eventDetails = event ? eventDetailLines(event) : [];
   const intro = single
     ? 'Acá está tu entrada. Mostrá el QR en la puerta: sirve para una sola persona.'
     : 'Acá están tus entradas. Mostrá cada QR en la puerta: cada uno sirve para una sola persona.';
   const warning =
     'No compartas los códigos: quien tenga el QR entra con tu entrada. Para pasarle una entrada a alguien, usá "Transferir" en Mis entradas.';
 
-  const eventHtml = event
-    ? `<h2 style="margin: 0 0 4px; font-size: 18px; line-height: 24px; color: #18181b;">${escapeHtml(event.eventName)}</h2>
-      ${eventDetails
-        .map(
-          (line) =>
-            `<p style="margin: 0; font-size: 14px; line-height: 20px; color: #52525b;">${escapeHtml(line)}</p>`,
-        )
-        .join('')}`
-    : '';
-  const ticketsHtml = tickets
-    .map(
-      (ticket) => `
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 16px 0 0; border: 1px solid #e4e4e7; border-radius: 12px;">
-        <tr>
-          <td align="center" style="padding: 20px;">
-            <p style="margin: 0 0 12px; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: #52525b;">${escapeHtml(ticket.ticketTypeName)}</p>
-            <img src="cid:${qrContentId(ticket.id)}" alt="Código QR de tu entrada" width="220" height="220" style="display: block; margin: 0 auto;">
-          </td>
-        </tr>
-      </table>`,
-    )
-    .join('');
+  const eventHtml = event ? eventHeaderHtml(event) : '';
+  const ticketsHtml = ticketCardsHtml(tickets);
 
   const subject = event
     ? `${single ? 'Tu entrada' : 'Tus entradas'} para ${event.eventName}`

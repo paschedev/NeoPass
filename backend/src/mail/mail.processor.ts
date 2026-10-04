@@ -2,6 +2,7 @@ import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { Logger } from '@nestjs/common';
 import {
+  FreeTicketsEmailJob,
   MailService,
   PasswordResetEmailJob,
   TicketsEmailJob,
@@ -16,13 +17,21 @@ export class MailProcessor extends WorkerHost {
   }
 
   // Errors propagate: BullMQ retries the job with the options it was queued with.
-  async process(job: Job<TicketsEmailJob | PasswordResetEmailJob>) {
+  async process(
+    job: Job<TicketsEmailJob | FreeTicketsEmailJob | PasswordResetEmailJob>,
+  ) {
     this.logger.log(`Processing job ${job.id} of type ${job.name}`);
 
     switch (job.name) {
       case 'send-tickets': {
         const { to, name, tickets } = job.data as TicketsEmailJob;
         await this.mailService.sendTicketsEmail(to, name, tickets);
+        break;
+      }
+      case 'send-free-tickets': {
+        await this.mailService.sendFreeTicketsEmail(
+          job.data as FreeTicketsEmailJob,
+        );
         break;
       }
       case 'send-password-reset': {

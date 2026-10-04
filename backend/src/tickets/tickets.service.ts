@@ -12,7 +12,8 @@ import { MailService } from '../mail/mail.service';
 import { isUniqueViolation } from '../prisma/prisma-errors';
 import { getEventPhase } from '../events/event-phase';
 import { checkInOpensAt } from './check-in-window';
-import { Event, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { eventForMail } from './event-for-mail';
 
 @Injectable()
 export class TicketsService {
@@ -126,6 +127,17 @@ export class TicketsService {
       };
     }
 
+    // A free ticket can be limited to come in early (until 01:00, say).
+    const validUntil = ticket.freeTicketGrant?.validUntil;
+    if (validUntil && now > validUntil) {
+      return {
+        success: false,
+        status: 'EXPIRED',
+        message: 'VENCIDA',
+        validUntil: validUntil.toISOString(),
+      };
+    }
+
     try {
       const checkedIn = await this.ticketsRepository.processCheckInTransaction(
         ticket.id,
@@ -221,20 +233,4 @@ export class TicketsService {
       ],
     });
   }
-}
-
-// The job is serialized to JSON in the queue: the date travels as ISO text.
-function eventForMail(
-  event: Pick<
-    Event,
-    'title' | 'startDate' | 'venueName' | 'venueAddress' | 'venueCity'
-  >,
-) {
-  return {
-    eventName: event.title,
-    eventStartDate: event.startDate.toISOString(),
-    venueName: event.venueName,
-    venueAddress: event.venueAddress,
-    venueCity: event.venueCity,
-  };
 }
