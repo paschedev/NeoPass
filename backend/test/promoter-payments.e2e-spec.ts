@@ -249,7 +249,7 @@ describe('Pagos a los RPPs del evento', () => {
         .set('Authorization', authHeader(t.app, rppUser))
         .expect(200);
       const overall = await request(t.app.getHttpServer())
-        .get('/events/promoter/me')
+        .get('/events/staff/me')
         .set('Authorization', authHeader(t.app, rppUser))
         .expect(200);
 
@@ -266,8 +266,7 @@ describe('Pagos a los RPPs del evento', () => {
         ],
       });
       expect(overall.body).toMatchObject({
-        totalPaid: 150,
-        pendingBalance: 50,
+        promoterTotals: { totalPaid: 150, owed: 50 },
       });
     });
   });

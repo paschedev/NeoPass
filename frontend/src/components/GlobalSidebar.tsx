@@ -14,7 +14,8 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { canSeeRppPanel, isOrganizer } from '@/utils/roles';
+import { STAFF } from '@/utils/navigation';
+import { canSeeStaffPanel, isOrganizer } from '@/utils/roles';
 
 export default function GlobalSidebar() {
   const pathname = usePathname();
@@ -98,10 +99,10 @@ export default function GlobalSidebar() {
                 show={isOrganizer(user)}
               />
               <NavItem
-                href="/panel/rpp"
-                icon={Users}
-                label="Panel RPP"
-                show={canSeeRppPanel(user)}
+                href={STAFF.href}
+                icon={STAFF.icon}
+                label={STAFF.label}
+                show={canSeeStaffPanel(user)}
               />
               <NavItem
                 href="/panel/tickets"

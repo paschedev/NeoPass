@@ -199,9 +199,9 @@ export class EventsController {
   // --- STAFF ENDPOINTS ---
 
   @UseGuards(JwtAuthGuard)
-  @Get('promoter/me')
-  getMyPromoterStats(@CurrentUser('userId') userId: string) {
-    return this.eventsService.getMyPromoterStats(userId);
+  @Get('staff/me')
+  getMyStaff(@CurrentUser('userId') userId: string) {
+    return this.eventsService.getMyStaff(userId);
   }
 
   @UseGuards(JwtAuthGuard)

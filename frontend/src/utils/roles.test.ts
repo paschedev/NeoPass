@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canScan, canSeeRppPanel, isOrganizer } from './roles';
+import { canScan, canSeeStaffPanel, isOrganizer } from './roles';
 
 describe('roles', () => {
   it.each([
@@ -13,7 +13,7 @@ describe('roles', () => {
   it('sin sesión no tiene ningún permiso', () => {
     expect(isOrganizer(null)).toBe(false);
     expect(canScan(null)).toBe(false);
-    expect(canSeeRppPanel(null)).toBe(false);
+    expect(canSeeStaffPanel(null)).toBe(false);
   });
 
   it('escanea el organizador o quien tiene una invitación de scanner vigente', () => {
@@ -22,11 +22,19 @@ describe('roles', () => {
     expect(canScan({ role: 'CUSTOMER', hasBeenRpp: true })).toBe(false);
   });
 
-  it('ve el panel RPP el organizador o quien fue RPP alguna vez', () => {
-    expect(canSeeRppPanel({ role: 'ADMIN' })).toBe(true);
-    expect(canSeeRppPanel({ role: 'CUSTOMER', hasBeenRpp: true })).toBe(true);
-    expect(canSeeRppPanel({ role: 'CUSTOMER', isCurrentlyScanner: true })).toBe(
-      false,
+  it('ve Staff quien fue RPP alguna vez o puede escanear en un evento vigente', () => {
+    expect(canSeeStaffPanel({ role: 'CUSTOMER', hasBeenRpp: true })).toBe(true);
+    expect(
+      canSeeStaffPanel({ role: 'CUSTOMER', isCurrentlyScanner: true }),
+    ).toBe(true);
+    expect(canSeeStaffPanel({ role: 'ORGANIZER', hasBeenRpp: true })).toBe(
+      true,
     );
+  });
+
+  it('no ve Staff un comprador ni un organizador que no trabaja como staff', () => {
+    expect(canSeeStaffPanel({ role: 'CUSTOMER' })).toBe(false);
+    expect(canSeeStaffPanel({ role: 'ORGANIZER' })).toBe(false);
+    expect(canSeeStaffPanel({ role: 'ADMIN' })).toBe(false);
   });
 });

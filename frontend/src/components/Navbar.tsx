@@ -66,7 +66,7 @@ export default function Navbar() {
     action: 'accept' | 'reject',
     notificationId: string,
   ) => {
-    const outcome = await respond(notificationId, eventStaffId, action);
+    const outcome = await respond(eventStaffId, action, notificationId);
     if (outcome !== 'failed') {
       setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
     }
@@ -213,7 +213,7 @@ export default function Navbar() {
                                               n.id,
                                             )
                                           }
-                                          disabled={processingIds.has(n.id)}
+                                          disabled={processingIds.has(n.metadata.eventStaffId)}
                                           className="flex-1 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white text-xs font-semibold py-1.5 rounded-md transition-colors"
                                         >
                                           Aceptar
@@ -226,7 +226,7 @@ export default function Navbar() {
                                               n.id,
                                             )
                                           }
-                                          disabled={processingIds.has(n.id)}
+                                          disabled={processingIds.has(n.metadata.eventStaffId)}
                                           className="flex-1 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-xs font-semibold py-1.5 rounded-md transition-colors"
                                         >
                                           Rechazar

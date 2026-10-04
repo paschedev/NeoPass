@@ -389,8 +389,15 @@ export class EventsRepository {
     });
   }
 
-  // Tickets each promoter of the organizer's events sold with paid orders.
-  async sumTicketsSoldByPromoter(organizerId: string) {
+  // Tickets each promoter sold with paid orders: the promoters of an
+  // organizer's events, or the promoter roles of one person.
+  async sumTicketsSoldByPromoter(
+    scope: { organizerId: string } | { userId: string },
+  ) {
+    const owner =
+      'organizerId' in scope
+        ? Prisma.sql`e."organizerId" = ${scope.organizerId}`
+        : Prisma.sql`es."userId" = ${scope.userId}`;
     const rows = await this.prisma.$queryRaw<
       { promoterId: string; sold: number }[]
     >`
@@ -399,9 +406,42 @@ export class EventsRepository {
       JOIN "OrderItem" oi ON oi."orderId" = o.id
       JOIN "EventStaff" es ON es.id = o."promoterId"
       JOIN "Event" e ON e.id = es."eventId"
-      WHERE o.status = 'PAID' AND e."organizerId" = ${organizerId}
+      WHERE o.status = 'PAID' AND ${owner}
       GROUP BY o."promoterId"`;
     return new Map(rows.map((row) => [row.promoterId, row.sold]));
+  }
+
+  // A person's accepted and pending staff roles with the event they belong
+  // to. Only the organizer's name: never their email or payment data.
+  async findMyStaffAssignments(userId: string) {
+    return this.prisma.eventStaff.findMany({
+      where: { userId, status: { in: ['ACCEPTED', 'PENDING'] } },
+      select: {
+        id: true,
+        role: true,
+        status: true,
+        commissionType: true,
+        commissionValue: true,
+        totalEarned: true,
+        totalPaid: true,
+        event: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            venueName: true,
+            venueAddress: true,
+            venueCity: true,
+            latitude: true,
+            longitude: true,
+            venuePlaceId: true,
+            organizer: { select: { name: true } },
+          },
+        },
+      },
+    });
   }
 
   async findEventStaff(eventId: string, userId: string, role: StaffRole) {
@@ -444,20 +484,6 @@ export class EventsRepository {
     return this.prisma.eventStaff.findMany({
       where: { eventId },
       include: { user: { select: { name: true, email: true } } },
-    });
-  }
-
-  async findAcceptedPromoterAssignments(userId: string) {
-    return this.prisma.eventStaff.findMany({
-      where: { userId, role: 'PROMOTER', status: 'ACCEPTED' },
-      include: {
-        event: { select: { title: true, status: true, startDate: true } },
-        orders: {
-          where: { status: 'PAID' },
-          select: { orderItems: { select: { quantity: true } } },
-        },
-      },
-      orderBy: { event: { startDate: 'desc' } },
     });
   }
 

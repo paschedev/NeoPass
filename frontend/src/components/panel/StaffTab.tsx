@@ -17,7 +17,7 @@ type Filter = 'all' | 'owed';
 const EMPTY_BOX =
   'text-center py-12 px-6 bg-white/[0.02] rounded-3xl border border-white/5 border-dashed';
 
-// Pestaña "Staff & RPPs" del panel del organizador: el staff de cada evento y
+// Pestaña "Mi staff" del panel del organizador: el staff de cada evento y
 // lo que se les debe a los RPPs (en total, por evento y a cada uno).
 export default function StaffTab({
   refreshKey,
@@ -186,7 +186,7 @@ export default function StaffTab({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h2 className="font-outfit text-2xl font-bold">
-            Gestión de Staff y RPPs
+            Mi staff
           </h2>
           <p className="text-sm text-neutral-400">
             Tu equipo en cada evento y lo que les debés a tus RPPs.

@@ -84,11 +84,13 @@ export class UserRepository {
     return count > 0;
   }
 
+  // Whether they can scan now: scanners and managers (encargados) check
+  // tickets in, the same roles the check-in accepts.
   async checkIsCurrentlyScanner(userId: string): Promise<boolean> {
     const count = await this.prisma.eventStaff.count({
       where: {
         userId,
-        role: 'SCANNER',
+        role: { in: ['SCANNER', 'MANAGER'] },
         status: 'ACCEPTED',
         event: {
           status: { notIn: ['FINISHED', 'CANCELLED'] },
