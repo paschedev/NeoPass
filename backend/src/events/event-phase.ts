@@ -14,3 +14,23 @@ export function getEventPhase(event: EventForPhase, now: Date): EventPhase {
   }
   return now < event.startDate ? 'NOT_STARTED' : 'IN_PROGRESS';
 }
+
+const PHASE_ORDER: Record<EventPhase, number> = {
+  IN_PROGRESS: 0,
+  NOT_STARTED: 1,
+  CLOSED: 2,
+};
+
+type PhasedEvent = { phase: EventPhase; startDate: Date; title: string };
+
+// Events in progress first, then the upcoming ones (soonest first) and then
+// the closed ones (latest first).
+export function compareByPhase(a: PhasedEvent, b: PhasedEvent): number {
+  return (
+    PHASE_ORDER[a.phase] - PHASE_ORDER[b.phase] ||
+    (a.phase === 'CLOSED'
+      ? b.startDate.getTime() - a.startDate.getTime()
+      : a.startDate.getTime() - b.startDate.getTime()) ||
+    a.title.localeCompare(b.title, 'es')
+  );
+}
