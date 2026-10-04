@@ -1,3 +1,5 @@
+import { getEventPhase } from './event-edit';
+
 export type InviteRole = 'SCANNER' | 'RPP';
 export type CommissionType = 'PERCENTAGE' | 'FIXED';
 
@@ -61,4 +63,11 @@ export function buildInvitationPayload(
     commissionType,
     commissionValue: Number(commissionValue),
   };
+}
+
+// Solo se suma staff a eventos que no terminaron: un RPP ya no podría vender.
+export function invitableEvents<
+  T extends { status: string; startDate: string; endDate: string },
+>(events: T[], now: Date): T[] {
+  return events.filter((event) => getEventPhase(event, now) !== 'CLOSED');
 }
