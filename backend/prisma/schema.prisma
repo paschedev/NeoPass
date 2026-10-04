@@ -109,6 +109,7 @@ model User {
   organizerProfile           OrganizerProfile?
   eventStaff                 EventStaff[]
   promoterPaymentsRegistered PromoterPayment[]
+  freeTicketGrantsIssued     FreeTicketGrant[]
   ticketPresets              TicketPreset[]    @relation("OrganizerPresets")
   notifications              Notification[]
 }
@@ -145,12 +146,13 @@ model Event {
   neoPassFeePercentage Decimal @default(15.0) @map("wePassFeePercentage") @db.Decimal(5, 2)
 
   organizerId   String
-  organizer     User           @relation("EventOrganizer", fields: [organizerId], references: [id])
+  organizer     User              @relation("EventOrganizer", fields: [organizerId], references: [id])
   ticketBatches TicketBatch[]
   ticketTypes   TicketType[]
   discountCodes DiscountCode[]
   staff         EventStaff[]
   notifications Notification[]
+  freeTickets   FreeTicketGrant[]
 
   @@index([organizerId])
 }
@@ -188,8 +190,9 @@ model TicketType {
   sold        Int            @default(0)
   reserved    Int            @default(0)
 
-  tickets    Ticket[]
-  orderItems OrderItem[]
+  tickets     Ticket[]
+  orderItems  OrderItem[]
+  freeTickets FreeTicketGrant[]
 
   @@index([eventId])
   @@index([batchId])
@@ -291,9 +294,14 @@ model Ticket {
   userId String? // Current owner of the ticket (for transfers)
   user   User?   @relation(fields: [userId], references: [id])
 
+  // Free tickets ("QR free") come from a grant instead of an order.
+  freeTicketGrantId String?
+  freeTicketGrant   FreeTicketGrant? @relation(fields: [freeTicketGrantId], references: [id])
+
   @@index([orderId])
   @@index([ticketTypeId])
   @@index([userId])
+  @@index([freeTicketGrantId])
 }
 
 model CheckIn {
@@ -370,4 +378,30 @@ model PromoterPayment {
   registeredBy   User       @relation(fields: [registeredById], references: [id])
 
   @@index([eventStaffId])
+}
+
+// Free tickets ("QR free") the organizer sent to one email in one go. They do
+// not count against the stock and are never linked to an account.
+model FreeTicketGrant {
+  id             String    @id @default(uuid())
+  recipientEmail String
+  recipientName  String?
+  // Last moment the tickets let people in; null = the whole event.
+  validUntil     DateTime?
+  createdAt      DateTime  @default(now())
+  // When the email was last queued, to space out resends.
+  lastSentAt     DateTime  @default(now())
+  cancelledAt    DateTime?
+
+  eventId      String
+  event        Event      @relation(fields: [eventId], references: [id])
+  ticketTypeId String
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
+  issuedById   String
+  issuedBy     User       @relation(fields: [issuedById], references: [id])
+  tickets      Ticket[]
+
+  @@index([eventId])
+  @@index([ticketTypeId])
+  @@index([issuedById, createdAt])
 }

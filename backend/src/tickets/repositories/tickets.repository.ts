@@ -54,6 +54,7 @@ export class TicketsRepository {
         id: true,
         status: true,
         isGuestList: true,
+        freeTicketGrant: { select: { validUntil: true } },
         ticketType: {
           select: {
             name: true,
