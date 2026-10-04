@@ -25,6 +25,7 @@ import { buildEventSales } from './event-sales';
 import { attendeesCsv, summarizeCheckIns } from './attendees';
 import { toPaymentRecord } from './promoter-payment-record';
 import { buildStaffOverview } from './staff-overview';
+import { buildMyStaff } from './my-staff';
 import { PromoterClicksService } from './promoter-clicks.service';
 import { hasUsableMercadoPagoToken } from '../payments/mercadopago-token';
 import { planBatchChanges } from './batch-changes';
@@ -573,9 +574,18 @@ export class EventsService {
     const now = new Date();
     const [events, soldByPromoter] = await Promise.all([
       this.eventsRepository.findStaffOverviewEvents(organizerId, now),
-      this.eventsRepository.sumTicketsSoldByPromoter(organizerId),
+      this.eventsRepository.sumTicketsSoldByPromoter({ organizerId }),
     ]);
     return buildStaffOverview(events, soldByPromoter, now);
+  }
+
+  // Where the person in session works as staff, from their own roles only.
+  async getMyStaff(userId: string) {
+    const [assignments, soldByPromoter] = await Promise.all([
+      this.eventsRepository.findMyStaffAssignments(userId),
+      this.eventsRepository.sumTicketsSoldByPromoter({ userId }),
+    ]);
+    return buildMyStaff(assignments, soldByPromoter, new Date());
   }
 
   async addStaff(
@@ -778,39 +788,6 @@ export class EventsService {
   async getEventStaff(eventId: string, organizerId: string) {
     await this.findOneForOrganizer(eventId, organizerId);
     return this.eventsRepository.getEventStaffByEvent(eventId);
-  }
-
-  async getMyPromoterStats(userId: string) {
-    const assignments = (
-      await this.eventsRepository.findAcceptedPromoterAssignments(userId)
-    ).map(({ orders, ...assignment }) => ({
-      ...assignment,
-      totalTicketsSold: orders
-        .flatMap((order) => order.orderItems)
-        .reduce((sum, item) => sum + item.quantity, 0),
-    }));
-
-    const totalEarned = Prisma.Decimal.sum(
-      0,
-      ...assignments.map((assignment) => assignment.totalEarned),
-    );
-    const totalPaid = Prisma.Decimal.sum(
-      0,
-      ...assignments.map((assignment) => assignment.totalPaid),
-    );
-    const totalTicketsSold = assignments.reduce(
-      (acc, curr) => acc + curr.totalTicketsSold,
-      0,
-    );
-
-    return {
-      isPromoter: assignments.length > 0,
-      totalEarned: totalEarned.toNumber(),
-      totalPaid: totalPaid.toNumber(),
-      totalTicketsSold,
-      pendingBalance: totalEarned.minus(totalPaid).toNumber(),
-      events: assignments,
-    };
   }
 
   async getPromoterEventStats(userId: string, eventId: string) {
