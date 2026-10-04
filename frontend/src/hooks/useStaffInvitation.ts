@@ -8,8 +8,9 @@ import { useCurrentUser } from './useCurrentUser';
 
 export type InvitationOutcome = 'done' | 'already-processed' | 'failed';
 
-// Aceptar o rechazar una invitación de staff (RPP o scanner) desde una
-// notificación. Cada pantalla actualiza su lista según el resultado.
+// Aceptar o rechazar una invitación de staff (RPP, scanner o encargado), desde
+// una notificación (que queda leída) o desde la página Staff. Cada pantalla
+// actualiza su lista según el resultado.
 export function useStaffInvitation() {
   const { refresh } = useCurrentUser();
   const pending = useRef(new Set<string>());
@@ -17,19 +18,19 @@ export function useStaffInvitation() {
     new Set(),
   );
 
-  const track = (notificationId: string, active: boolean) => {
-    if (active) pending.current.add(notificationId);
-    else pending.current.delete(notificationId);
+  const track = (eventStaffId: string, active: boolean) => {
+    if (active) pending.current.add(eventStaffId);
+    else pending.current.delete(eventStaffId);
     setProcessingIds(new Set(pending.current));
   };
 
   const respond = async (
-    notificationId: string,
     eventStaffId: string,
     action: 'accept' | 'reject',
+    notificationId?: string,
   ): Promise<InvitationOutcome> => {
-    if (pending.current.has(notificationId)) return 'failed';
-    track(notificationId, true);
+    if (pending.current.has(eventStaffId)) return 'failed';
+    track(eventStaffId, true);
     try {
       const res = await apiFetch(`/events/staff/${eventStaffId}/${action}`, {
         method: 'PUT',
@@ -45,15 +46,17 @@ export function useStaffInvitation() {
       }
       // Aceptar suma el rol de RPP o scanner: la navegación lo muestra al instante
       if (action === 'accept') await refresh();
-      await apiFetch(`/notifications/${notificationId}/read`, {
-        method: 'PUT',
-      });
+      if (notificationId) {
+        await apiFetch(`/notifications/${notificationId}/read`, {
+          method: 'PUT',
+        });
+      }
       return 'done';
     } catch {
       toast.error('Error de conexión');
       return 'failed';
     } finally {
-      track(notificationId, false);
+      track(eventStaffId, false);
     }
   };
 

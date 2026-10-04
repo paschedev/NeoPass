@@ -47,6 +47,22 @@ describe('GlobalSidebar', () => {
     expect(window.location.replace).toHaveBeenCalledWith('/');
   });
 
+  it.each([
+    [{ role: 'CUSTOMER', isCurrentlyScanner: true }, true],
+    [{ role: 'CUSTOMER', hasBeenRpp: true }, true],
+    [{ role: 'ORGANIZER' }, false],
+    [{ role: 'CUSTOMER' }, false],
+  ])('con la sesión %j muestra Staff: %s', (user, shown) => {
+    localStorage.setItem('user', JSON.stringify(user));
+
+    render(<GlobalSidebar />);
+
+    const link = screen.queryByRole('link', { name: 'Staff' });
+    expect(link !== null).toBe(shown);
+    if (link) expect(link).toHaveAttribute('href', '/panel/staff');
+    expect(screen.queryByText('Panel RPP')).toBeNull();
+  });
+
   it('al cancelar la sesión sigue abierta', () => {
     render(<GlobalSidebar />);
 

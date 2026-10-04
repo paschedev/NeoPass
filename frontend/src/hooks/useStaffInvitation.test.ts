@@ -21,7 +21,7 @@ describe('useStaffInvitation', () => {
 
     let outcome;
     await act(async () => {
-      outcome = await result.current.respond('n1', 'staff-1', 'accept');
+      outcome = await result.current.respond('staff-1', 'accept', 'n1');
     });
 
     expect(outcome).toBe('done');
@@ -32,11 +32,20 @@ describe('useStaffInvitation', () => {
     ]);
   });
 
+  it('desde la página Staff (sin notificación) no marca ninguna como leída', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(Response.json({}));
+    const { result } = renderHook(() => useStaffInvitation());
+
+    await act(() => result.current.respond('staff-1', 'accept'));
+
+    expect(calledUrls()).toEqual(['/events/staff/staff-1/accept', '/auth/me']);
+  });
+
   it('rechazar no cambia la sesión', async () => {
     vi.mocked(apiFetch).mockResolvedValue(Response.json({}));
     const { result } = renderHook(() => useStaffInvitation());
 
-    await act(() => result.current.respond('n1', 'staff-1', 'reject'));
+    await act(() => result.current.respond('staff-1', 'reject', 'n1'));
 
     expect(calledUrls()).toEqual([
       '/events/staff/staff-1/reject',
@@ -55,7 +64,7 @@ describe('useStaffInvitation', () => {
 
     let outcome;
     await act(async () => {
-      outcome = await result.current.respond('n1', 'staff-1', 'accept');
+      outcome = await result.current.respond('staff-1', 'accept', 'n1');
     });
 
     expect(outcome).toBe('already-processed');
@@ -69,11 +78,11 @@ describe('useStaffInvitation', () => {
 
     let first: Promise<unknown> = Promise.resolve();
     act(() => {
-      first = result.current.respond('n1', 'staff-1', 'reject');
+      first = result.current.respond('staff-1', 'reject', 'n1');
     });
-    expect(result.current.processingIds.has('n1')).toBe(true);
+    expect(result.current.processingIds.has('staff-1')).toBe(true);
 
-    await act(() => result.current.respond('n1', 'staff-1', 'reject'));
+    await act(() => result.current.respond('staff-1', 'reject', 'n1'));
     expect(apiFetch).toHaveBeenCalledTimes(1);
 
     vi.mocked(apiFetch).mockResolvedValue(Response.json({}));
@@ -81,6 +90,6 @@ describe('useStaffInvitation', () => {
       resolve(Response.json({}));
       await first;
     });
-    expect(result.current.processingIds.has('n1')).toBe(false);
+    expect(result.current.processingIds.has('staff-1')).toBe(false);
   });
 });
