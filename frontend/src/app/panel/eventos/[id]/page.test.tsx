@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { apiFetch } from '@/utils/api';
 import EventDetailPage from './page';
 
@@ -9,7 +9,7 @@ vi.mock('@/utils/api', () => ({ apiFetch: vi.fn() }));
 describe('Detalle del evento', () => {
   afterEach(() => vi.clearAllMocks());
 
-  it('pide las ventas y los RPPs del evento y los muestra', async () => {
+  it('pide las ventas, los RPPs y los QR free del evento y los muestra', async () => {
     const sales = Response.json({
       event: {
         id: 'event-1',
@@ -45,6 +45,17 @@ describe('Detalle del evento', () => {
     expect(apiFetch).toHaveBeenCalledWith('/events/organizer/event-1/sales');
     expect(apiFetch).toHaveBeenCalledWith(
       '/events/organizer/event-1/promoters',
+    );
+    const freeTickets = screen.getByRole('region', { name: 'QR free' });
+    expect(
+      await within(freeTickets).findByText('Todavía no mandaste QR free.'),
+    ).toBeInTheDocument();
+    // Sin tipos de entrada no hay nada para mandar.
+    expect(freeTickets).toHaveTextContent(
+      'Creá un tipo de entrada para mandar QR free.',
+    );
+    expect(apiFetch).toHaveBeenCalledWith(
+      '/events/organizer/event-1/free-tickets',
     );
   });
 

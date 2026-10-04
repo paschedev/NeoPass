@@ -9,7 +9,12 @@ import { getApiErrorMessage } from '@/utils/api-error';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { canScan } from '@/utils/roles';
 import { isRepeatedScan, LastScan } from '@/utils/scan-cooldown';
-import { checkInOpensLabel, scanTone, type ScanTone } from '@/utils/scan-result';
+import {
+  checkInOpensLabel,
+  entryDeadlinePassedLabel,
+  scanTone,
+  type ScanTone,
+} from '@/utils/scan-result';
 
 const TONE_STYLES: Record<
   ScanTone,
@@ -51,7 +56,9 @@ export default function EscanearPage() {
     message: string;
     event?: string;
     type?: string;
+    isGuestList?: boolean;
     opensAt?: string;
+    validUntil?: string;
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const lastScan = useRef<LastScan | null>(null);
@@ -85,7 +92,9 @@ export default function EscanearPage() {
           message: data.message,
           event: data.event,
           type: data.type,
+          isGuestList: data.isGuestList,
           opensAt: data.opensAt,
+          validUntil: data.validUntil,
         });
       } else {
         setScanResult({
@@ -180,6 +189,12 @@ export default function EscanearPage() {
               {scanResult.event && (
                 <p className="text-xl opacity-90 mt-4 text-center px-4 font-medium bg-black/20 py-2 rounded-full">
                   {scanResult.event} - {scanResult.type}
+                  {scanResult.isGuestList && ' · QR free'}
+                </p>
+              )}
+              {scanResult.validUntil && (
+                <p className="text-xl opacity-90 mt-4 text-center px-4 font-medium bg-black/20 py-2 rounded-full">
+                  {entryDeadlinePassedLabel(scanResult.validUntil)}
                 </p>
               )}
               {scanResult.opensAt && (
