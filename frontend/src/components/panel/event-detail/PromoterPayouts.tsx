@@ -1,14 +1,10 @@
 'use client';
 
-import { Fragment, useEffect, useId, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { Users } from 'lucide-react';
-import Modal from '@/components/ui/Modal';
 import { apiFetch } from '@/utils/api';
-import { getApiErrorMessage } from '@/utils/api-error';
 import { formatCurrency, formatDayMonthTime } from '@/utils/format';
-import type { PaymentFormOutput } from '@/utils/promoter-payment';
-import toast from '@/utils/toast';
-import RegisterPaymentForm from './RegisterPaymentForm';
+import PromoterPaymentModal from './PromoterPaymentModal';
 import type { EventPromoter } from './types';
 
 const NUMBER_CELL = 'px-3 py-3 text-right tabular-nums whitespace-nowrap';
@@ -17,7 +13,6 @@ const HEADER_CELL = 'px-3 py-2 text-right font-medium';
 // RPPs del evento: lo vendido, la comisión ganada, lo pagado y el saldo. Los
 // pagos pasan por fuera de NeoPass; acá el organizador los anota.
 export default function PromoterPayouts({ eventId }: { eventId: string }) {
-  const titleId = useId();
   const [promoters, setPromoters] = useState<EventPromoter[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [version, setVersion] = useState(0);
@@ -43,27 +38,6 @@ export default function PromoterPayouts({ eventId }: { eventId: string }) {
       current = false;
     };
   }, [path, version]);
-
-  const registerPayment = async (payment: PaymentFormOutput) => {
-    if (!paying) return;
-    try {
-      const res = await apiFetch(`${path}/${paying.id}/payments`, {
-        method: 'POST',
-        body: JSON.stringify(payment),
-      });
-      if (!res.ok) {
-        toast.error(
-          getApiErrorMessage(await res.json(), 'No se pudo registrar el pago'),
-        );
-        return;
-      }
-      toast.success('Pago registrado');
-      setPaying(null);
-      setVersion((count) => count + 1);
-    } catch {
-      toast.error('Error de conexión');
-    }
-  };
 
   return (
     <section aria-label="RPPs" className="space-y-4">
@@ -186,22 +160,21 @@ export default function PromoterPayouts({ eventId }: { eventId: string }) {
         </div>
       )}
 
-      <Modal
-        open={paying !== null}
+      <PromoterPaymentModal
+        target={
+          paying && {
+            eventId,
+            staffId: paying.id,
+            name: paying.name,
+            balance: paying.balance,
+          }
+        }
         onClose={() => setPaying(null)}
-        labelledBy={titleId}
-        className="bg-neutral-900 border border-white/10 p-6 md:p-8 rounded-3xl w-full max-w-sm shadow-2xl"
-      >
-        {paying && (
-          <RegisterPaymentForm
-            promoterName={paying.name}
-            balance={paying.balance}
-            titleId={titleId}
-            onSubmit={registerPayment}
-            onCancel={() => setPaying(null)}
-          />
-        )}
-      </Modal>
+        onPaid={() => {
+          setPaying(null);
+          setVersion((count) => count + 1);
+        }}
+      />
     </section>
   );
 }

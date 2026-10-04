@@ -136,6 +136,36 @@ describe('staff de un evento', () => {
       await invite(organizer, randomUUID(), invitee.id).expect(404);
     });
 
+    it.each([
+      [
+        'que ya terminó',
+        {
+          startDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+          endDate: new Date(Date.now() - 24 * 60 * 60 * 1000),
+        },
+        'El evento ya terminó: no se puede sumar staff',
+      ],
+      [
+        'cancelado',
+        { status: 'CANCELLED' as const },
+        'El evento está cancelado: no se puede sumar staff',
+      ],
+    ])(
+      'no se puede invitar a un evento %s',
+      async (_case, changes, message) => {
+        const { organizer, event } = await createOrganizerWithEvent(t.prisma);
+        await t.prisma.event.update({ where: { id: event.id }, data: changes });
+        const invitee = await createUser(t.prisma);
+
+        const res = await invite(organizer, event.id, invitee.id).expect(409);
+
+        expect((res.body as { message: string }).message).toBe(message);
+        expect(
+          await t.prisma.eventStaff.count({ where: { eventId: event.id } }),
+        ).toBe(0);
+      },
+    );
+
     it('invitar a alguien que no está registrado da 404', async () => {
       const { organizer, event } = await createOrganizerWithEvent(t.prisma);
 

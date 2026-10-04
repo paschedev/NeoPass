@@ -23,6 +23,8 @@ import { getBatchSaleStatus } from './batch-sale-status';
 import { getEventPhase } from './event-phase';
 import { buildEventSales } from './event-sales';
 import { attendeesCsv, summarizeCheckIns } from './attendees';
+import { toPaymentRecord } from './promoter-payment-record';
+import { buildStaffOverview } from './staff-overview';
 import { PromoterClicksService } from './promoter-clicks.service';
 import { hasUsableMercadoPagoToken } from '../payments/mercadopago-token';
 import { planBatchChanges } from './batch-changes';
@@ -62,16 +64,6 @@ const toAttendee = (ticket: {
   status: ticket.status,
   checkedInAt: ticket.usedAt,
 });
-
-const toPaymentRecord = ({
-  amount,
-  note,
-  createdAt,
-}: {
-  amount: Prisma.Decimal;
-  note: string | null;
-  createdAt: Date;
-}) => ({ amount: amount.toNumber(), note, createdAt });
 
 function assertEndAfterStart(startDate: Date, endDate: Date) {
   if (endDate <= startDate) {
@@ -574,8 +566,16 @@ export class EventsService {
     };
   }
 
-  async getOrganizerStaff(organizerId: string) {
-    return this.eventsRepository.getOrganizerStaff(organizerId);
+  // The organizer's staff by event, with what is owed to each promoter, to
+  // each event and in total. Only the organizer's own events: upcoming ones
+  // even without staff (they may need it) and closed ones that had staff.
+  async getStaffOverview(organizerId: string) {
+    const now = new Date();
+    const [events, soldByPromoter] = await Promise.all([
+      this.eventsRepository.findStaffOverviewEvents(organizerId, now),
+      this.eventsRepository.sumTicketsSoldByPromoter(organizerId),
+    ]);
+    return buildStaffOverview(events, soldByPromoter, now);
   }
 
   async addStaff(
@@ -587,6 +587,14 @@ export class EventsService {
     commissionValue?: number,
   ) {
     const event = await this.findOneForOrganizer(eventId, organizerId);
+    // Nobody can work an event that is over: a promoter couldn't sell anymore.
+    if (getEventPhase(event, new Date()) === 'CLOSED') {
+      throw new ConflictException(
+        event.status === 'CANCELLED'
+          ? 'El evento está cancelado: no se puede sumar staff'
+          : 'El evento ya terminó: no se puede sumar staff',
+      );
+    }
 
     // Only promoters earn a commission: for the other roles it is ignored.
     const commissionTerms =

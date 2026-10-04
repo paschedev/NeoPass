@@ -18,14 +18,12 @@ import InviteStaffModal from '@/components/panel/InviteStaffModal';
 import MercadoPagoModal from '@/components/panel/MercadoPagoModal';
 import SettingsTab from '@/components/panel/SettingsTab';
 import StaffTab from '@/components/panel/StaffTab';
-import type {
-  DashboardStats,
-  OrganizerEvent,
-  StaffMember,
-} from '@/components/panel/types';
+import type { InvitePreset } from '@/components/panel/staff/StaffEventGroup';
+import type { DashboardStats, OrganizerEvent } from '@/components/panel/types';
 import { apiFetch } from '@/utils/api';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { isOrganizer as hasOrganizerRole } from '@/utils/roles';
+import { invitableEvents } from '@/utils/staff-invitation';
 
 function OrganizerDashboardContent() {
   const router = useRouter();
@@ -47,12 +45,12 @@ function OrganizerDashboardContent() {
   const isOrganizer = hasOrganizerRole(user);
   const hasLinkedMp = !!user?.hasLinkedMp;
 
-  const [showInviteModal, setShowInviteModal] = useState(false);
+  // Invitación abierta; desde un evento llega con ese evento ya elegido.
+  const [invite, setInvite] = useState<Partial<InvitePreset> | null>(null);
+  const [staffVersion, setStaffVersion] = useState(0);
   const [myEvents, setMyEvents] = useState<OrganizerEvent[]>([]);
   const [loadingEvents, setLoadingEvents] = useState(false);
   const [fetchError, setFetchError] = useState(false);
-  const [myStaff, setMyStaff] = useState<StaffMember[]>([]);
-  const [loadingStaff, setLoadingStaff] = useState(false);
 
   useEffect(() => {
     if (!isOrganizer) {
@@ -106,23 +104,8 @@ function OrganizerDashboardContent() {
     }
   };
 
-  const fetchStaff = async () => {
-    setLoadingStaff(true);
-    try {
-      const res = await apiFetch('/events/organizer/staff');
-      if (res.ok) setMyStaff(await res.json());
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingStaff(false);
-    }
-  };
-
   useEffect(() => {
-    if (isOrganizer) {
-      fetchEvents();
-      fetchStaff();
-    }
+    if (isOrganizer) fetchEvents();
   }, [isOrganizer]);
 
   const handleCreateEventClick = () => {
@@ -236,9 +219,8 @@ function OrganizerDashboardContent() {
 
       {activeTab === 'staff' && (
         <StaffTab
-          staff={myStaff}
-          loading={loadingStaff}
-          onInvite={() => setShowInviteModal(true)}
+          refreshKey={staffVersion}
+          onInvite={(preset) => setInvite(preset ?? {})}
         />
       )}
 
@@ -257,11 +239,15 @@ function OrganizerDashboardContent() {
         open={showMpModal}
         onClose={() => setShowMpModal(false)}
       />
+      {/* Se vuelve a montar al abrirse, así arranca con lo que trae `invite`. */}
       <InviteStaffModal
-        open={showInviteModal}
-        onClose={() => setShowInviteModal(false)}
-        events={myEvents}
-        onInvited={fetchStaff}
+        key={invite ? 'open' : 'closed'}
+        open={invite !== null}
+        onClose={() => setInvite(null)}
+        events={invitableEvents(myEvents, new Date())}
+        initialEventId={invite?.eventId}
+        initialRole={invite?.role}
+        onInvited={() => setStaffVersion((count) => count + 1)}
       />
     </div>
   );

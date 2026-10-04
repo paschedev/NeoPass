@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildInvitationPayload,
+  invitableEvents,
   normalizeCommission,
   sanitizeCommissionInput,
   validateInvitation,
@@ -73,5 +74,37 @@ describe('buildInvitationPayload', () => {
       commissionType: 'FIXED',
       commissionValue: 1500,
     });
+  });
+});
+
+describe('invitableEvents', () => {
+  const now = new Date('2026-10-10T20:00:00Z');
+  const event = (id: string, overrides = {}) => ({
+    id,
+    title: `Evento ${id}`,
+    status: 'PUBLISHED',
+    startDate: '2026-10-12T02:00:00Z',
+    endDate: '2026-10-12T08:00:00Z',
+    ...overrides,
+  });
+
+  it('ofrece solo los eventos próximos y en curso', () => {
+    const events = [
+      event('proximo'),
+      event('en-curso', {
+        startDate: '2026-10-10T18:00:00Z',
+        endDate: '2026-10-11T02:00:00Z',
+      }),
+      event('terminado', {
+        startDate: '2026-10-01T02:00:00Z',
+        endDate: '2026-10-01T08:00:00Z',
+      }),
+      event('cancelado', { status: 'CANCELLED' }),
+    ];
+
+    expect(invitableEvents(events, now).map((e) => e.id)).toEqual([
+      'proximo',
+      'en-curso',
+    ]);
   });
 });
