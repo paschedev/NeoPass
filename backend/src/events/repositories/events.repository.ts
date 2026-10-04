@@ -12,6 +12,7 @@ const ATTENDEE_SELECT = {
   status: true,
   usedAt: true,
   user: { select: { name: true, email: true } },
+  freeTicketGrant: { select: { recipientName: true, recipientEmail: true } },
   ticketType: { select: { name: true, batch: { select: { name: true } } } },
 } satisfies Prisma.TicketSelect;
 
@@ -527,6 +528,16 @@ export class EventsRepository {
         OR: [
           { user: { name: { contains: search, mode: 'insensitive' } } },
           { user: { email: { contains: search, mode: 'insensitive' } } },
+          {
+            freeTicketGrant: {
+              recipientName: { contains: search, mode: 'insensitive' },
+            },
+          },
+          {
+            freeTicketGrant: {
+              recipientEmail: { contains: search, mode: 'insensitive' },
+            },
+          },
         ],
       }),
     };

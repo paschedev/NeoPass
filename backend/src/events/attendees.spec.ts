@@ -27,6 +27,7 @@ describe('attendeesCsv', () => {
         batch: 'Preventa',
         status: 'USED',
         checkedInAt: new Date('2026-10-10T02:30:00.000Z'),
+        freeTicket: false,
       },
       {
         name: null,
@@ -35,14 +36,15 @@ describe('attendeesCsv', () => {
         batch: null,
         status: 'CANCELLED',
         checkedInAt: null,
+        freeTicket: true,
       },
     ]);
 
     expect(csv.startsWith('\uFEFF')).toBe(true);
     expect(csv.slice(1).split('\r\n')).toEqual([
-      '"Nombre","Email","Entrada","Tanda","Estado","Ingreso"',
-      '"Ana","ana@mail.test","General","Preventa","Ingresó","9/10/2026 23:30"',
-      '"","","Campo","","Anulada",""',
+      '"Nombre","Email","Entrada","Tanda","Estado","Ingreso","Origen"',
+      '"Ana","ana@mail.test","General","Preventa","Ingresó","9/10/2026 23:30","Compra"',
+      '"","","Campo","","Anulada","","QR free"',
     ]);
   });
 });
