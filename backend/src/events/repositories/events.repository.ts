@@ -350,25 +350,58 @@ export class EventsRepository {
     });
   }
 
-  async getOrganizerStaff(organizerId: string) {
-    return this.prisma.eventStaff.findMany({
+  // The organizer's events for the staff tab: the ones that had staff and the
+  // ones not over yet (they may still need it), with every member and the
+  // payments recorded to its promoters.
+  async findStaffOverviewEvents(organizerId: string, now: Date) {
+    return this.prisma.event.findMany({
       where: {
-        event: {
-          organizerId,
-        },
+        organizerId,
+        OR: [
+          { staff: { some: {} } },
+          {
+            endDate: { gt: now },
+            status: { notIn: ['FINISHED', 'CANCELLED'] },
+          },
+        ],
       },
-      include: {
-        user: {
-          select: { name: true, email: true },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        startDate: true,
+        endDate: true,
+        staff: {
+          select: {
+            id: true,
+            userId: true,
+            role: true,
+            status: true,
+            commissionType: true,
+            commissionValue: true,
+            totalEarned: true,
+            totalPaid: true,
+            user: { select: { name: true, email: true } },
+            payments: PAYMENT_HISTORY,
+          },
         },
-        event: {
-          select: { title: true },
-        },
-      },
-      orderBy: {
-        event: { title: 'asc' },
       },
     });
+  }
+
+  // Tickets each promoter of the organizer's events sold with paid orders.
+  async sumTicketsSoldByPromoter(organizerId: string) {
+    const rows = await this.prisma.$queryRaw<
+      { promoterId: string; sold: number }[]
+    >`
+      SELECT o."promoterId", SUM(oi.quantity)::int AS sold
+      FROM "Order" o
+      JOIN "OrderItem" oi ON oi."orderId" = o.id
+      JOIN "EventStaff" es ON es.id = o."promoterId"
+      JOIN "Event" e ON e.id = es."eventId"
+      WHERE o.status = 'PAID' AND e."organizerId" = ${organizerId}
+      GROUP BY o."promoterId"`;
+    return new Map(rows.map((row) => [row.promoterId, row.sold]));
   }
 
   async findEventStaff(eventId: string, userId: string, role: StaffRole) {
