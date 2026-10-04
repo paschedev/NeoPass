@@ -23,6 +23,7 @@ const ana = {
   batch: 'Preventa',
   status: 'USED',
   checkedInAt: '2026-10-10T02:30:00.000Z',
+  freeTicket: false,
 };
 const bruno = {
   ticketId: 'k2',
@@ -32,6 +33,7 @@ const bruno = {
   batch: 'General',
   status: 'VALID',
   checkedInAt: null,
+  freeTicket: false,
 };
 
 const page = (items: unknown[], total = items.length, pageNumber = 1) =>
@@ -65,6 +67,25 @@ describe('AttendeeList', () => {
       'Válida',
     );
     expect(listCalls()).toEqual(['/events/organizer/e1/attendees?page=1']);
+  });
+
+  it('marca las entradas que llegaron como QR free', async () => {
+    const dani = {
+      ...bruno,
+      ticketId: 'k3',
+      name: 'Dani Invitada',
+      email: 'dani@mail.test',
+      freeTicket: true,
+    };
+    vi.mocked(apiFetch).mockImplementation(async () => page([ana, dani]));
+
+    render(<AttendeeList eventId="e1" />);
+
+    const row = await screen.findByRole('row', { name: /Dani Invitada/ });
+    expect(row).toHaveTextContent('QR free');
+    expect(
+      screen.getByRole('row', { name: /Ana Pérez/ }),
+    ).not.toHaveTextContent('QR free');
   });
 
   it('busca por nombre o email', async () => {
