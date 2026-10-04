@@ -1,5 +1,5 @@
 import { CommissionType, Prisma, StaffRole, StaffStatus } from '@prisma/client';
-import { EventPhase, getEventPhase } from './event-phase';
+import { compareByPhase, getEventPhase } from './event-phase';
 import { toPaymentRecord } from './promoter-payment-record';
 
 type OverviewMember = {
@@ -27,12 +27,6 @@ type OverviewEvent = {
 type PersonDebt = { amount: Prisma.Decimal; events: number };
 
 const ZERO = new Prisma.Decimal(0);
-
-const PHASE_ORDER: Record<EventPhase, number> = {
-  IN_PROGRESS: 0,
-  NOT_STARTED: 1,
-  CLOSED: 2,
-};
 
 const STATUS_ORDER: Record<StaffStatus, number> = {
   ACCEPTED: 0,
@@ -86,8 +80,7 @@ function debtByPerson(members: OverviewMember[]) {
 }
 
 // The organizer's staff grouped by event, with what is owed to each promoter,
-// to each event and in total. Events in progress go first, then the upcoming
-// ones (soonest first) and then the closed ones (latest first).
+// to each event and in total, ordered by phase (compareByPhase).
 export function buildStaffOverview(
   events: OverviewEvent[],
   soldByPromoter: Map<string, number>,
@@ -132,14 +125,7 @@ export function buildStaffOverview(
         ),
       };
     })
-    .sort(
-      (a, b) =>
-        PHASE_ORDER[a.phase] - PHASE_ORDER[b.phase] ||
-        (a.phase === 'CLOSED'
-          ? b.startDate.getTime() - a.startDate.getTime()
-          : a.startDate.getTime() - b.startDate.getTime()) ||
-        a.title.localeCompare(b.title, 'es'),
-    );
+    .sort(compareByPhase);
 
   // Who works and who still has to answer counts only events not over yet.
   const openStaff = groups

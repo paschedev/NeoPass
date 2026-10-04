@@ -95,7 +95,7 @@ export default function NotificacionesPage() {
     action: 'accept' | 'reject',
     eventStaffId: string,
   ) => {
-    const outcome = await respond(id, eventStaffId, action);
+    const outcome = await respond(eventStaffId, action, id);
     if (outcome === 'done') {
       toast.success(
         `Invitación ${action === 'accept' ? 'aceptada' : 'rechazada'}`,
@@ -219,7 +219,7 @@ export default function NotificacionesPage() {
                     n.metadata?.status === 'PENDING' && (
                       <div className="flex gap-2 mt-4 w-full sm:w-auto">
                         <button
-                          disabled={processingIds.has(n.id)}
+                          disabled={processingIds.has(n.metadata.eventStaffId)}
                           onClick={() =>
                             handleRequest(
                               n.id,
@@ -232,7 +232,7 @@ export default function NotificacionesPage() {
                           <Check className="w-4 h-4" /> Aceptar
                         </button>
                         <button
-                          disabled={processingIds.has(n.id)}
+                          disabled={processingIds.has(n.metadata.eventStaffId)}
                           onClick={() =>
                             handleRequest(
                               n.id,

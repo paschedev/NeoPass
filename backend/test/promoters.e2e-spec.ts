@@ -193,76 +193,8 @@ describe('RPP', () => {
     });
   });
 
+  // La lista de eventos y los totales del RPP están en my-staff.e2e-spec.ts.
   describe('panel del RPP', () => {
-    it('lista solo los eventos en los que aceptó la invitación', async () => {
-      const promoter = await createUser(t.prisma);
-      const accepted = await createOrganizerWithEvent(t.prisma);
-      const pending = await createOrganizerWithEvent(t.prisma);
-      const rejected = await createOrganizerWithEvent(t.prisma);
-      const { staff } = await addStaff(accepted.event.id, { user: promoter });
-      await addStaff(pending.event.id, { user: promoter, status: 'PENDING' });
-      await addStaff(rejected.event.id, { user: promoter, status: 'REJECTED' });
-
-      const res = await request(t.app.getHttpServer())
-        .get('/events/promoter/me')
-        .set('Authorization', authHeader(t.app, promoter))
-        .expect(200);
-
-      const body = res.body as { events: { id: string }[] };
-      expect(body.events.map((e) => e.id)).toEqual([staff.id]);
-    });
-
-    it('cuenta solo las entradas de sus ventas pagadas, por evento y en total', async () => {
-      const { event, ticketType } = await createOrganizerWithEvent(t.prisma);
-      const { staff, user } = await addStaff(event.id);
-      await paidSale(ticketType, staff.id, 2);
-      await paidSale(ticketType, staff.id, 3);
-      await createOrder(t.prisma, {
-        user: await createUser(t.prisma),
-        ticketType,
-        quantity: 4,
-        promoterId: staff.id,
-      });
-
-      const res = await request(t.app.getHttpServer())
-        .get('/events/promoter/me')
-        .set('Authorization', authHeader(t.app, user))
-        .expect(200);
-
-      const body = res.body as {
-        totalTicketsSold: number;
-        events: { totalTicketsSold: number; orders?: unknown }[];
-      };
-      expect(body.totalTicketsSold).toBe(5);
-      expect(body.events).toEqual([
-        expect.objectContaining({ totalTicketsSold: 5 }),
-      ]);
-      expect(body.events[0].orders).toBeUndefined();
-    });
-
-    it('suma lo ganado, lo cobrado y el saldo de todos sus eventos al centavo', async () => {
-      const promoter = await createUser(t.prisma);
-      for (const totalPaid of [0.1, 0.2, 0]) {
-        const { event } = await createOrganizerWithEvent(t.prisma);
-        const { staff } = await addStaff(event.id, { user: promoter });
-        await t.prisma.eventStaff.update({
-          where: { id: staff.id },
-          data: { totalEarned: 1500.15, totalPaid },
-        });
-      }
-
-      const res = await request(t.app.getHttpServer())
-        .get('/events/promoter/me')
-        .set('Authorization', authHeader(t.app, promoter))
-        .expect(200);
-
-      expect(res.body).toMatchObject({
-        totalEarned: 4500.45,
-        totalPaid: 0.3,
-        pendingBalance: 4500.15,
-      });
-    });
-
     it.each(['PENDING', 'REJECTED'] as const)(
       'las estadísticas de un evento con la invitación %s dan 404',
       async (status) => {
