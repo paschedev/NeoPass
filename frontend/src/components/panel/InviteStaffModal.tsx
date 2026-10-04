@@ -24,20 +24,25 @@ const ROLE_OPTIONS: { value: InviteRole; label: string }[] = [
   { value: 'RPP', label: STAFF_ROLE_LABELS.PROMOTER },
 ];
 
-// Invita a varios usuarios a un evento como scanner o RPP.
+// Invita a varios usuarios a un evento como scanner o RPP. Abierto desde un
+// evento, llega con ese evento (y a veces el rol) ya elegidos.
 export default function InviteStaffModal({
   open,
   onClose,
   events,
+  initialEventId = '',
+  initialRole = 'SCANNER',
   onInvited,
 }: {
   open: boolean;
   onClose: () => void;
   events: { id: string; title: string }[];
+  initialEventId?: string;
+  initialRole?: InviteRole;
   onInvited: () => void;
 }) {
-  const [eventId, setEventId] = useState('');
-  const [role, setRole] = useState<InviteRole>('SCANNER');
+  const [eventId, setEventId] = useState(initialEventId);
+  const [role, setRole] = useState<InviteRole>(initialRole);
   const [commissionType, setCommissionType] =
     useState<CommissionType>('PERCENTAGE');
   const [commissionValue, setCommissionValue] = useState('');
@@ -146,6 +151,8 @@ export default function InviteStaffModal({
             {ROLE_OPTIONS.map((option) => (
               <button
                 key={option.value}
+                type="button"
+                aria-pressed={role === option.value}
                 onClick={() => setRole(option.value)}
                 className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${role === option.value ? 'bg-indigo-600 text-white shadow-sm' : 'text-neutral-400 hover:text-white'}`}
               >

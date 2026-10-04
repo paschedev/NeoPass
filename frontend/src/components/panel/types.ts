@@ -1,3 +1,4 @@
+import type { EventPhase } from '@/utils/event-edit';
 import type { RevenuePoint } from '@/utils/sales-chart';
 
 export interface Transaction {
@@ -31,13 +32,50 @@ export interface OrganizerEvent {
   revenue: number;
 }
 
-// Respuesta de GET /events/organizer/staff.
-export interface StaffMember {
+// Respuesta de GET /events/organizer/staff/overview.
+export interface StaffPerson {
   id: string;
-  role: string;
   status: string;
+  name: string;
+  email: string;
+}
+
+export interface StaffPromoter extends StaffPerson {
   commissionType: string | null;
-  commissionValue: number | string | null;
-  user: { name: string; email: string };
-  event: { title: string };
+  commissionValue: number | null;
+  ticketsSold: number;
+  totalEarned: number;
+  totalPaid: number;
+  // Negativo si se le pagó de más (una devolución bajó lo que ganó).
+  balance: number;
+  // Lo que se le debe sumando todos los eventos del organizador.
+  owedAcrossEvents: { amount: number; events: number };
+  payments: { amount: number; note: string | null; createdAt: string }[];
+}
+
+export interface StaffEventGroup {
+  id: string;
+  title: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  phase: EventPhase;
+  owed: number;
+  promoters: StaffPromoter[];
+  scanners: StaffPerson[];
+  managers: StaffPerson[];
+}
+
+export interface StaffOverview {
+  totals: {
+    owed: number;
+    paid: number;
+    earned: number;
+    promotersOwed: number;
+    eventsOwed: number;
+    // Personas e invitaciones de eventos que no terminaron.
+    activeStaff: number;
+    pendingInvitations: number;
+  };
+  events: StaffEventGroup[];
 }
