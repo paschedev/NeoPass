@@ -10,6 +10,8 @@ import { TicketsRepository } from './repositories/tickets.repository';
 import { NotificationsService } from '../notifications/notifications.service';
 import { MailService } from '../mail/mail.service';
 import { isUniqueViolation } from '../prisma/prisma-errors';
+import { getEventPhase } from '../events/event-phase';
+import { checkInOpensAt } from './check-in-window';
 import { Event, Prisma } from '@prisma/client';
 
 @Injectable()
@@ -97,7 +99,8 @@ export class TicketsService {
       }
     }
 
-    if (event.status === 'CANCELLED' || event.status === 'FINISHED') {
+    const now = new Date();
+    if (getEventPhase(event, now) === 'CLOSED') {
       return {
         success: false,
         status: 'EVENT_CLOSED',
@@ -110,6 +113,17 @@ export class TicketsService {
 
     if (ticket.status !== 'VALID') {
       return { success: false, status: 'INVALID', message: 'INVÁLIDO' };
+    }
+
+    // Too early: the ticket stays valid for when the doors open.
+    const opensAt = checkInOpensAt(event.startDate);
+    if (now < opensAt) {
+      return {
+        success: false,
+        status: 'NOT_STARTED',
+        message: 'TODAVÍA NO',
+        opensAt: opensAt.toISOString(),
+      };
     }
 
     try {

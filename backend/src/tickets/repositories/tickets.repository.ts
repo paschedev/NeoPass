@@ -63,6 +63,8 @@ export class TicketsRepository {
                 organizerId: true,
                 status: true,
                 title: true,
+                startDate: true,
+                endDate: true,
               },
             },
           },
