@@ -117,6 +117,22 @@ describe('EventForm', () => {
     ).toBeInTheDocument();
   });
 
+  it('avisa desde cuándo se pueden escanear las entradas', () => {
+    render(
+      <EventForm
+        mode="create"
+        rules={{ phase: 'NOT_STARTED' }}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        'Las entradas se pueden escanear desde 2 horas antes del inicio.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('avisa apenas se elige un inicio que ya pasó', async () => {
     render(
       <EventForm

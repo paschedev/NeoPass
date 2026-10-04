@@ -9,6 +9,45 @@ import { getApiErrorMessage } from '@/utils/api-error';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { canScan } from '@/utils/roles';
 import { isRepeatedScan, LastScan } from '@/utils/scan-cooldown';
+import {
+  checkInOpensLabel,
+  entryDeadlinePassedLabel,
+  scanTone,
+  type ScanTone,
+} from '@/utils/scan-result';
+
+const TONE_STYLES: Record<
+  ScanTone,
+  {
+    bgDark: string;
+    border: string;
+    shadow: string;
+    bgSolid: string;
+    Icon: typeof CheckCircle2;
+  }
+> = {
+  success: {
+    bgDark: 'bg-emerald-950',
+    border: 'border-emerald-500',
+    shadow: 'shadow-emerald-500/50',
+    bgSolid: 'bg-emerald-500/95',
+    Icon: CheckCircle2,
+  },
+  warning: {
+    bgDark: 'bg-amber-950',
+    border: 'border-amber-500',
+    shadow: 'shadow-amber-500/50',
+    bgSolid: 'bg-amber-500/95',
+    Icon: AlertTriangle,
+  },
+  error: {
+    bgDark: 'bg-red-950',
+    border: 'border-red-500',
+    shadow: 'shadow-red-500/50',
+    bgSolid: 'bg-red-500/95',
+    Icon: XCircle,
+  },
+};
 
 export default function EscanearPage() {
   const [scanResult, setScanResult] = useState<{
@@ -17,6 +56,9 @@ export default function EscanearPage() {
     message: string;
     event?: string;
     type?: string;
+    isGuestList?: boolean;
+    opensAt?: string;
+    validUntil?: string;
   } | null>(null);
   const [loading, setLoading] = useState(false);
   const lastScan = useRef<LastScan | null>(null);
@@ -50,6 +92,9 @@ export default function EscanearPage() {
           message: data.message,
           event: data.event,
           type: data.type,
+          isGuestList: data.isGuestList,
+          opensAt: data.opensAt,
+          validUntil: data.validUntil,
         });
       } else {
         setScanResult({
@@ -71,38 +116,7 @@ export default function EscanearPage() {
     }
   };
 
-  const getStyles = (status?: string) => {
-    switch (status) {
-      case 'VALID':
-        return {
-          bgDark: 'bg-emerald-950',
-          border: 'border-emerald-500',
-          shadow: 'shadow-emerald-500/50',
-          bgSolid: 'bg-emerald-500/95',
-          Icon: CheckCircle2,
-        };
-      case 'USED':
-        return {
-          bgDark: 'bg-amber-950',
-          border: 'border-amber-500',
-          shadow: 'shadow-amber-500/50',
-          bgSolid: 'bg-amber-500/95',
-          Icon: AlertTriangle,
-        };
-      case 'INVALID':
-      case 'WRONG_EVENT':
-      default:
-        return {
-          bgDark: 'bg-red-950',
-          border: 'border-red-500',
-          shadow: 'shadow-red-500/50',
-          bgSolid: 'bg-red-500/95',
-          Icon: XCircle,
-        };
-    }
-  };
-
-  const styles = scanResult ? getStyles(scanResult.status) : null;
+  const styles = scanResult ? TONE_STYLES[scanTone(scanResult.status)] : null;
 
   // Funciones de prueba para simular el escáner sin depender del flujo de la cámara o backend
   const simulateSuccess = () => {
@@ -175,6 +189,17 @@ export default function EscanearPage() {
               {scanResult.event && (
                 <p className="text-xl opacity-90 mt-4 text-center px-4 font-medium bg-black/20 py-2 rounded-full">
                   {scanResult.event} - {scanResult.type}
+                  {scanResult.isGuestList && ' · QR free'}
+                </p>
+              )}
+              {scanResult.validUntil && (
+                <p className="text-xl opacity-90 mt-4 text-center px-4 font-medium bg-black/20 py-2 rounded-full">
+                  {entryDeadlinePassedLabel(scanResult.validUntil)}
+                </p>
+              )}
+              {scanResult.opensAt && (
+                <p className="text-xl opacity-90 mt-4 text-center px-4 font-medium bg-black/20 py-2 rounded-full">
+                  {checkInOpensLabel(scanResult.opensAt)}
                 </p>
               )}
             </div>

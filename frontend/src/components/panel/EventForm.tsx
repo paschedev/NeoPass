@@ -8,6 +8,7 @@ import { Calendar, Info, MapPin, Save, Video } from 'lucide-react';
 import TandasManager from '@/components/TandasManager';
 import { useCloudinaryUpload } from '@/hooks/useCloudinaryUpload';
 import type { EventFormValues } from '@/utils/event-edit';
+import { CHECK_IN_OPENS_HOURS_BEFORE_START } from '@/utils/scan-result';
 import {
   buildEventSchema,
   getDateLimits,
@@ -257,6 +258,10 @@ export default function EventForm({
             />
           </Field>
         </div>
+        <p className="text-xs text-neutral-500 mt-3">
+          Las entradas se pueden escanear desde{' '}
+          {CHECK_IN_OPENS_HOURS_BEFORE_START} horas antes del inicio.
+        </p>
       </Section>
 
       <Section

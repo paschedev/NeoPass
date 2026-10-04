@@ -10,7 +10,10 @@ import { TicketsRepository } from './repositories/tickets.repository';
 import { NotificationsService } from '../notifications/notifications.service';
 import { MailService } from '../mail/mail.service';
 import { isUniqueViolation } from '../prisma/prisma-errors';
-import { Event, Prisma } from '@prisma/client';
+import { getEventPhase } from '../events/event-phase';
+import { checkInOpensAt } from './check-in-window';
+import { Prisma } from '@prisma/client';
+import { eventForMail } from './event-for-mail';
 
 @Injectable()
 export class TicketsService {
@@ -97,7 +100,8 @@ export class TicketsService {
       }
     }
 
-    if (event.status === 'CANCELLED' || event.status === 'FINISHED') {
+    const now = new Date();
+    if (getEventPhase(event, now) === 'CLOSED') {
       return {
         success: false,
         status: 'EVENT_CLOSED',
@@ -110,6 +114,28 @@ export class TicketsService {
 
     if (ticket.status !== 'VALID') {
       return { success: false, status: 'INVALID', message: 'INVÁLIDO' };
+    }
+
+    // Too early: the ticket stays valid for when the doors open.
+    const opensAt = checkInOpensAt(event.startDate);
+    if (now < opensAt) {
+      return {
+        success: false,
+        status: 'NOT_STARTED',
+        message: 'TODAVÍA NO',
+        opensAt: opensAt.toISOString(),
+      };
+    }
+
+    // A free ticket can be limited to come in early (until 01:00, say).
+    const validUntil = ticket.freeTicketGrant?.validUntil;
+    if (validUntil && now > validUntil) {
+      return {
+        success: false,
+        status: 'EXPIRED',
+        message: 'VENCIDA',
+        validUntil: validUntil.toISOString(),
+      };
     }
 
     try {
@@ -207,20 +233,4 @@ export class TicketsService {
       ],
     });
   }
-}
-
-// The job is serialized to JSON in the queue: the date travels as ISO text.
-function eventForMail(
-  event: Pick<
-    Event,
-    'title' | 'startDate' | 'venueName' | 'venueAddress' | 'venueCity'
-  >,
-) {
-  return {
-    eventName: event.title,
-    eventStartDate: event.startDate.toISOString(),
-    venueName: event.venueName,
-    venueAddress: event.venueAddress,
-    venueCity: event.venueCity,
-  };
 }

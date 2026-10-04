@@ -10,7 +10,13 @@ import {
 import { createTestApp, TestApp } from './utils/test-app';
 import { resetDb } from './utils/test-database';
 
-type CheckInResponse = { success: boolean; status: string };
+type CheckInResponse = { success: boolean; status: string; opensAt?: string };
+
+const HOUR_MS = 60 * 60 * 1000;
+
+function hoursFromNow(hours: number) {
+  return new Date(Date.now() + hours * HOUR_MS);
+}
 
 describe('Check-in en la puerta', () => {
   let t: TestApp;
@@ -23,13 +29,21 @@ describe('Check-in en la puerta', () => {
 
   afterAll(() => t.close());
 
-  async function soldTicket(eventStatus: EventStatus = 'PUBLISHED') {
+  // By default the event is in progress: it started an hour ago.
+  async function soldTicket(
+    eventStatus: EventStatus = 'PUBLISHED',
+    { startsInHours = -1, endsInHours = 5 } = {},
+  ) {
     const { organizer, event, ticketType } = await createOrganizerWithEvent(
       t.prisma,
     );
     await t.prisma.event.update({
       where: { id: event.id },
-      data: { status: eventStatus },
+      data: {
+        status: eventStatus,
+        startDate: hoursFromNow(startsInHours),
+        endDate: hoursFromNow(endsInHours),
+      },
     });
     const buyer = await createUser(t.prisma);
     const order = await createOrder(t.prisma, {
@@ -93,6 +107,99 @@ describe('Check-in en la puerta', () => {
       expect(await ticketStatus(ticket.id)).toBe('VALID');
     },
   );
+
+  it('una entrada de un evento cuyo fin ya pasó no se valida aunque siga publicado', async () => {
+    const { organizer, ticket } = await soldTicket('PUBLISHED', {
+      startsInHours: -7,
+      endsInHours: -1,
+    });
+
+    const res = await checkIn(organizer, ticket.qrCode).expect(201);
+
+    expect((res.body as CheckInResponse).status).toBe('EVENT_CLOSED');
+    expect(await ticketStatus(ticket.id)).toBe('VALID');
+  });
+
+  describe('antes del inicio', () => {
+    it('más de 2 horas antes del inicio la entrada no se usa y se avisa desde cuándo se puede escanear', async () => {
+      const { organizer, event, ticket } = await soldTicket('PUBLISHED', {
+        startsInHours: 3,
+        endsInHours: 9,
+      });
+
+      const res = await checkIn(organizer, ticket.qrCode).expect(201);
+
+      const body = res.body as CheckInResponse;
+      expect(body.success).toBe(false);
+      expect(body.status).toBe('NOT_STARTED');
+      const { startDate } = await t.prisma.event.findUniqueOrThrow({
+        where: { id: event.id },
+      });
+      expect(body.opensAt).toBe(
+        new Date(startDate.getTime() - 2 * HOUR_MS).toISOString(),
+      );
+      expect(await ticketStatus(ticket.id)).toBe('VALID');
+      expect(
+        await t.prisma.checkIn.count({ where: { ticketId: ticket.id } }),
+      ).toBe(0);
+    });
+
+    it('dentro de las 2 horas previas al inicio la entrada ya se valida', async () => {
+      const { organizer, ticket } = await soldTicket('PUBLISHED', {
+        startsInHours: 1,
+        endsInHours: 7,
+      });
+
+      const res = await checkIn(organizer, ticket.qrCode).expect(201);
+
+      expect((res.body as CheckInResponse).status).toBe('VALID');
+      expect(await ticketStatus(ticket.id)).toBe('USED');
+    });
+
+    it('la entrada escaneada antes de tiempo entra cuando se abre el ingreso', async () => {
+      const { organizer, event, ticket } = await soldTicket('PUBLISHED', {
+        startsInHours: 3,
+        endsInHours: 9,
+      });
+      await checkIn(organizer, ticket.qrCode).expect(201);
+
+      await t.prisma.event.update({
+        where: { id: event.id },
+        data: { startDate: hoursFromNow(1) },
+      });
+      const res = await checkIn(organizer, ticket.qrCode).expect(201);
+
+      expect((res.body as CheckInResponse).status).toBe('VALID');
+    });
+
+    it('alguien de otro evento ve "otro evento" y no el horario de ingreso', async () => {
+      const { ticket } = await soldTicket('PUBLISHED', {
+        startsInHours: 3,
+        endsInHours: 9,
+      });
+      const stranger = await createUser(t.prisma);
+
+      const res = await checkIn(stranger, ticket.qrCode).expect(201);
+
+      expect((res.body as CheckInResponse).status).toBe('WRONG_EVENT');
+      expect((res.body as CheckInResponse).opensAt).toBeUndefined();
+    });
+
+    it('una entrada anulada sale inválida aunque el ingreso todavía no abra', async () => {
+      const { organizer, ticket } = await soldTicket('PUBLISHED', {
+        startsInHours: 3,
+        endsInHours: 9,
+      });
+      await t.prisma.ticket.update({
+        where: { id: ticket.id },
+        data: { status: 'REFUNDED' },
+      });
+
+      const res = await checkIn(organizer, ticket.qrCode).expect(201);
+
+      expect((res.body as CheckInResponse).status).toBe('INVALID');
+    });
+  });
 
   it('un scanner aceptado del evento puede validar', async () => {
     const { event, ticket } = await soldTicket();
