@@ -13,12 +13,24 @@ export function scanTone(status?: string): ScanTone {
   return 'error';
 }
 
-// "Se puede escanear desde las 21:30", o con el día si no es hoy.
-export function checkInOpensLabel(opensAt: string, now = new Date()): string {
-  const opens = new Date(opensAt);
-  if (opens.toDateString() !== now.toDateString()) {
-    return `Se puede escanear desde el ${formatWeekdayDateTime(opensAt)}`;
+// "las 21:30" si es hoy, o "el sáb, 10 oct, 21:30".
+function whenLabel(iso: string, now: Date): string {
+  const date = new Date(iso);
+  if (date.toDateString() !== now.toDateString()) {
+    return `el ${formatWeekdayDateTime(iso)}`;
   }
   const pad = (n: number) => String(n).padStart(2, '0');
-  return `Se puede escanear desde las ${pad(opens.getHours())}:${pad(opens.getMinutes())}`;
+  return `las ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+export function checkInOpensLabel(opensAt: string, now = new Date()): string {
+  return `Se puede escanear desde ${whenLabel(opensAt, now)}`;
+}
+
+// Un QR free que se usó después de su hora límite.
+export function entryDeadlinePassedLabel(
+  validUntil: string,
+  now = new Date(),
+): string {
+  return `Podía entrar hasta ${whenLabel(validUntil, now)}`;
 }
