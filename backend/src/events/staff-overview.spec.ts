@@ -7,6 +7,8 @@ const HOUR_MS = 60 * 60 * 1000;
 
 let nextId = 0;
 
+type Payment = { amount: Prisma.Decimal; note: string | null; createdAt: Date };
+
 function member(
   userId: string,
   name: string,
@@ -33,7 +35,7 @@ function member(
     totalEarned: new Prisma.Decimal(earned),
     totalPaid: new Prisma.Decimal(paid),
     user: { name, email: `${userId}@neopass.test` },
-    payments: [],
+    payments: [] as Payment[],
   };
 }
 
