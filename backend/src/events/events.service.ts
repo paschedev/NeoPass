@@ -52,18 +52,24 @@ const INVITED_ROLE_LABEL: Record<StaffRole, string> = {
   PROMOTER: 'promotor (RPP)',
 };
 
+// A free ticket belongs to no account: its attendee is whoever it was sent to.
 const toAttendee = (ticket: {
   status: TicketStatus;
   usedAt: Date | null;
   user: { name: string; email: string } | null;
+  freeTicketGrant: {
+    recipientName: string | null;
+    recipientEmail: string;
+  } | null;
   ticketType: { name: string; batch: { name: string } | null };
 }) => ({
-  name: ticket.user?.name ?? null,
-  email: ticket.user?.email ?? null,
+  name: ticket.user?.name ?? ticket.freeTicketGrant?.recipientName ?? null,
+  email: ticket.user?.email ?? ticket.freeTicketGrant?.recipientEmail ?? null,
   ticketType: ticket.ticketType.name,
   batch: ticket.ticketType.batch?.name ?? null,
   status: ticket.status,
   checkedInAt: ticket.usedAt,
+  freeTicket: ticket.freeTicketGrant !== null,
 });
 
 function assertEndAfterStart(startDate: Date, endDate: Date) {

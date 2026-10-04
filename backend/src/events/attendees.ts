@@ -8,6 +8,8 @@ export type Attendee = {
   batch: string | null;
   status: TicketStatus;
   checkedInAt: Date | null;
+  // A free ticket ("QR free") the organizer sent, not a purchase.
+  freeTicket: boolean;
 };
 
 const STATUS_LABEL: Record<TicketStatus, string> = {
@@ -43,7 +45,7 @@ const checkInTime = new Intl.DateTimeFormat('es-AR', {
 // and CRLF line breaks.
 export function attendeesCsv(attendees: Attendee[]): string {
   const rows = [
-    ['Nombre', 'Email', 'Entrada', 'Tanda', 'Estado', 'Ingreso'],
+    ['Nombre', 'Email', 'Entrada', 'Tanda', 'Estado', 'Ingreso', 'Origen'],
     ...attendees.map((attendee) => [
       attendee.name,
       attendee.email,
@@ -53,6 +55,7 @@ export function attendeesCsv(attendees: Attendee[]): string {
       attendee.checkedInAt
         ? checkInTime.format(attendee.checkedInAt).replace(', ', ' ')
         : null,
+      attendee.freeTicket ? 'QR free' : 'Compra',
     ]),
   ];
   return `\uFEFF${rows.map((row) => row.map(toCsvCell).join(',')).join('\r\n')}`;

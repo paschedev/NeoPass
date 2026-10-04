@@ -20,6 +20,7 @@ type Attendee = {
   batch: string | null;
   status: string;
   checkedInAt: string | null;
+  freeTicket: boolean;
 };
 type AttendeePage = {
   items: Attendee[];
@@ -122,6 +123,25 @@ describe('Asistentes e ingreso del evento', () => {
     return { ...created, ana, bruno, carla, usedAt };
   }
 
+  // Un QR free de "General" mandado a Dani.
+  async function freeTicketFor(eventId: string, organizerId: string) {
+    const ticketType = await t.prisma.ticketType.findFirstOrThrow({
+      where: { eventId, name: 'General' },
+    });
+    await t.prisma.freeTicketGrant.create({
+      data: {
+        eventId,
+        ticketTypeId: ticketType.id,
+        issuedById: organizerId,
+        recipientEmail: 'dani@mail.test',
+        recipientName: 'Dani Invitada',
+        tickets: {
+          create: { ticketTypeId: ticketType.id, isGuestList: true },
+        },
+      },
+    });
+  }
+
   describe('la lista de asistentes', () => {
     it('muestra a cada dueño de entrada con su email, la entrada, la tanda, el estado y el ingreso', async () => {
       const { organizer, event, usedAt } = await eventWithAttendees();
@@ -146,6 +166,7 @@ describe('Asistentes e ingreso del evento', () => {
           batch: 'Preventa',
           status: 'USED',
           checkedInAt: usedAt.toISOString(),
+          freeTicket: false,
         },
         {
           name: 'Ana Pérez',
@@ -154,6 +175,7 @@ describe('Asistentes e ingreso del evento', () => {
           batch: 'Preventa',
           status: 'VALID',
           checkedInAt: null,
+          freeTicket: false,
         },
         {
           name: 'Bruno Díaz',
@@ -162,6 +184,7 @@ describe('Asistentes e ingreso del evento', () => {
           batch: 'General',
           status: 'VALID',
           checkedInAt: null,
+          freeTicket: false,
         },
         {
           name: 'Carla Gómez',
@@ -170,8 +193,29 @@ describe('Asistentes e ingreso del evento', () => {
           batch: 'Preventa',
           status: 'REFUNDED',
           checkedInAt: null,
+          freeTicket: false,
         },
       ]);
+    });
+
+    it('los QR free figuran con el correo y el nombre del envío, marcados como QR free', async () => {
+      const { organizer, event } = await eventWithAttendees();
+      await freeTicketFor(event.id, organizer.id);
+
+      const res = await get(
+        organizer,
+        `/events/organizer/${event.id}/attendees?q=dani`,
+      ).expect(200);
+
+      const page = res.body as AttendeePage;
+      expect(page.total).toBe(1);
+      expect(page.items[0]).toMatchObject({
+        name: 'Dani Invitada',
+        email: 'dani@mail.test',
+        ticketType: 'General',
+        status: 'VALID',
+        freeTicket: true,
+      });
     });
 
     it('nunca expone el código del QR', async () => {
@@ -310,13 +354,27 @@ describe('Asistentes e ingreso del evento', () => {
         .trim()
         .split('\r\n');
       expect(lines[0]).toBe(
-        '"Nombre","Email","Entrada","Tanda","Estado","Ingreso"',
+        '"Nombre","Email","Entrada","Tanda","Estado","Ingreso","Origen"',
       );
       expect(lines).toHaveLength(5);
       expect(lines[1]).toBe(
-        '"Ana Pérez","ana@mail.test","General","Preventa","Ingresó","9/10/2026 23:30"',
+        '"Ana Pérez","ana@mail.test","General","Preventa","Ingresó","9/10/2026 23:30","Compra"',
       );
       expect(lines[4]).toContain('"Devuelta"');
+    });
+
+    it('incluye los QR free con el correo del envío', async () => {
+      const { organizer, event } = await eventWithAttendees();
+      await freeTicketFor(event.id, organizer.id);
+
+      const res = await get(
+        organizer,
+        `/events/organizer/${event.id}/attendees/export`,
+      ).expect(200);
+
+      expect(res.text).toContain(
+        '"Dani Invitada","dani@mail.test","General","Preventa","Válida","","QR free"',
+      );
     });
 
     it('neutraliza las fórmulas que alguien haya puesto como nombre', async () => {

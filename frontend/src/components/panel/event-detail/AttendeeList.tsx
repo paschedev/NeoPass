@@ -14,6 +14,8 @@ type Attendee = {
   batch: string | null;
   status: string;
   checkedInAt: string | null;
+  // Llegó como QR free: el nombre y el email son los del envío.
+  freeTicket: boolean;
 };
 
 type AttendeePage = {
@@ -167,6 +169,11 @@ export default function AttendeeList({ eventId }: { eventId: string }) {
                         {attendee.batch
                           ? `${attendee.ticketType} · ${attendee.batch}`
                           : attendee.ticketType}
+                        {attendee.freeTicket && (
+                          <span className="ml-2 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-pink-500/10 text-pink-300 whitespace-nowrap">
+                            QR free
+                          </span>
+                        )}
                       </td>
                       <td className="px-3 py-3">
                         <span
