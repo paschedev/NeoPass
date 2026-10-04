@@ -16,7 +16,7 @@ export interface PaymentTarget {
 }
 
 // Anota un pago a un RPP de un evento. Lo usan el detalle del evento y la
-// pestaña Staff & RPPs; el pago en sí pasa por fuera de NeoPass.
+// pestaña Mi staff; el pago en sí pasa por fuera de NeoPass.
 export default function PromoterPaymentModal({
   target,
   onClose,

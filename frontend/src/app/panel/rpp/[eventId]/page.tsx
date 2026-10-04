@@ -16,6 +16,7 @@ import toast from '@/utils/toast';
 import { apiFetch } from '@/utils/api';
 import { toCsvCell } from '@/utils/csv';
 import { formatCurrency, formatRelativeDate } from '@/utils/format';
+import { rppLink } from '@/utils/my-staff';
 import PromoterPaymentsSummary from '@/components/rpp/PromoterPaymentsSummary';
 
 export default function RppEventDetailsPage() {
@@ -65,12 +66,9 @@ export default function RppEventDetailsPage() {
 
   const handleCopy = () => {
     if (!stats.staffId) return;
-    const baseUrl =
-      typeof window !== 'undefined'
-        ? window.location.origin
-        : 'http://localhost:3000';
-    const link = `${baseUrl}/eventos/${eventId}?rpp=${stats.staffId}`;
-    navigator.clipboard.writeText(link);
+    navigator.clipboard.writeText(
+      rppLink(window.location.origin, String(eventId), stats.staffId),
+    );
     setCopiedLink(true);
     toast.success('¡Link copiado!');
     setTimeout(() => setCopiedLink(false), 2000);

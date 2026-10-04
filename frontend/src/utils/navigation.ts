@@ -9,7 +9,12 @@ import {
   Users,
   type LucideIcon,
 } from 'lucide-react';
-import { canScan, canSeeRppPanel, isOrganizer, type RoleFlags } from './roles';
+import {
+  canScan,
+  canSeeStaffPanel,
+  isOrganizer,
+  type RoleFlags,
+} from './roles';
 
 // La home y las pantallas de acceso van sin sidebar ni barra inferior.
 const ROUTES_WITHOUT_APP_NAV = [
@@ -64,11 +69,12 @@ const ORGANIZATION: NavLink = {
   icon: CalendarRange,
   label: 'Organización',
 };
-const RPP: NavLink = {
-  id: 'rpp',
-  href: '/panel/rpp',
+// Los eventos donde trabajás como RPP, scanner o encargado.
+export const STAFF: NavLink = {
+  id: 'staff',
+  href: '/panel/staff',
   icon: Users,
-  label: 'Panel RPP',
+  label: 'Staff',
 };
 const TICKETS: NavLink = {
   id: 'tickets',
@@ -98,7 +104,7 @@ export function getNavItems(user: RoleFlags | null): NavItem[] {
 
   const links = [EVENTS];
   if (isOrganizer(user)) links.push(ORGANIZATION);
-  if (canSeeRppPanel(user)) links.push(RPP);
+  if (canSeeStaffPanel(user)) links.push(STAFF);
   links.push(TICKETS, SETTINGS);
 
   const items = links.map(asLink);

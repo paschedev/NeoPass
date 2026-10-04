@@ -18,19 +18,20 @@ describe('getNavItems', () => {
     ]);
   });
 
-  it('un scanner sin otros roles tiene el QR al lado de eventos', () => {
+  it('un scanner sin otros roles ve Staff y el QR en el centro', () => {
     expect(ids({ role: 'CUSTOMER', isCurrentlyScanner: true })).toEqual([
       'eventos',
+      'staff',
       'scanner',
       'tickets',
       'ajustes',
     ]);
   });
 
-  it('un RPP que no escanea no ve el QR', () => {
+  it('un RPP que no escanea ve Staff y no el QR', () => {
     expect(ids({ role: 'CUSTOMER', hasBeenRpp: true })).toEqual([
       'eventos',
-      'rpp',
+      'staff',
       'tickets',
       'ajustes',
     ]);
@@ -39,19 +40,32 @@ describe('getNavItems', () => {
   it('un RPP que además escanea tiene el QR en el centro', () => {
     expect(
       ids({ role: 'CUSTOMER', hasBeenRpp: true, isCurrentlyScanner: true }),
-    ).toEqual(['eventos', 'rpp', 'scanner', 'tickets', 'ajustes']);
+    ).toEqual(['eventos', 'staff', 'scanner', 'tickets', 'ajustes']);
   });
 
   it.each(['ORGANIZER', 'ADMIN'])(
-    'un %s tiene el QR en el centro y tickets y ajustes dentro de "Más"',
+    'un %s que no trabaja como staff tiene el QR en el centro y tickets y ajustes en la barra',
     (role) => {
-      const items = getNavItems({ role });
+      expect(ids({ role })).toEqual([
+        'eventos',
+        'metricas',
+        'scanner',
+        'tickets',
+        'ajustes',
+      ]);
+    },
+  );
+
+  it.each(['ORGANIZER', 'ADMIN'])(
+    'un %s que además es staff de otros eventos tiene Staff y lleva tickets y ajustes a "Más"',
+    (role) => {
+      const items = getNavItems({ role, hasBeenRpp: true });
 
       expect(items.map((item) => item.id)).toEqual([
         'eventos',
         'metricas',
         'scanner',
-        'rpp',
+        'staff',
         'mas',
       ]);
       const more = items[4];
