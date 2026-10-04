@@ -4,11 +4,13 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import EventSalesView from '@/components/panel/event-detail/EventSalesView';
 import PromoterPayouts from '@/components/panel/event-detail/PromoterPayouts';
+import FreeTickets from '@/components/panel/event-detail/FreeTickets';
 import CheckInProgress from '@/components/panel/event-detail/CheckInProgress';
 import AttendeeList from '@/components/panel/event-detail/AttendeeList';
 import type { EventSales } from '@/components/panel/event-detail/types';
 import { apiFetch } from '@/utils/api';
 import { getEventPhase } from '@/utils/event-edit';
+import { freeTicketsBlockedReason } from '@/utils/free-tickets';
 
 type Loaded =
   | { state: 'loading' }
@@ -16,8 +18,18 @@ type Loaded =
   | { state: 'missing' }
   | { state: 'failed' };
 
-// Detalle del evento para su organizador: ventas, ingreso en puerta, RPPs y
-// asistentes. Reemplaza el "Ver página" de Mis eventos.
+// Los tipos de entrada que se pueden mandar como QR free: "General · Preventa".
+function ticketTypeOptions(sales: EventSales) {
+  return sales.batches.flatMap((batch) =>
+    batch.ticketTypes.map((type) => ({
+      id: type.id,
+      label: `${type.name} · ${batch.name}`,
+    })),
+  );
+}
+
+// Detalle del evento para su organizador: ventas, ingreso en puerta, RPPs, QR
+// free y asistentes. Reemplaza el "Ver página" de Mis eventos.
 export default function EventDetailPage() {
   const { id } = useParams();
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
@@ -44,6 +56,9 @@ export default function EventDetailPage() {
       current = false;
     };
   }, [id, attempt]);
+
+  const ticketTypes =
+    loaded.state === 'ready' ? ticketTypeOptions(loaded.sales) : [];
 
   return (
     <div className="max-w-5xl mx-auto px-4 md:px-0 pt-8 md:pt-12 pb-24 md:pb-12">
@@ -82,6 +97,16 @@ export default function EventDetailPage() {
             }
           />
           <PromoterPayouts eventId={loaded.sales.event.id} />
+          <FreeTickets
+            eventId={loaded.sales.event.id}
+            event={loaded.sales.event}
+            ticketTypes={ticketTypes}
+            sendBlockedReason={freeTicketsBlockedReason(
+              loaded.sales.event,
+              ticketTypes.length,
+              new Date(),
+            )}
+          />
           <AttendeeList eventId={loaded.sales.event.id} />
         </div>
       )}
