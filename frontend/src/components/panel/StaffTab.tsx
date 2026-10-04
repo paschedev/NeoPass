@@ -1,130 +1,216 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Users } from 'lucide-react';
-import { staffRoleLabel } from '@/utils/staff-roles';
-import type { StaffMember } from './types';
+import { ChevronDown, ChevronUp, UserPlus, Users } from 'lucide-react';
+import { apiFetch } from '@/utils/api';
+import { splitSettledClosed } from '@/utils/staff-overview';
+import PromoterPaymentModal, {
+  type PaymentTarget,
+} from './event-detail/PromoterPaymentModal';
+import StaffEventGroup, { type InvitePreset } from './staff/StaffEventGroup';
+import StaffSummary from './staff/StaffSummary';
+import type { StaffOverview } from './types';
 
-const STATUS_STYLES: Record<string, { label: string; className: string }> = {
-  ACCEPTED: {
-    label: 'ACTIVO',
-    className: 'bg-emerald-500/20 text-emerald-300',
-  },
-  PENDING: { label: 'PENDIENTE', className: 'bg-amber-500/20 text-amber-300' },
-  REJECTED: { label: 'RECHAZADO', className: 'bg-red-500/20 text-red-300' },
-};
+type Filter = 'all' | 'owed';
 
-// Pestaña "Staff & RPPs" del panel del organizador.
+const EMPTY_BOX =
+  'text-center py-12 px-6 bg-white/[0.02] rounded-3xl border border-white/5 border-dashed';
+
+// Pestaña "Staff & RPPs" del panel del organizador: el staff de cada evento y
+// lo que se les debe a los RPPs (en total, por evento y a cada uno).
 export default function StaffTab({
-  staff,
-  loading,
+  refreshKey,
   onInvite,
 }: {
-  staff: StaffMember[];
-  loading: boolean;
-  onInvite: () => void;
+  // Cambia cuando se envían invitaciones, para recargar la lista.
+  refreshKey: number;
+  onInvite: (preset?: InvitePreset) => void;
 }) {
+  const [overview, setOverview] = useState<StaffOverview | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [version, setVersion] = useState(0);
+  const [filter, setFilter] = useState<Filter>('all');
+  const [showSettled, setShowSettled] = useState(false);
+  const [paying, setPaying] = useState<PaymentTarget | null>(null);
+
+  useEffect(() => {
+    let current = true;
+    apiFetch('/events/organizer/staff/overview')
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`GET staff overview ${res.status}`);
+        return (await res.json()) as StaffOverview;
+      })
+      .then((data) => {
+        if (current) setOverview(data);
+      })
+      .catch((error: unknown) => {
+        console.error(error);
+        if (current) setFailed(true);
+      });
+    return () => {
+      current = false;
+    };
+  }, [refreshKey, version]);
+
+  const reload = () => {
+    setFailed(false);
+    setVersion((count) => count + 1);
+  };
+
+  const renderContent = () => {
+    if (failed) {
+      return (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-3xl p-10 text-center">
+          <p className="text-neutral-300 mb-4">No pudimos cargar tu staff.</p>
+          <button
+            type="button"
+            onClick={reload}
+            className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-xl transition-colors font-medium"
+          >
+            Reintentar
+          </button>
+        </div>
+      );
+    }
+    if (!overview) {
+      return (
+        <div className="text-center py-12 text-neutral-500">
+          Cargando staff...
+        </div>
+      );
+    }
+    if (overview.events.length === 0) {
+      return (
+        <div className={EMPTY_BOX}>
+          <Users className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-neutral-400 mb-2">
+            No tenés staff asignado
+          </h3>
+          <p className="text-sm text-neutral-500">
+            Cuando tengas un evento próximo, sumá scanners y promotores con
+            &quot;Enviar invitación&quot;.
+          </p>
+        </div>
+      );
+    }
+
+    const visible =
+      filter === 'owed'
+        ? overview.events.filter((event) => event.owed > 0)
+        : overview.events;
+    const { active, settled } = splitSettledClosed(visible);
+    const filters: [Filter, string][] = [
+      ['all', `Todos · ${overview.events.length}`],
+      ['owed', `Con deuda · ${overview.totals.eventsOwed}`],
+    ];
+
+    return (
+      <>
+        <StaffSummary totals={overview.totals} />
+
+        <div
+          role="group"
+          aria-label="Filtrar eventos"
+          className="flex w-fit bg-white/[0.02] border border-white/5 p-1 rounded-xl"
+        >
+          {filters.map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={filter === value}
+              onClick={() => setFilter(value)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                filter === value
+                  ? 'bg-white/10 text-white'
+                  : 'text-neutral-500 hover:text-white'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {active.length === 0 && filter === 'owed' && (
+          <p className={`${EMPTY_BOX} text-sm text-neutral-400`}>
+            No les debés nada a tus RPPs.
+          </p>
+        )}
+
+        {active.map((event) => (
+          <StaffEventGroup
+            key={event.id}
+            event={event}
+            onInvite={onInvite}
+            onPay={setPaying}
+          />
+        ))}
+
+        {settled.length > 0 && (
+          <>
+            <button
+              type="button"
+              aria-expanded={showSettled}
+              onClick={() => setShowSettled((open) => !open)}
+              className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-white/[0.03] border border-white/5 text-sm font-medium text-neutral-400 hover:text-white transition-colors"
+            >
+              {showSettled ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+              Finalizados al día · {settled.length}
+            </button>
+            {showSettled &&
+              settled.map((event) => (
+                <StaffEventGroup
+                  key={event.id}
+                  event={event}
+                  onInvite={onInvite}
+                  onPay={setPaying}
+                />
+              ))}
+          </>
+        )}
+      </>
+    );
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
+      className="space-y-6"
     >
-      <div className="bg-neutral-900 border border-white/5 rounded-3xl p-8 shadow-2xl">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h2 className="font-outfit text-2xl font-bold">
-              Gestión de Staff y RPPs
-            </h2>
-            <p className="text-sm text-neutral-400">
-              Invitá scanners y promotores a tus eventos.
-            </p>
-          </div>
-          <button
-            onClick={onInvite}
-            className="bg-white/10 hover:bg-white/20 text-white px-5 py-2.5 rounded-full text-sm font-medium transition-colors flex items-center gap-2"
-          >
-            <UserPlus className="w-4 h-4" /> Enviar invitación
-          </button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="font-outfit text-2xl font-bold">
+            Gestión de Staff y RPPs
+          </h2>
+          <p className="text-sm text-neutral-400">
+            Tu equipo en cada evento y lo que les debés a tus RPPs.
+          </p>
         </div>
-
-        <div className="w-full">
-          {loading ? (
-            <div className="text-center py-12 text-neutral-500">
-              Cargando staff...
-            </div>
-          ) : staff.length === 0 ? (
-            <div className="text-center py-12 bg-white/[0.02] rounded-2xl border border-white/5 border-dashed">
-              <Users className="w-12 h-12 text-neutral-600 mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-neutral-400 mb-2">
-                No tenés staff asignado
-              </h3>
-              <p className="text-sm text-neutral-500">
-                Tocá &quot;Enviar invitación&quot; para sumar scanners o
-                promotores a tus eventos.
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {staff.map((member) => {
-                const status =
-                  STATUS_STYLES[member.status] ?? STATUS_STYLES.REJECTED;
-                return (
-                  <div
-                    key={member.id}
-                    className="bg-white/5 border border-white/10 rounded-2xl p-5 hover:border-white/20 transition-colors"
-                  >
-                    <div className="flex justify-between items-start mb-4 gap-2">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="w-10 h-10 rounded-full shrink-0 bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-sm text-white">
-                          {member.user.name.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="font-bold text-white text-sm truncate">
-                            {member.user.name}
-                          </h4>
-                          <p className="text-xs text-neutral-400 truncate">
-                            {member.user.email}
-                          </p>
-                        </div>
-                      </div>
-                      <span
-                        className={`shrink-0 px-2 py-1 rounded-md text-[10px] font-bold tracking-wider ${status.className}`}
-                      >
-                        {status.label}
-                      </span>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-neutral-500">Rol</span>
-                        <span className="font-semibold text-indigo-300">
-                          {staffRoleLabel(member.role)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm items-center gap-2">
-                        <span className="text-neutral-500">Evento</span>
-                        <span className="text-white truncate">
-                          {member.event.title}
-                        </span>
-                      </div>
-                      {member.role === 'PROMOTER' && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-neutral-500">Comisión</span>
-                          <span className="text-emerald-400 font-medium">
-                            {member.commissionType === 'PERCENTAGE'
-                              ? `${member.commissionValue}%`
-                              : `$${member.commissionValue}`}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={() => onInvite()}
+          className="self-start sm:self-auto bg-white/10 hover:bg-white/20 text-white px-5 py-2.5 rounded-full text-sm font-medium transition-colors flex items-center gap-2"
+        >
+          <UserPlus className="w-4 h-4" /> Enviar invitación
+        </button>
       </div>
+
+      {renderContent()}
+
+      <PromoterPaymentModal
+        target={paying}
+        onClose={() => setPaying(null)}
+        onPaid={() => {
+          setPaying(null);
+          reload();
+        }}
+      />
     </motion.div>
   );
 }

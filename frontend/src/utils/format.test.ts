@@ -5,6 +5,7 @@ import {
   formatDayMonthTime,
   formatRelativeDate,
   formatShortDateTime,
+  formatWeekdayDateTime,
   fromDateTimeLocalInput,
   toDateTimeLocalInput,
 } from './format';
@@ -95,5 +96,11 @@ describe('formatShortDateTime', () => {
 describe('formatDayMonthTime', () => {
   it('muestra el día, el mes abreviado y la hora en la hora de Argentina', () => {
     expect(formatDayMonthTime('2026-10-02T15:00:00Z')).toBe('2 oct, 12:00');
+  });
+});
+
+describe('formatWeekdayDateTime', () => {
+  it('muestra el día de la semana, el día, el mes y la hora de 24 h en la hora de Argentina', () => {
+    expect(formatWeekdayDateTime('2026-10-11T02:59:00Z')).toBe('sáb, 10 oct, 23:59');
   });
 });

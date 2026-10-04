@@ -41,9 +41,9 @@ export class EventsController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ORGANIZER', 'ADMIN')
-  @Get('organizer/staff')
-  getOrganizerStaff(@CurrentUser('userId') userId: string) {
-    return this.eventsService.getOrganizerStaff(userId);
+  @Get('organizer/staff/overview')
+  getStaffOverview(@CurrentUser('userId') userId: string) {
+    return this.eventsService.getStaffOverview(userId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
