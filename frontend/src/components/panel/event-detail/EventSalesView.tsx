@@ -1,20 +1,6 @@
-import Link from 'next/link';
 import type { ReactNode } from 'react';
-import {
-  ArrowLeft,
-  Calendar,
-  ExternalLink,
-  MapPin,
-  Pencil,
-  Ticket,
-} from 'lucide-react';
+import { Ticket } from 'lucide-react';
 import { BATCH_STATUS_BADGES } from '@/utils/batches';
-import { closedEventLabel, getEventPhase } from '@/utils/event-edit';
-import {
-  DEFAULT_STATUS_STYLE,
-  EVENT_STATUS_LABELS,
-  EVENT_STATUS_STYLES,
-} from '@/utils/event-status';
 import { formatCurrency } from '@/utils/format';
 import type { EventSales } from './types';
 
@@ -38,76 +24,13 @@ function SummaryCard({
 
 const NUMBER_CELL = 'px-3 py-3 text-right tabular-nums whitespace-nowrap';
 
-// Detalle de ventas de un evento para su organizador: resumen y ventas de cada
-// tanda y tipo de entrada.
+// Ventas de un evento: resumen y ventas de cada tanda y tipo de entrada. El
+// encabezado del evento va aparte (EventDetailHeader).
 export default function EventSalesView({ sales }: { sales: EventSales }) {
-  const { event, totals, batches } = sales;
-  const phase = getEventPhase(event, new Date());
-  const isPublic = event.status === 'PUBLISHED' && phase !== 'CLOSED';
+  const { totals, batches } = sales;
 
   return (
     <div className="space-y-8">
-      <Link
-        href="/panel?tab=events"
-        className="inline-flex items-center gap-2 text-neutral-400 hover:text-white transition-colors font-medium"
-      >
-        <ArrowLeft className="w-4 h-4" /> Volver a mis eventos
-      </Link>
-
-      <header className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-        <div className="min-w-0">
-          <span
-            className={`inline-block px-2.5 py-1 text-[10px] font-semibold rounded-md uppercase mb-3 ${EVENT_STATUS_STYLES[event.status] ?? DEFAULT_STATUS_STYLE}`}
-          >
-            {EVENT_STATUS_LABELS[event.status] ?? event.status}
-          </span>
-          <h1 className="font-outfit text-3xl font-bold text-white break-words">
-            {event.title}
-          </h1>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-neutral-400">
-            <span className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4" />
-              {new Date(event.startDate).toLocaleString('es-AR', {
-                weekday: 'short',
-                day: 'numeric',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </span>
-            {event.venueName && (
-              <span className="flex items-center gap-1.5">
-                <MapPin className="w-4 h-4" /> {event.venueName}
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-          {phase === 'CLOSED' ? (
-            <span className="text-center bg-white/5 text-neutral-500 px-5 py-2.5 rounded-xl text-sm font-medium">
-              {closedEventLabel(event.status)}
-            </span>
-          ) : (
-            <Link
-              href={`/panel/eventos/${event.id}/editar`}
-              className="inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors"
-            >
-              <Pencil className="w-4 h-4" /> Editar evento
-            </Link>
-          )}
-          {isPublic && (
-            <Link
-              href={`/eventos/${event.id}`}
-              target="_blank"
-              className="inline-flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors"
-            >
-              Ver página pública <ExternalLink className="w-4 h-4" />
-            </Link>
-          )}
-        </div>
-      </header>
-
       <section
         aria-label="Resumen"
         className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"

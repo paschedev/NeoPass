@@ -14,9 +14,14 @@ type UploadSignature = {
 };
 
 // Sube una imagen a Cloudinary con la firma de /media/presign. Devuelve la URL
-// segura, o null si no se pudo (el aviso al usuario ya se mostró).
-export function useCloudinaryUpload() {
+// segura, o null si no se pudo (el aviso al usuario ya se mostró). Al editar
+// un evento, la firma se pide para ese evento: así la consigue también un
+// co-organizador con permiso de editar la info.
+export function useCloudinaryUpload(eventId?: string) {
   const [uploading, setUploading] = useState(false);
+  const presignPath = eventId
+    ? `/media/presign?eventId=${encodeURIComponent(eventId)}`
+    : '/media/presign';
 
   const upload = async (file: File): Promise<string | null> => {
     const invalid = validateImageFile(file);
@@ -28,7 +33,7 @@ export function useCloudinaryUpload() {
     setUploading(true);
     const toastId = toast.loading('Subiendo imagen...');
     try {
-      const signRes = await apiFetch('/media/presign');
+      const signRes = await apiFetch(presignPath);
       if (!signRes.ok) {
         toast.error('No tenés permiso para subir imágenes', { id: toastId });
         return null;

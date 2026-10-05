@@ -6,10 +6,12 @@ import Modal from '@/components/ui/Modal';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { formatWeekdayDateTime } from '@/utils/format';
-import type {
-  FreeTicketGrant,
-  FreeTicketsFormOutput,
+import {
+  freeTicketsSent,
+  type FreeTicketGrant,
+  type FreeTicketsFormOutput,
 } from '@/utils/free-tickets';
+import { freeTicketsLeft } from '@/utils/co-organizers';
 import toast from '@/utils/toast';
 import SendFreeTicketsForm from './SendFreeTicketsForm';
 
@@ -18,27 +20,30 @@ const MODAL =
 
 // Lo enviado sin las anuladas que nadie usó, y cuántas personas entraron.
 function summarize(grants: FreeTicketGrant[]): string {
-  const sent = grants.reduce(
-    (sum, grant) =>
-      sum + (grant.status === 'ACTIVE' ? grant.quantity : grant.checkedIn),
-    0,
-  );
+  const sent = freeTicketsSent(grants);
   const checkedIn = grants.reduce((sum, grant) => sum + grant.checkedIn, 0);
   return `${sent} ${sent === 1 ? 'entrada enviada' : 'entradas enviadas'} · ${checkedIn} ${checkedIn === 1 ? 'ingresó' : 'ingresaron'}`;
 }
 
-// QR free del evento: entradas gratis que el organizador manda por mail, sin
-// descontar stock. Se pueden reenviar y anular.
+// QR free del evento: entradas gratis que el organizador (o un co-organizador
+// con permiso, que ve solo las suyas) manda por mail, sin descontar stock. Se
+// pueden reenviar y anular.
 export default function FreeTickets({
   eventId,
   event,
   ticketTypes,
   sendBlockedReason,
+  limit = null,
+  ownerId = null,
 }: {
   eventId: string;
   event: { startDate: string; endDate: string };
   ticketTypes: { id: string; label: string }[];
   sendBlockedReason: string | null;
+  // Tope del co-organizador; null = sin tope.
+  limit?: number | null;
+  // Solo para el dueño: marca los envíos que mandó un co-organizador.
+  ownerId?: string | null;
 }) {
   const [grants, setGrants] = useState<FreeTicketGrant[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -50,6 +55,8 @@ export default function FreeTickets({
   const cancelTitleId = useId();
   const path = `/events/organizer/${eventId}/free-tickets`;
   const reload = () => setVersion((count) => count + 1);
+  const sentByOther = (grant: FreeTicketGrant) =>
+    ownerId !== null && grant.issuedById !== ownerId;
 
   useEffect(() => {
     let current = true;
@@ -130,6 +137,11 @@ export default function FreeTickets({
       {sendBlockedReason && (
         <p className="text-sm text-neutral-400">{sendBlockedReason}</p>
       )}
+      {grants && limit !== null && (
+        <p className="text-sm text-neutral-300">
+          Te quedan {freeTicketsLeft(limit, grants)} de tus {limit} QR free.
+        </p>
+      )}
 
       {failed && (
         <p className="text-sm text-neutral-400">
@@ -174,6 +186,7 @@ export default function FreeTickets({
                     {grant.quantity} ingresaron
                     {grant.validUntil &&
                       ` · Hasta ${formatWeekdayDateTime(grant.validUntil)}`}
+                    {sentByOther(grant) && ` · Mandó ${grant.issuedBy.name}`}
                   </p>
                 </div>
                 {grant.status === 'ACTIVE' && (

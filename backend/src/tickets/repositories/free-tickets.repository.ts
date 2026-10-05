@@ -12,6 +12,7 @@ const GRANT_SELECT = {
   cancelledAt: true,
   ticketType: { select: { id: true, name: true } },
   tickets: { select: { status: true } },
+  issuedById: true,
   issuedBy: { select: { name: true } },
 } as const;
 

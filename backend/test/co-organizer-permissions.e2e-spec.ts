@@ -46,6 +46,7 @@ type OrganizerEventView = {
 type Grant = {
   id: string;
   recipientEmail: string;
+  issuedById: string;
   issuedBy: { name: string };
 };
 
@@ -656,13 +657,14 @@ describe('Co-organizadores: permisos sobre el evento', () => {
         'invitada@example.com',
       ]);
       expect(
-        all.map(({ recipientEmail, issuedBy }) => [
+        all.map(({ recipientEmail, issuedById, issuedBy }) => [
           recipientEmail,
+          issuedById,
           issuedBy.name,
         ]),
       ).toEqual([
-        ['del-dueno@example.com', 'Dueña'],
-        ['invitada@example.com', 'Ana Pérez'],
+        ['del-dueno@example.com', s.organizer.id, 'Dueña'],
+        ['invitada@example.com', s.member.id, 'Ana Pérez'],
       ]);
     });
 

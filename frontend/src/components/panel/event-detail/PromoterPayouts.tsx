@@ -1,9 +1,10 @@
 'use client';
 
 import { Fragment, useEffect, useState } from 'react';
-import { Users } from 'lucide-react';
+import { UserPlus, Users } from 'lucide-react';
 import { apiFetch } from '@/utils/api';
 import { formatCurrency, formatDayMonthTime } from '@/utils/format';
+import InviteStaffModal from '../InviteStaffModal';
 import PromoterPaymentModal from './PromoterPaymentModal';
 import type { EventPromoter } from './types';
 
@@ -11,13 +12,22 @@ const NUMBER_CELL = 'px-3 py-3 text-right tabular-nums whitespace-nowrap';
 const HEADER_CELL = 'px-3 py-2 text-right font-medium';
 
 // RPPs del evento: lo vendido, la comisión ganada, lo pagado y el saldo. Los
-// pagos pasan por fuera de NeoPass; acá el organizador los anota.
-export default function PromoterPayouts({ eventId }: { eventId: string }) {
+// pagos pasan por fuera de NeoPass; acá el organizador (o un co-organizador
+// con "Staff y pagos") los anota. Con un evento que no terminó, también se
+// invitan scanners y RPPs desde acá.
+export default function PromoterPayouts({
+  eventId,
+  inviteEvent,
+}: {
+  eventId: string;
+  inviteEvent?: { id: string; title: string };
+}) {
   const [promoters, setPromoters] = useState<EventPromoter[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [version, setVersion] = useState(0);
   const [paying, setPaying] = useState<EventPromoter | null>(null);
   const [historyOf, setHistoryOf] = useState<string | null>(null);
+  const [inviting, setInviting] = useState(false);
   const path = `/events/organizer/${eventId}/promoters`;
 
   useEffect(() => {
@@ -41,9 +51,20 @@ export default function PromoterPayouts({ eventId }: { eventId: string }) {
 
   return (
     <section aria-label="RPPs" className="space-y-4">
-      <h2 className="text-xl font-bold flex items-center gap-2">
-        <Users className="w-5 h-5 text-purple-400" /> RPPs
-      </h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-bold flex items-center gap-2">
+          <Users className="w-5 h-5 text-purple-400" /> RPPs
+        </h2>
+        {inviteEvent && (
+          <button
+            type="button"
+            onClick={() => setInviting(true)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-white/10 hover:bg-white/20 transition-colors"
+          >
+            <UserPlus className="w-4 h-4" /> Invitar scanner o RPP
+          </button>
+        )}
+      </div>
 
       {failed && (
         <p className="text-sm text-neutral-400">
@@ -175,6 +196,17 @@ export default function PromoterPayouts({ eventId }: { eventId: string }) {
           setVersion((count) => count + 1);
         }}
       />
+
+      {inviting && inviteEvent && (
+        <InviteStaffModal
+          open
+          onClose={() => setInviting(false)}
+          events={[inviteEvent]}
+          initialEventId={inviteEvent.id}
+          allowCoOrganizer={false}
+          onInvited={() => setVersion((count) => count + 1)}
+        />
+      )}
     </section>
   );
 }

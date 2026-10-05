@@ -20,6 +20,9 @@ export interface FreeTicketGrant {
   validUntil: string | null;
   createdAt: string;
   lastSentAt: string;
+  // Quién lo mandó: el dueño o un co-organizador.
+  issuedById: string;
+  issuedBy: { name: string };
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -27,6 +30,18 @@ const pad = (n: number) => String(n).padStart(2, '0');
 // Las horas límite que se pueden elegir: cada media hora después del inicio
 // (y de ahora) hasta el fin del evento. Así no hace falta elegir la fecha y
 // nunca queda fuera del evento, aunque cruce la medianoche.
+// Lo enviado sin las anuladas que nadie usó: lo que cuenta para el tope de un
+// co-organizador.
+export function freeTicketsSent(
+  grants: Pick<FreeTicketGrant, 'status' | 'quantity' | 'checkedIn'>[],
+): number {
+  return grants.reduce(
+    (sum, grant) =>
+      sum + (grant.status === 'ACTIVE' ? grant.quantity : grant.checkedIn),
+    0,
+  );
+}
+
 export function entryDeadlineOptions(
   event: { startDate: string; endDate: string },
   now: Date,

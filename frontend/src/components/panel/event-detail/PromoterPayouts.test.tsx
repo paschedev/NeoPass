@@ -80,6 +80,31 @@ describe('PromoterPayouts', () => {
     expect(
       await screen.findByText('Este evento no tiene RPPs.'),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Invitar scanner o RPP' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('con un evento abierto a invitaciones, ofrece invitar scanners o RPPs, nunca co-organizadores', async () => {
+    server({ lists: [[]] });
+
+    render(
+      <PromoterPayouts
+        eventId="e1"
+        inviteEvent={{ id: 'e1', title: 'Fiesta de prueba' }}
+      />,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Invitar scanner o RPP' }),
+    );
+
+    const dialog = screen.getByRole('dialog');
+    expect(
+      within(dialog).getByRole('button', { name: 'Promotor' }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByRole('button', { name: 'Co-organizador' }),
+    ).not.toBeInTheDocument();
   });
 
   it('registrar un pago propone el saldo, lo manda y actualiza la lista', async () => {
