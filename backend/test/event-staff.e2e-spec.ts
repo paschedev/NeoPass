@@ -102,7 +102,7 @@ describe('staff de un evento', () => {
     it.each([
       ['PROMOTER', 'promotor (RPP)', ', con 10% de comisión por entrada.'],
       ['SCANNER', 'scanner', '.'],
-      ['MANAGER', 'encargado', '.'],
+      ['MANAGER', 'co-organizador', '. Vas a poder escanear.'],
     ] as const)(
       'el aviso al invitado como %s nombra el rol en español',
       async (role, label, ending) => {

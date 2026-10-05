@@ -221,14 +221,7 @@ export class EventsController {
     @Body() body: AddStaffDto,
     @CurrentUser('userId') userId: string,
   ) {
-    return this.eventsService.addStaff(
-      eventId,
-      userId,
-      body.userId,
-      body.role,
-      body.commissionType,
-      body.commissionValue,
-    );
+    return this.eventsService.addStaff(eventId, userId, body);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, StaffRole, StaffStatus } from '@prisma/client';
 import { BatchChanges } from '../batch-changes';
+import { ActivityEntry } from '../event-activity';
 
 export type InvitationAnswer = Extract<StaffStatus, 'ACCEPTED' | 'REJECTED'>;
 
@@ -470,14 +471,22 @@ export class EventsRepository {
     return count > 0;
   }
 
-  async createEventStaff(data: Prisma.EventStaffCreateInput) {
-    return this.prisma.eventStaff.create({ data });
-  }
-
-  async updateEventStaff(id: string, data: Prisma.EventStaffUpdateInput) {
-    return this.prisma.eventStaff.update({
-      where: { id },
-      data,
+  // A new invitation, or a new one over the row of someone who rejected it,
+  // with its record in the event history: all or nothing.
+  async saveStaffInvitation(
+    existingId: string | null,
+    data: Prisma.EventStaffUncheckedCreateInput,
+    activity: ActivityEntry,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const staff = existingId
+        ? await tx.eventStaff.update({
+            where: { id: existingId },
+            data: { ...data, status: 'PENDING' },
+          })
+        : await tx.eventStaff.create({ data });
+      await tx.eventActivity.create({ data: activity });
+      return staff;
     });
   }
 
