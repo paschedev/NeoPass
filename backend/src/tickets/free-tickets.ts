@@ -18,6 +18,14 @@ export function validUntilError(
   return null;
 }
 
+// A co-organizer can have a limit of free tickets sent (not cancelled).
+export function freeTicketLimitMessage(limit: number, sent: number) {
+  const left = limit - sent;
+  if (left <= 0)
+    return `Ya llegaste a tu tope de ${limit} QR free en este evento`;
+  return `Te ${left === 1 ? 'queda' : 'quedan'} ${left} QR free para mandar en este evento (tu tope es ${limit})`;
+}
+
 type GrantRow = {
   id: string;
   recipientEmail: string;
@@ -28,6 +36,8 @@ type GrantRow = {
   cancelledAt: Date | null;
   ticketType: { id: string; name: string };
   tickets: { status: string }[];
+  issuedById: string;
+  issuedBy: { name: string };
 };
 
 // What the organizer sees of a grant: never the QR codes.

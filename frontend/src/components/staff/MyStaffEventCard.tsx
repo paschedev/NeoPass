@@ -9,7 +9,9 @@ import {
   MapPin,
   Navigation,
   ScanLine,
+  Settings2,
 } from 'lucide-react';
+import { permissionsSummary } from '@/utils/co-organizers';
 import type { EventPhase } from '@/utils/event-edit';
 import { formatCurrency, formatWeekdayDateTime } from '@/utils/format';
 import { getDirectionsUrl, hasMapLocation } from '@/utils/maps';
@@ -185,6 +187,29 @@ export default function MyStaffEventCard({ event }: { event: MyStaffEvent }) {
               <Navigation className="w-3.5 h-3.5" /> Cómo llegar
             </a>
           )}
+        </div>
+      )}
+
+      {event.coOrganizer && (
+        <div className="mt-4 bg-black/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-neutral-400">
+              Como co-organizador
+            </p>
+            <p className="text-sm text-neutral-200 mt-1">
+              Podés:{' '}
+              {permissionsSummary(
+                event.coOrganizer.permissions,
+                event.coOrganizer.freeTicketLimit,
+              )}
+            </p>
+          </div>
+          <Link
+            href={`/panel/eventos/${event.id}`}
+            className={`${ACTION} bg-white/10 hover:bg-white/20 text-white shrink-0`}
+          >
+            <Settings2 className="w-4 h-4" /> Gestionar
+          </Link>
         </div>
       )}
 

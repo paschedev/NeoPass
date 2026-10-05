@@ -61,6 +61,31 @@ enum StaffRole {
   MANAGER
 }
 
+// What a co-organizer (MANAGER) can do on the event besides scanning.
+enum EventPermission {
+  EDIT_EVENT
+  MANAGE_BATCHES
+  VIEW_SALES
+  SEND_FREE_TICKETS
+  VIEW_ATTENDEES
+  MANAGE_STAFF
+}
+
+enum EventActivityType {
+  CO_ORGANIZER_INVITED
+  CO_ORGANIZER_UPDATED
+  CO_ORGANIZER_REMOVED
+  STAFF_INVITED
+  EVENT_UPDATED
+  BATCHES_UPDATED
+  BATCH_SALE_CHANGED
+  FREE_TICKETS_SENT
+  FREE_TICKETS_CANCELLED
+  FREE_TICKETS_RESENT
+  PROMOTER_PAYMENT_REGISTERED
+  ATTENDEES_EXPORTED
+}
+
 enum StaffStatus {
   PENDING
   ACCEPTED
@@ -109,6 +134,7 @@ model User {
   organizerProfile           OrganizerProfile?
   eventStaff                 EventStaff[]
   promoterPaymentsRegistered PromoterPayment[]
+  eventActivity              EventActivity[]
   freeTicketGrantsIssued     FreeTicketGrant[]
   ticketPresets              TicketPreset[]    @relation("OrganizerPresets")
   notifications              Notification[]
@@ -153,6 +179,7 @@ model Event {
   staff         EventStaff[]
   notifications Notification[]
   freeTickets   FreeTicketGrant[]
+  activity      EventActivity[]
 
   @@index([organizerId])
 }
@@ -332,6 +359,11 @@ model EventStaff {
   clicks          Int             @default(0)
   totalPaid       Decimal         @default(0) @db.Decimal(10, 2)
 
+  // Co-organizers (MANAGER) only.
+  permissions     EventPermission[] @default([])
+  // Most free tickets they can have sent (not cancelled); null = no limit.
+  freeTicketLimit Int?
+
   event    Event             @relation(fields: [eventId], references: [id])
   user     User              @relation(fields: [userId], references: [id])
   orders   Order[]           @relation("OrderPromoter")
@@ -404,4 +436,21 @@ model FreeTicketGrant {
   @@index([eventId])
   @@index([ticketTypeId])
   @@index([issuedById, createdAt])
+}
+
+// What was done on an event and by whom, for its owner: with co-organizers
+// several people can change prices, send free tickets or pay promoters.
+model EventActivity {
+  id        String            @id @default(uuid())
+  type      EventActivityType
+  // In Spanish, as the owner reads it; fixed when it happened.
+  summary   String
+  createdAt DateTime          @default(now())
+
+  eventId String
+  event   Event  @relation(fields: [eventId], references: [id])
+  actorId String
+  actor   User   @relation(fields: [actorId], references: [id])
+
+  @@index([eventId, createdAt])
 }

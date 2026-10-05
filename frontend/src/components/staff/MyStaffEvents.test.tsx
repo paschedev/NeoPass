@@ -45,6 +45,7 @@ const event = (overrides = {}) => ({
   owed: 21800,
   roles: ['PROMOTER', 'SCANNER'],
   promoter: promoter(),
+  coOrganizer: null,
   ...overrides,
 });
 
@@ -102,7 +103,10 @@ describe('MyStaffEvents', () => {
     expect(fiesta).toHaveTextContent('Organiza Organizadora');
     expect(
       within(fiesta).getByRole('link', { name: 'Cómo llegar' }),
-    ).toHaveAttribute('href', expect.stringContaining('query_place_id=place-1'));
+    ).toHaveAttribute(
+      'href',
+      expect.stringContaining('query_place_id=place-1'),
+    );
   });
 
   it('como RPP muestra la comisión, lo vendido, lo ganado y lo que le deben, y lleva a sus ventas', async () => {
@@ -180,12 +184,70 @@ describe('MyStaffEvents', () => {
     expect(
       within(await card('Sunset')).getByRole('link', { name: 'Escanear' }),
     ).toHaveAttribute('href', '/panel/escanear');
-    expect(await card('Sunset')).toHaveTextContent('Encargado');
+    expect(await card('Sunset')).toHaveTextContent('Co-organizador');
     expect(
       within(await card('Fiesta Bresh')).queryByRole('link', {
         name: 'Escanear',
       }),
     ).toBeNull();
+  });
+
+  it('un evento que co-organizás muestra lo que podés hacer y "Gestionar" lleva a su detalle', async () => {
+    server([
+      myStaff({
+        promoterTotals: null,
+        events: [
+          event({
+            roles: ['MANAGER'],
+            promoter: null,
+            owed: 0,
+            coOrganizer: {
+              permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
+              freeTicketLimit: 10,
+            },
+          }),
+        ],
+      }),
+    ]);
+
+    render(<MyStaffEvents />);
+
+    const fiesta = await card('Fiesta Bresh');
+    expect(fiesta).toHaveTextContent(
+      'Podés: Escanear · Ver ventas · QR free (hasta 10)',
+    );
+    expect(
+      within(fiesta).getByRole('link', { name: 'Gestionar' }),
+    ).toHaveAttribute('href', '/panel/eventos/e1');
+  });
+
+  it('la invitación de co-organizador dice qué vas a poder hacer', async () => {
+    server([
+      myStaff({
+        invitations: [
+          {
+            id: 'i1',
+            role: 'MANAGER',
+            commissionType: null,
+            commissionValue: null,
+            permissions: ['EDIT_EVENT'],
+            freeTicketLimit: null,
+            event: {
+              id: 'e9',
+              title: 'Sunset',
+              startDate: '2026-10-11T02:59:00Z',
+              organizerName: 'Organizadora',
+            },
+          },
+        ],
+      }),
+    ]);
+
+    render(<MyStaffEvents />);
+
+    expect(
+      await screen.findByRole('region', { name: 'Invitaciones pendientes' }),
+    ).toHaveTextContent('Vas a poder: Escanear · Editar info');
   });
 
   it('arriba muestra los totales de RPP solo si tiene roles de RPP', async () => {

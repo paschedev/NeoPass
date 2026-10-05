@@ -1,4 +1,9 @@
-import { Prisma, StaffRole, StaffStatus } from '@prisma/client';
+import {
+  EventPermission,
+  Prisma,
+  StaffRole,
+  StaffStatus,
+} from '@prisma/client';
 import { buildMyStaff } from './my-staff';
 
 const now = new Date('2026-10-10T20:00:00.000Z');
@@ -34,7 +39,15 @@ function assignment(
     status = 'ACCEPTED',
     earned = '0',
     paid = '0',
-  }: { status?: StaffStatus; earned?: string; paid?: string } = {},
+    permissions = [],
+    freeTicketLimit = null,
+  }: {
+    status?: StaffStatus;
+    earned?: string;
+    paid?: string;
+    permissions?: EventPermission[];
+    freeTicketLimit?: number | null;
+  } = {},
 ) {
   nextId += 1;
   const promoter = role === 'PROMOTER';
@@ -46,11 +59,55 @@ function assignment(
     commissionValue: promoter ? new Prisma.Decimal('12.5') : null,
     totalEarned: new Prisma.Decimal(earned),
     totalPaid: new Prisma.Decimal(paid),
+    permissions,
+    freeTicketLimit,
     event: ev,
   };
 }
 
 describe('buildMyStaff', () => {
+  it('cada co-organización trae lo que puede hacer, y la invitación también', () => {
+    const fiesta = event('fiesta', 3);
+    const otra = event('otra', 5);
+    const scanning = event('scanning', 4);
+
+    const mine = buildMyStaff(
+      [
+        assignment(fiesta, 'MANAGER', {
+          permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
+          freeTicketLimit: 5,
+        }),
+        assignment(otra, 'MANAGER', {
+          status: 'PENDING',
+          permissions: ['EDIT_EVENT'],
+        }),
+        assignment(scanning, 'SCANNER'),
+      ],
+      new Map(),
+      now,
+    );
+
+    expect(
+      mine.events.map(({ id, coOrganizer }) => ({ id, coOrganizer })),
+    ).toEqual([
+      {
+        id: 'fiesta',
+        coOrganizer: {
+          permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
+          freeTicketLimit: 5,
+        },
+      },
+      { id: 'scanning', coOrganizer: null },
+    ]);
+    expect(mine.invitations).toEqual([
+      expect.objectContaining({
+        role: 'MANAGER',
+        permissions: ['EDIT_EVENT'],
+        freeTicketLimit: null,
+      }),
+    ]);
+  });
+
   it('junta los roles de cada evento y trae los datos del evento', () => {
     const fiesta = event('fiesta', 3);
     const scanner = assignment(fiesta, 'SCANNER');
@@ -75,6 +132,7 @@ describe('buildMyStaff', () => {
         organizerName: 'Organizadora',
         owed: 200,
         roles: ['PROMOTER', 'SCANNER'],
+        coOrganizer: null,
         promoter: {
           staffId: rpp.id,
           commissionType: 'PERCENTAGE',
@@ -201,6 +259,8 @@ describe('buildMyStaff', () => {
         role: 'SCANNER',
         commissionType: null,
         commissionValue: null,
+        permissions: [],
+        freeTicketLimit: null,
         event: {
           id: 'cercana',
           title: 'Evento cercana',

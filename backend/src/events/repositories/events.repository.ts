@@ -2,8 +2,25 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, StaffRole, StaffStatus } from '@prisma/client';
 import { BatchChanges } from '../batch-changes';
+import { ActivityEntry } from '../event-activity';
 
 export type InvitationAnswer = Extract<StaffStatus, 'ACCEPTED' | 'REJECTED'>;
+
+// Who holds each ticket now (after transfers) and how it is going; never the
+// QR code, which is the ticket itself.
+const ATTENDEE_SELECT = {
+  id: true,
+  status: true,
+  usedAt: true,
+  user: { select: { name: true } },
+  freeTicketGrant: { select: { recipientName: true } },
+  ticketType: { select: { name: true, batch: { select: { name: true } } } },
+} satisfies Prisma.TicketSelect;
+
+const ATTENDEE_ORDER: Prisma.TicketOrderByWithRelationInput[] = [
+  { user: { name: 'asc' } },
+  { createdAt: 'asc' },
+];
 
 const PAYMENT_HISTORY = {
   orderBy: { createdAt: 'desc' },
@@ -114,10 +131,16 @@ export class EventsRepository {
     });
   }
 
-  async update(id: string, data: Prisma.EventUpdateInput) {
-    return this.prisma.event.update({
-      where: { id },
-      data,
+  // The event and what changed in its history, all or nothing.
+  async update(
+    id: string,
+    data: Prisma.EventUpdateInput,
+    activity: ActivityEntry[],
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const event = await tx.event.update({ where: { id }, data });
+      await tx.eventActivity.createMany({ data: activity });
+      return event;
     });
   }
 
@@ -135,9 +158,14 @@ export class EventsRepository {
     });
   }
 
-  async updateBatchesTransaction(eventId: string, changes: BatchChanges) {
+  async updateBatchesTransaction(
+    eventId: string,
+    changes: BatchChanges,
+    activity: ActivityEntry[],
+  ) {
     return this.prisma.$transaction(async (tx) => {
       await this.applyBatchChanges(tx, eventId, changes);
+      await tx.eventActivity.createMany({ data: activity });
       return tx.event.findUnique({
         where: { id: eventId },
         include: { ticketBatches: { include: { ticketTypes: true } } },
@@ -152,24 +180,31 @@ export class EventsRepository {
       Prisma.TicketBatchUpdateInput,
       'isVisible' | 'publishAt' | 'closeAt'
     >,
+    activity: ActivityEntry,
   ) {
-    return this.prisma.ticketBatch.update({
-      where: { id: batchId, eventId },
-      data,
-      select: { id: true, isVisible: true, publishAt: true, closeAt: true },
+    return this.prisma.$transaction(async (tx) => {
+      const batch = await tx.ticketBatch.update({
+        where: { id: batchId, eventId },
+        data,
+        select: { id: true, isVisible: true, publishAt: true, closeAt: true },
+      });
+      await tx.eventActivity.create({ data: activity });
+      return batch;
     });
   }
 
-  // Event fields and batches in one transaction: a failed batch leaves the
-  // event as it was, instead of half edited.
+  // Event fields, batches and history in one transaction: a failed batch
+  // leaves the event as it was, instead of half edited.
   async updateWithBatches(
     id: string,
     data: Prisma.EventUpdateInput,
     changes: BatchChanges,
+    activity: ActivityEntry[],
   ) {
     return this.prisma.$transaction(async (tx) => {
       const event = await tx.event.update({ where: { id }, data });
       await this.applyBatchChanges(tx, id, changes);
+      await tx.eventActivity.createMany({ data: activity });
       return event;
     });
   }
@@ -409,6 +444,8 @@ export class EventsRepository {
         commissionValue: true,
         totalEarned: true,
         totalPaid: true,
+        permissions: true,
+        freeTicketLimit: true,
         event: {
           select: {
             id: true,
@@ -454,14 +491,22 @@ export class EventsRepository {
     return count > 0;
   }
 
-  async createEventStaff(data: Prisma.EventStaffCreateInput) {
-    return this.prisma.eventStaff.create({ data });
-  }
-
-  async updateEventStaff(id: string, data: Prisma.EventStaffUpdateInput) {
-    return this.prisma.eventStaff.update({
-      where: { id },
-      data,
+  // A new invitation, or a new one over the row of someone who rejected it,
+  // with its record in the event history: all or nothing.
+  async saveStaffInvitation(
+    existingId: string | null,
+    data: Prisma.EventStaffUncheckedCreateInput,
+    activity: ActivityEntry,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const staff = existingId
+        ? await tx.eventStaff.update({
+            where: { id: existingId },
+            data: { ...data, status: 'PENDING' },
+          })
+        : await tx.eventStaff.create({ data });
+      await tx.eventActivity.create({ data: activity });
+      return staff;
     });
   }
 
@@ -502,6 +547,71 @@ export class EventsRepository {
     return staff;
   }
 
+  async findEventAttendees(
+    eventId: string,
+    { search, skip, take }: { search?: string; skip: number; take: number },
+  ) {
+    const where: Prisma.TicketWhereInput = {
+      ticketType: { eventId },
+      // Only by name: searching emails the list doesn't show would still
+      // tell whether an address has a ticket.
+      ...(search && {
+        OR: [
+          { user: { name: { contains: search, mode: 'insensitive' } } },
+          {
+            freeTicketGrant: {
+              recipientName: { contains: search, mode: 'insensitive' },
+            },
+          },
+        ],
+      }),
+    };
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.ticket.findMany({
+        where,
+        select: ATTENDEE_SELECT,
+        orderBy: ATTENDEE_ORDER,
+        skip,
+        take,
+      }),
+      this.prisma.ticket.count({ where }),
+    ]);
+    return { items, total };
+  }
+
+  async findAllEventAttendees(eventId: string) {
+    return this.prisma.ticket.findMany({
+      where: { ticketType: { eventId } },
+      select: ATTENDEE_SELECT,
+      orderBy: ATTENDEE_ORDER,
+    });
+  }
+
+  async recordActivity(entry: ActivityEntry) {
+    await this.prisma.eventActivity.create({ data: entry });
+  }
+
+  async countTicketsByTypeAndStatus(eventId: string) {
+    const rows = await this.prisma.ticket.groupBy({
+      by: ['ticketTypeId', 'status'],
+      where: { ticketType: { eventId } },
+      _count: { _all: true },
+    });
+    return rows.map(({ ticketTypeId, status, _count }) => ({
+      ticketTypeId,
+      status,
+      count: _count._all,
+    }));
+  }
+
+  async findEventTicketTypes(eventId: string) {
+    return this.prisma.ticketType.findMany({
+      where: { eventId },
+      orderBy: [{ batch: { createdAt: 'asc' } }, { name: 'asc' }],
+      select: { id: true, name: true, batch: { select: { name: true } } },
+    });
+  }
+
   // Promoters of the event with what they sold (paid orders) and the payments
   // the organizer recorded.
   async findEventPromoters(eventId: string) {
@@ -531,24 +641,32 @@ export class EventsRepository {
   async findEventPromoterTotals(eventId: string, staffId: string) {
     return this.prisma.eventStaff.findFirst({
       where: { id: staffId, eventId, role: 'PROMOTER' },
-      select: { totalEarned: true, totalPaid: true },
+      select: {
+        totalEarned: true,
+        totalPaid: true,
+        user: { select: { name: true } },
+      },
     });
   }
 
   // Records the payment only if it fits in what is still owed, in the same
-  // transaction that adds it to totalPaid. Returns null when it doesn't fit,
-  // also when another payment recorded at the same time took the balance.
-  async registerPromoterPayment({
-    eventStaffId,
-    amount,
-    note,
-    registeredById,
-  }: {
-    eventStaffId: string;
-    amount: Prisma.Decimal;
-    note: string | null;
-    registeredById: string;
-  }) {
+  // transaction that adds it to totalPaid and writes it in the history.
+  // Returns null when it doesn't fit, also when another payment recorded at
+  // the same time took the balance.
+  async registerPromoterPayment(
+    {
+      eventStaffId,
+      amount,
+      note,
+      registeredById,
+    }: {
+      eventStaffId: string;
+      amount: Prisma.Decimal;
+      note: string | null;
+      registeredById: string;
+    },
+    activity: ActivityEntry,
+  ) {
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.$executeRaw`
         UPDATE "EventStaff" SET "totalPaid" = "totalPaid" + ${amount.toFixed(2)}::numeric
@@ -559,6 +677,7 @@ export class EventsRepository {
         data: { eventStaffId, amount, note, registeredById },
         select: PAYMENT_HISTORY.select,
       });
+      await tx.eventActivity.create({ data: activity });
       const totals = await tx.eventStaff.findUniqueOrThrow({
         where: { id: eventStaffId },
         select: { totalEarned: true, totalPaid: true },

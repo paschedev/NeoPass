@@ -302,6 +302,78 @@ describe('EventForm', () => {
     ).not.toBeInTheDocument();
   });
 
+  describe('co-organizador: solo puede cambiar lo que tiene permitido', () => {
+    const renderAs = (
+      permissions: { canEditInfo: boolean; canManageBatches: boolean },
+      onSubmit = vi.fn(),
+    ) => {
+      const values = { ...saved, batches: [savedBatch()] };
+      render(
+        <EventForm
+          mode="edit"
+          eventId="e1"
+          rules={{ phase: 'NOT_STARTED', saved: values }}
+          defaultValues={values}
+          permissions={permissions}
+          onSubmit={onSubmit}
+        />,
+      );
+      return onSubmit;
+    };
+
+    it('sin "Tandas y precios" las tandas quedan en solo lectura y sin acciones de venta; la info se edita y se guarda', async () => {
+      const onSubmit = renderAs({ canEditInfo: true, canManageBatches: false });
+
+      expect(
+        screen.getByText(
+          /las tandas y los precios los ves sin poder cambiarlos/i,
+        ),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText('Nombre de la tanda')).toBeDisabled();
+      expect(
+        screen.queryByRole('button', { name: 'Finalizar venta' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /nueva tanda/i }),
+      ).not.toBeInTheDocument();
+
+      fireEvent.change(screen.getByLabelText('Nombre del evento'), {
+        target: { value: 'Fiesta de verano' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /guardar/i }));
+
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      expect(onSubmit.mock.calls[0][0]).toMatchObject({
+        title: 'Fiesta de verano',
+      });
+    });
+
+    it('sin "Editar la info" esos campos quedan en solo lectura y las tandas se pueden manejar', () => {
+      renderAs({ canEditInfo: false, canManageBatches: true });
+
+      expect(
+        screen.getByText(/la info del evento la ves sin poder cambiarla/i),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText('Nombre del evento')).toBeDisabled();
+      expect(screen.getByLabelText('Inicio')).toBeDisabled();
+      expect(screen.getByLabelText('Nombre del lugar')).toBeDisabled();
+      expect(screen.getByLabelText('Nombre de la tanda')).toBeEnabled();
+      expect(
+        screen.getByRole('button', { name: 'Finalizar venta' }),
+      ).toBeInTheDocument();
+    });
+
+    it('sin ninguno de los dos todo queda en solo lectura y no hay botón para guardar', () => {
+      renderAs({ canEditInfo: false, canManageBatches: false });
+
+      expect(screen.getByLabelText('Nombre del evento')).toBeDisabled();
+      expect(screen.getByLabelText('Nombre de la tanda')).toBeDisabled();
+      expect(
+        screen.queryByRole('button', { name: /guardar/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   describe('acciones de venta de una tanda', () => {
     const SALE_PATH = '/events/e1/batches/b1/sale';
     const ENDED_AT = '2026-10-01T15:00:00.000Z';

@@ -1,4 +1,48 @@
 import type { BatchSaleStatus } from '@/utils/batches';
+import type { EventAccess, EventPermission } from '@/utils/co-organizers';
+
+// Respuesta de GET /events/organizer/:id (lo que usa el detalle): el evento y
+// lo que puede hacer con él quien está en sesión.
+export interface TeamEvent {
+  id: string;
+  organizerId: string;
+  title: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  venueName: string | null;
+  venueAddress: string | null;
+  ticketBatches: {
+    id: string;
+    name: string;
+    ticketTypes: { id: string; name: string }[];
+  }[];
+  access: EventAccess;
+}
+
+// Respuesta de GET /events/organizer/:id/co-organizers.
+export interface CoOrganizer {
+  id: string;
+  status: string;
+  name: string;
+  email: string;
+  permissions: EventPermission[];
+  freeTicketLimit: number | null;
+}
+
+// Respuesta de GET /events/organizer/:id/activity.
+export interface ActivityPage {
+  items: {
+    id: string;
+    type: string;
+    summary: string;
+    actor: { name: string };
+    createdAt: string;
+  }[];
+  total: number;
+  page: number;
+  limit: number;
+}
 
 // Respuesta de GET /events/organizer/:id/sales.
 export interface EventSales {

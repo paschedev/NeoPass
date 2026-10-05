@@ -38,6 +38,8 @@ const grant = (overrides = {}) => ({
   validUntil: '2026-10-11T04:00:00.000Z', // dom 01:00
   createdAt: '2026-10-05T15:00:00.000Z',
   lastSentAt: '2026-10-05T15:00:00.000Z',
+  issuedById: 'u-owner',
+  issuedBy: { name: 'Dueña' },
   ...overrides,
 });
 
@@ -82,6 +84,71 @@ describe('FreeTickets', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
+  });
+
+  it('a un co-organizador con tope le dice cuántos QR free le quedan', async () => {
+    server({ lists: [[grant({ quantity: 3 })]] });
+
+    render(
+      <FreeTickets
+        eventId="e1"
+        event={EVENT}
+        ticketTypes={TICKET_TYPES}
+        sendBlockedReason={null}
+        limit={10}
+      />,
+    );
+
+    expect(
+      await screen.findByText('Te quedan 7 de tus 10 QR free.'),
+    ).toBeInTheDocument();
+  });
+
+  it('el dueño ve quién mandó cada envío que no mandó él', async () => {
+    server({
+      lists: [
+        [
+          grant(),
+          grant({
+            id: 'g2',
+            recipientEmail: 'beto@example.com',
+            issuedById: 'u-ana',
+            issuedBy: { name: 'Ana Pérez' },
+          }),
+        ],
+      ],
+    });
+
+    render(
+      <FreeTickets
+        eventId="e1"
+        event={EVENT}
+        ticketTypes={TICKET_TYPES}
+        sendBlockedReason={null}
+        ownerId="u-owner"
+      />,
+    );
+
+    expect(
+      await screen.findByRole('listitem', { name: 'beto@example.com' }),
+    ).toHaveTextContent('Mandó Ana Pérez');
+    expect(
+      screen.getByRole('listitem', { name: 'ana@example.com' }),
+    ).not.toHaveTextContent('Mandó');
+  });
+
+  it('sin tope no muestra cuántos quedan, ni quién mandó (el co-organizador ve solo lo suyo)', async () => {
+    server({
+      lists: [
+        [grant({ issuedById: 'u-ana', issuedBy: { name: 'Ana Pérez' } })],
+      ],
+    });
+
+    renderSection();
+
+    await screen.findByRole('listitem', { name: 'ana@example.com' });
+    expect(screen.queryByText(/Te quedan/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Mandó/)).not.toBeInTheDocument();
   });
 
   it('lista los envíos con el correo, el tipo, cuántas ingresaron y hasta cuándo valen', async () => {

@@ -11,12 +11,22 @@ import {
 } from './repositories/events.repository';
 import { UserRepository } from '../auth/repositories/user.repository';
 import { ConfigService } from '@nestjs/config';
-import { StaffRole, CommissionType, Prisma } from '@prisma/client';
+import {
+  EventPermission,
+  StaffRole,
+  Prisma,
+  TicketStatus,
+} from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { buildRevenueChart } from './revenue-chart';
 import { getBatchSaleStatus } from './batch-sale-status';
 import { getEventPhase } from './event-phase';
 import { buildEventSales } from './event-sales';
+import {
+  attendeesCsv,
+  exportActivitySummary,
+  summarizeCheckIns,
+} from './attendees';
 import { toPaymentRecord } from './promoter-payment-record';
 import { buildStaffOverview } from './staff-overview';
 import { buildMyStaff } from './my-staff';
@@ -30,13 +40,33 @@ import { UpdateEventDto } from './dto/update-event.dto';
 import { BatchDto } from './dto/batch.dto';
 import { EventLocationDto } from './dto/event-location.dto';
 import { RegisterPromoterPaymentDto } from './dto/register-promoter-payment.dto';
+import { ListAttendeesQueryDto } from './dto/list-attendees-query.dto';
+import { AddStaffDto } from './dto/add-staff.dto';
+import {
+  coOrganizerTerms,
+  describePermissions,
+  permissionsError,
+} from './co-organizers';
 import { formatPesos } from '../common/amounts';
+import {
+  assertPermission,
+  canDo,
+  EventAccessService,
+} from './event-access.service';
+import {
+  batchChangesSummary,
+  changedEventInfo,
+  describeBatchChanges,
+  eventUpdateSummary,
+  statusChange,
+} from './event-changes';
+import { ActivityEntry } from './event-activity';
 
 // Role names as the organizer reads them (errors and notices in their panel).
 const STAFF_ROLE_LABEL: Record<StaffRole, string> = {
   PROMOTER: 'promotor',
   SCANNER: 'scanner',
-  MANAGER: 'encargado',
+  MANAGER: 'co-organizador',
 };
 
 // The invitee reads it first: "RPP" is what their panel is called.
@@ -44,6 +74,22 @@ const INVITED_ROLE_LABEL: Record<StaffRole, string> = {
   ...STAFF_ROLE_LABEL,
   PROMOTER: 'promotor (RPP)',
 };
+
+// A free ticket belongs to no account: its attendee is whoever it was sent to.
+const toAttendee = (ticket: {
+  status: TicketStatus;
+  usedAt: Date | null;
+  user: { name: string } | null;
+  freeTicketGrant: { recipientName: string | null } | null;
+  ticketType: { name: string; batch: { name: string } | null };
+}) => ({
+  name: ticket.user?.name ?? ticket.freeTicketGrant?.recipientName ?? null,
+  ticketType: ticket.ticketType.name,
+  batch: ticket.ticketType.batch?.name ?? null,
+  status: ticket.status,
+  checkedInAt: ticket.usedAt,
+  freeTicket: ticket.freeTicketGrant !== null,
+});
 
 function assertEndAfterStart(startDate: Date, endDate: Date) {
   if (endDate <= startDate) {
@@ -122,6 +168,36 @@ const ALREADY_APPLIED_MESSAGE: Record<BatchSaleAction, string> = {
   SHOW: 'La tanda ya está visible',
 };
 
+const BATCH_SALE_SUMMARY: Record<BatchSaleAction, (name: string) => string> = {
+  END: (name) => `Finalizó la venta de "${name}".`,
+  REOPEN: (name) => `Reabrió la venta de "${name}".`,
+  HIDE: (name) => `Ocultó la tanda "${name}".`,
+  SHOW: (name) => `Mostró la tanda "${name}".`,
+};
+
+// What an edit leaves in the event history: the info and status in one line,
+// the batches in another, and nothing when nothing changed.
+function editActivity(
+  who: Pick<ActivityEntry, 'eventId' | 'actorId'>,
+  eventSummary: string | null,
+  batchChanges: string[],
+): ActivityEntry[] {
+  return [
+    ...(eventSummary
+      ? [{ ...who, type: 'EVENT_UPDATED' as const, summary: eventSummary }]
+      : []),
+    ...(batchChanges.length > 0
+      ? [
+          {
+            ...who,
+            type: 'BATCHES_UPDATED' as const,
+            summary: batchChangesSummary(batchChanges),
+          },
+        ]
+      : []),
+  ];
+}
+
 // Once the event starts, buyers already hold tickets for its start and venue:
 // only texts and the image change, the end can only move later and the
 // batches stay as they are while they keep selling. Unchanged values are fine.
@@ -144,6 +220,24 @@ function assertInProgressChanges(event: EventForEdit, changes: UpdateEventDto) {
     );
   }
 }
+
+type TeamEvent = NonNullable<Awaited<ReturnType<EventsRepository['findOne']>>>;
+
+const hideSales = <T extends { sold: number; reserved: number }>({
+  sold,
+  reserved,
+  ...ticketType
+}: T) => ticketType;
+
+// How many tickets were sold or reserved is part of the sales.
+const withoutSales = (event: TeamEvent) => ({
+  ...event,
+  ticketTypes: event.ticketTypes.map(hideSales),
+  ticketBatches: event.ticketBatches.map((batch) => ({
+    ...batch,
+    ticketTypes: batch.ticketTypes.map(hideSales),
+  })),
+});
 
 type ExistingBatch = { id: string; ticketTypes: { id: string }[] };
 type ExistingBatchWithSales = {
@@ -231,6 +325,7 @@ export class EventsService {
     private readonly userRepository: UserRepository,
     private readonly notificationsService: NotificationsService,
     private readonly promoterClicks: PromoterClicksService,
+    private readonly eventAccess: EventAccessService,
     config: ConfigService,
   ) {
     this.cloudinaryUrl = config.getOrThrow<string>('CLOUDINARY_URL');
@@ -315,20 +410,51 @@ export class EventsService {
     );
   }
 
-  // For the organizer's own screens (edit, preview) and every change to the
-  // event: any status, owner only.
-  async findOneForOrganizer(id: string, organizerId: string) {
+  // The event in any status, for its owner or an accepted co-organizer with
+  // the permission (when one is needed).
+  private async findForTeam(
+    id: string,
+    userId: string,
+    permission?: EventPermission,
+  ) {
+    const access = permission
+      ? await this.eventAccess.assertCan(id, userId, permission)
+      : await this.eventAccess.getAccess(id, userId);
     const event = await this.eventsRepository.findOne(id);
     if (!event) throw new NotFoundException('Evento no encontrado');
-    if (event.organizerId !== organizerId) {
-      throw new ForbiddenException('No tenés permiso sobre este evento');
-    }
-    return event;
+    return { access, event };
   }
 
-  async update(id: string, organizerId: string, changes: UpdateEventDto) {
+  // For the edit and detail screens, with what the user can do on the event.
+  async findOneForTeam(id: string, userId: string) {
+    const { access, event } = await this.findForTeam(id, userId);
+    const seesSales =
+      canDo(access, 'VIEW_SALES') || canDo(access, 'MANAGE_BATCHES');
+    return {
+      ...(seesSales ? event : withoutSales(event)),
+      access: {
+        role: access.role,
+        permissions: access.permissions,
+        freeTicketLimit: access.freeTicketLimit,
+      },
+    };
+  }
+
+  async update(id: string, userId: string, changes: UpdateEventDto) {
     const { batches, ...eventData } = changes;
-    const event = await this.findOneForOrganizer(id, organizerId);
+    const { access, event } = await this.findForTeam(id, userId);
+    const infoChanges = changedEventInfo(event, changes);
+    const batchChanges = batches
+      ? describeBatchChanges(event.ticketBatches, batches)
+      : [];
+    const newStatus = statusChange(event, changes);
+    if (infoChanges.length > 0) assertPermission(access, 'EDIT_EVENT');
+    if (batchChanges.length > 0) assertPermission(access, 'MANAGE_BATCHES');
+    if (newStatus && access.role !== 'OWNER') {
+      throw new ForbiddenException(
+        'Solo quien organiza el evento puede publicarlo o pasarlo a borrador',
+      );
+    }
     const now = new Date();
     const phase = assertEditable(event, now);
     this.assertOwnFlyer(changes.imageUrl);
@@ -364,13 +490,21 @@ export class EventsService {
       endDate,
       now,
     );
-    if (!batches) return this.eventsRepository.update(id, eventData);
+    const activity = editActivity(
+      { eventId: id, actorId: userId },
+      eventUpdateSummary(infoChanges, newStatus),
+      batchChanges,
+    );
+    if (!batches) {
+      return this.eventsRepository.update(id, eventData, activity);
+    }
 
     await this.assertBatchChangesAllowed(event.ticketBatches, batches);
     return this.eventsRepository.updateWithBatches(
       id,
       eventData,
       planBatchChanges(event.ticketBatches, batches),
+      activity,
     );
   }
 
@@ -390,8 +524,8 @@ export class EventsService {
 
   // Sales detail of one event for its organizer: totals and each batch and
   // ticket type.
-  async getEventSales(eventId: string, organizerId: string) {
-    const event = await this.findOneForOrganizer(eventId, organizerId);
+  async getEventSales(eventId: string, userId: string) {
+    const { event } = await this.findForTeam(eventId, userId, 'VIEW_SALES');
     const [revenueByTicketType, checkedIn, refundedOrders] = await Promise.all([
       this.eventsRepository.sumPaidRevenueByTicketType(eventId),
       this.eventsRepository.countCheckedInTickets(eventId),
@@ -419,10 +553,14 @@ export class EventsService {
 
   async updateBatches(
     eventId: string,
-    organizerId: string,
+    userId: string,
     batchesData: BatchDto[],
   ) {
-    const eventContext = await this.findOneForOrganizer(eventId, organizerId);
+    const { event: eventContext } = await this.findForTeam(
+      eventId,
+      userId,
+      'MANAGE_BATCHES',
+    );
     const now = new Date();
     if (assertEditable(eventContext, now) === 'IN_PROGRESS') {
       throw new ConflictException(BATCHES_LOCKED_MESSAGE);
@@ -442,6 +580,11 @@ export class EventsService {
     return this.eventsRepository.updateBatchesTransaction(
       eventId,
       planBatchChanges(eventContext.ticketBatches, batchesData),
+      editActivity(
+        { eventId, actorId: userId },
+        null,
+        describeBatchChanges(eventContext.ticketBatches, batchesData),
+      ),
     );
   }
 
@@ -449,11 +592,11 @@ export class EventsService {
   // Unlike the rest of the batch, this also works while the event is running.
   async changeBatchSale(
     eventId: string,
-    organizerId: string,
+    userId: string,
     batchId: string,
     action: BatchSaleAction,
   ) {
-    const event = await this.findOneForOrganizer(eventId, organizerId);
+    const { event } = await this.findForTeam(eventId, userId, 'MANAGE_BATCHES');
     const now = new Date();
     assertEditable(event, now);
     const batch = event.ticketBatches.find(({ id }) => id === batchId);
@@ -461,7 +604,12 @@ export class EventsService {
 
     const change = planBatchSaleAction(batch, action, now);
     if (!change) throw new ConflictException(ALREADY_APPLIED_MESSAGE[action]);
-    return this.eventsRepository.updateBatchSale(eventId, batchId, change);
+    return this.eventsRepository.updateBatchSale(eventId, batchId, change, {
+      eventId,
+      actorId: userId,
+      type: 'BATCH_SALE_CHANGED',
+      summary: BATCH_SALE_SUMMARY[action](batch.name),
+    });
   }
 
   // Sold and reserved tickets keep their place in the stock, and a ticket type
@@ -569,13 +717,26 @@ export class EventsService {
 
   async addStaff(
     eventId: string,
-    organizerId: string,
-    inviteeId: string,
-    role: StaffRole,
-    commissionType?: CommissionType,
-    commissionValue?: number,
+    userId: string,
+    {
+      userId: inviteeId,
+      role,
+      commissionType,
+      commissionValue,
+      permissions,
+      freeTicketLimit,
+    }: AddStaffDto,
   ) {
-    const event = await this.findOneForOrganizer(eventId, organizerId);
+    const { access, event } = await this.findForTeam(
+      eventId,
+      userId,
+      'MANAGE_STAFF',
+    );
+    if (role === 'MANAGER' && access.role !== 'OWNER') {
+      throw new ForbiddenException(
+        'Solo quien organiza el evento puede invitar co-organizadores',
+      );
+    }
     // Nobody can work an event that is over: a promoter couldn't sell anymore.
     if (getEventPhase(event, new Date()) === 'CLOSED') {
       throw new ConflictException(
@@ -585,7 +746,8 @@ export class EventsService {
       );
     }
 
-    // Only promoters earn a commission: for the other roles it is ignored.
+    // Only promoters earn a commission and only co-organizers have
+    // permissions: for the other roles they are ignored.
     const commissionTerms =
       role === 'PROMOTER' ? { commissionType, commissionValue } : {};
     if (
@@ -597,6 +759,13 @@ export class EventsService {
         'El porcentaje de comisión tiene que estar entre 0 y 100',
       );
     }
+    const coOrganizer =
+      role === 'MANAGER'
+        ? coOrganizerTerms(permissions ?? [], freeTicketLimit)
+        : null;
+    const permissionsProblem =
+      coOrganizer && permissionsError(coOrganizer.permissions);
+    if (permissionsProblem) throw new BadRequestException(permissionsProblem);
 
     const user = await this.userRepository.findById(inviteeId);
     if (!user) {
@@ -622,36 +791,55 @@ export class EventsService {
       );
     }
 
-    const staff = existing
-      ? await this.eventsRepository.updateEventStaff(existing.id, {
-          status: 'PENDING',
-          ...commissionTerms,
-        })
-      : await this.eventsRepository.createEventStaff({
-          event: { connect: { id: eventId } },
-          user: { connect: { id: user.id } },
-          role,
-          ...commissionTerms,
-        });
-
-    let commission = '';
+    let terms = '';
     if (role === 'PROMOTER' && commissionType && commissionValue) {
-      commission =
+      terms =
         commissionType === 'PERCENTAGE'
           ? `, con ${commissionValue}% de comisión por entrada`
           : `, con $${commissionValue} de comisión por entrada`;
     }
+    const willDo =
+      coOrganizer &&
+      describePermissions(coOrganizer.permissions, coOrganizer.freeTicketLimit);
 
+    const staff = await this.eventsRepository.saveStaffInvitation(
+      existing?.id ?? null,
+      {
+        eventId,
+        userId: user.id,
+        role,
+        ...commissionTerms,
+        ...coOrganizer,
+      },
+      coOrganizer
+        ? {
+            eventId,
+            actorId: userId,
+            type: 'CO_ORGANIZER_INVITED',
+            summary: `Invitó a ${user.name} a co-organizar. Va a poder ${willDo}.`,
+          }
+        : {
+            eventId,
+            actorId: userId,
+            type: 'STAFF_INVITED',
+            summary: `Invitó a ${user.name} como ${INVITED_ROLE_LABEL[role]}${terms}.`,
+          },
+    );
+
+    const again = existing ? ' de nuevo' : '';
     await this.notificationsService.create({
       userId: user.id,
       type: 'STAFF_INVITE',
       title: 'Nueva invitación',
-      message: `Te invitaron${existing ? ' de nuevo' : ''} como ${INVITED_ROLE_LABEL[role]} al evento "${event.title}"${commission}.`,
+      message: coOrganizer
+        ? `Te invitaron${again} como co-organizador al evento "${event.title}". Vas a poder ${willDo}.`
+        : `Te invitaron${again} como ${INVITED_ROLE_LABEL[role]} al evento "${event.title}"${terms}.`,
       eventId: event.id,
       metadata: {
         eventStaffId: staff.id,
         role,
         ...commissionTerms,
+        ...coOrganizer,
         status: 'PENDING',
       },
     });
@@ -659,10 +847,55 @@ export class EventsService {
     return staff;
   }
 
+  // Holders of the event's tickets: the name of whoever holds each one now.
+  async getEventAttendees(
+    eventId: string,
+    userId: string,
+    { q, page, limit }: ListAttendeesQueryDto,
+  ) {
+    await this.eventAccess.assertCan(eventId, userId, 'VIEW_ATTENDEES');
+    const { items, total } = await this.eventsRepository.findEventAttendees(
+      eventId,
+      { search: q?.trim() || undefined, skip: (page - 1) * limit, take: limit },
+    );
+    return {
+      items: items.map(({ id, ...ticket }) => ({
+        ticketId: id,
+        ...toAttendee(ticket),
+      })),
+      total,
+      page,
+      limit,
+    };
+  }
+
+  async exportEventAttendees(eventId: string, userId: string) {
+    await this.eventAccess.assertCan(eventId, userId, 'VIEW_ATTENDEES');
+    const tickets = await this.eventsRepository.findAllEventAttendees(eventId);
+    // Recorded before handing it out: no list leaves without a trace.
+    await this.eventsRepository.recordActivity({
+      eventId,
+      actorId: userId,
+      type: 'ATTENDEES_EXPORTED',
+      summary: exportActivitySummary(tickets.length),
+    });
+    return attendeesCsv(tickets.map(toAttendee));
+  }
+
+  // Every co-organizer scans, so they all see who got in.
+  async getEventCheckIns(eventId: string, userId: string) {
+    await this.eventAccess.getAccess(eventId, userId);
+    const [ticketTypes, counts] = await Promise.all([
+      this.eventsRepository.findEventTicketTypes(eventId),
+      this.eventsRepository.countTicketsByTypeAndStatus(eventId),
+    ]);
+    return summarizeCheckIns(ticketTypes, counts);
+  }
+
   // Promoters of the event with what they sold, earned and were paid. The
   // payments happen outside NeoPass: the organizer records them here.
-  async getEventPromoters(eventId: string, organizerId: string) {
-    await this.findOneForOrganizer(eventId, organizerId);
+  async getEventPromoters(eventId: string, userId: string) {
+    await this.eventAccess.assertCan(eventId, userId, 'MANAGE_STAFF');
     const promoters = await this.eventsRepository.findEventPromoters(eventId);
     return promoters.map(
       ({ user, orders, payments, totalEarned, totalPaid, ...promoter }) => ({
@@ -689,23 +922,31 @@ export class EventsService {
 
   async registerPromoterPayment(
     eventId: string,
-    organizerId: string,
+    userId: string,
     staffId: string,
     { amount, note }: RegisterPromoterPaymentDto,
   ) {
-    await this.findOneForOrganizer(eventId, organizerId);
+    await this.eventAccess.assertCan(eventId, userId, 'MANAGE_STAFF');
     const promoter = await this.eventsRepository.findEventPromoterTotals(
       eventId,
       staffId,
     );
     if (!promoter) throw new NotFoundException('RPP no encontrado');
 
-    const recorded = await this.eventsRepository.registerPromoterPayment({
-      eventStaffId: staffId,
-      amount: new Prisma.Decimal(amount),
-      note: note ?? null,
-      registeredById: organizerId,
-    });
+    const recorded = await this.eventsRepository.registerPromoterPayment(
+      {
+        eventStaffId: staffId,
+        amount: new Prisma.Decimal(amount),
+        note: note ?? null,
+        registeredById: userId,
+      },
+      {
+        eventId,
+        actorId: userId,
+        type: 'PROMOTER_PAYMENT_REGISTERED',
+        summary: `Registró un pago de ${formatPesos(amount)} a ${promoter.user.name}.`,
+      },
+    );
     if (!recorded) {
       // Read again: another payment may have just taken the balance.
       const current = await this.eventsRepository.findEventPromoterTotals(
@@ -726,8 +967,8 @@ export class EventsService {
     };
   }
 
-  async getEventStaff(eventId: string, organizerId: string) {
-    await this.findOneForOrganizer(eventId, organizerId);
+  async getEventStaff(eventId: string, userId: string) {
+    await this.eventAccess.assertCan(eventId, userId, 'MANAGE_STAFF');
     return this.eventsRepository.getEventStaffByEvent(eventId);
   }
 

@@ -61,7 +61,7 @@ describe('Tandas y entradas: cada organizador toca solo las suyas', () => {
     expect(ticketType.stock).toBe(50);
   });
 
-  it('no puede editar las tandas de un evento ajeno', async () => {
+  it('no puede editar las tandas de un evento ajeno: para él no existe', async () => {
     const { mine, other } = await twoOrganizers();
     const before = await reload();
 
@@ -72,7 +72,7 @@ describe('Tandas y entradas: cada organizador toca solo las suyas', () => {
         isVisible: true,
         ticketTypes: [],
       },
-    ]).expect(403);
+    ]).expect(404);
 
     expect(await reload()).toEqual(before);
   });

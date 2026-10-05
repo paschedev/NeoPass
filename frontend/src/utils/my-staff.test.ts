@@ -14,6 +14,6 @@ describe('ownRoleLabel', () => {
   it('nombra el rol como lo conoce quien trabaja en el evento', () => {
     expect(ownRoleLabel('PROMOTER')).toBe('RPP');
     expect(ownRoleLabel('SCANNER')).toBe('Scanner');
-    expect(ownRoleLabel('MANAGER')).toBe('Encargado');
+    expect(ownRoleLabel('MANAGER')).toBe('Co-organizador');
   });
 });

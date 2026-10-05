@@ -248,7 +248,7 @@ describe('QR free', () => {
       expect(await t.prisma.ticket.count()).toBe(0);
     });
 
-    it('un comprador no puede mandar QR free', async () => {
+    it('un comprador no puede mandar QR free: para él el evento no existe', async () => {
       const { event, ticketType } = await organizerEvent();
       const buyer = await createUser(t.prisma);
 
@@ -256,7 +256,7 @@ describe('QR free', () => {
         ticketTypeId: ticketType.id,
         quantity: 1,
         email: 'invitada@example.com',
-      }).expect(403);
+      }).expect(404);
     });
 
     it('sin sesión no se pueden mandar QR free', async () => {

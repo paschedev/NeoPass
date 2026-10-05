@@ -9,6 +9,11 @@ import EventForm from '@/components/panel/EventForm';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import {
+  afterEditPath,
+  editPermissions,
+  type EventAccess,
+} from '@/utils/co-organizers';
+import {
   buildEventUpdate,
   closedEventLabel,
   getEventPhase,
@@ -21,13 +26,16 @@ import {
   type SavedEvent,
 } from '@/utils/event-form';
 
-type OrganizerEvent = SavedEvent & { status: string };
+type OrganizerEvent = SavedEvent & { status: string; access: EventAccess };
 
 type LoadedEvent = {
   phase: EventDateRules['phase'];
   values: EventFormInput;
+  access: EventAccess;
 };
 
+// Editar un evento: quien lo organiza, o un co-organizador que ve en solo
+// lectura lo que no tiene permitido cambiar.
 export default function EditarEventoPage() {
   const router = useRouter();
   const { id } = useParams();
@@ -48,10 +56,14 @@ export default function EditarEventoPage() {
           toast.error(
             `${closedEventLabel(data.status)}: ya no se puede editar`,
           );
-          router.replace('/panel?tab=events');
+          router.replace(afterEditPath(data.access, String(id)));
           return;
         }
-        setLoaded({ phase, values: toEventFormInput(data) });
+        setLoaded({
+          phase,
+          values: toEventFormInput(data),
+          access: data.access,
+        });
         setFetching(false);
       })
       .catch((err) => {
@@ -74,6 +86,8 @@ export default function EditarEventoPage() {
       </div>
     );
 
+  const backPath = afterEditPath(loaded.access, String(id));
+
   const updateEvent = async (event: EventFormValues) => {
     try {
       const response = await apiFetch(`/events/${id}`, {
@@ -82,7 +96,7 @@ export default function EditarEventoPage() {
       });
       if (response.ok) {
         toast.success('Evento actualizado exitosamente');
-        router.push('/panel?tab=events');
+        router.push(backPath);
         return;
       }
       toast.error(
@@ -96,10 +110,13 @@ export default function EditarEventoPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 md:px-0 pt-8 md:pt-12 pb-24">
       <Link
-        href="/panel?tab=events"
+        href={backPath}
         className="inline-flex items-center gap-2 text-neutral-400 hover:text-white transition-colors mb-6 font-medium"
       >
-        <ArrowLeft className="w-4 h-4" /> Volver a mis eventos
+        <ArrowLeft className="w-4 h-4" />{' '}
+        {loaded.access.role === 'OWNER'
+          ? 'Volver a mis eventos'
+          : 'Volver al evento'}
       </Link>
 
       <h1 className="font-outfit text-3xl font-bold mb-8 flex items-center gap-3">
@@ -111,6 +128,7 @@ export default function EditarEventoPage() {
         eventId={String(id)}
         rules={{ phase: loaded.phase, saved: loaded.values }}
         defaultValues={loaded.values}
+        permissions={editPermissions(loaded.access)}
         onSubmit={updateEvent}
       />
     </div>
