@@ -1,15 +1,13 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ParseIdPipe } from '../common/parse-id.pipe';
 import { SendFreeTicketsDto } from './dto/send-free-tickets.dto';
 import { FreeTicketsService } from './free-tickets.service';
 
-// Free tickets ("QR free") the organizer sends from the event detail.
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('ORGANIZER', 'ADMIN')
+// Free tickets ("QR free") sent from the event detail by its owner or a
+// co-organizer allowed to (any account: the service checks it).
+@UseGuards(JwtAuthGuard)
 @Controller('events/organizer/:eventId/free-tickets')
 export class FreeTicketsController {
   constructor(private readonly freeTicketsService: FreeTicketsService) {}

@@ -395,21 +395,21 @@ describe('Asistentes e ingreso del evento', () => {
 
   describe('permisos', () => {
     it.each(['attendees', 'attendees/export', 'check-ins'])(
-      'otro organizador no puede ver %s',
+      'para otro organizador no existe %s del evento',
       async (path) => {
         const { event } = await eventWithAttendees();
         const intruder = await createUser(t.prisma, { role: 'ORGANIZER' });
 
         await get(intruder, `/events/organizer/${event.id}/${path}`).expect(
-          403,
+          404,
         );
       },
     );
 
-    it('un comprador no puede ver los asistentes', async () => {
+    it('para un comprador los asistentes del evento no existen', async () => {
       const { event, ana } = await eventWithAttendees();
 
-      await get(ana, `/events/organizer/${event.id}/attendees`).expect(403);
+      await get(ana, `/events/organizer/${event.id}/attendees`).expect(404);
     });
   });
 });

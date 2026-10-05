@@ -11,19 +11,26 @@ const GRANT_SELECT = {
   cancelledAt: true,
   ticketType: { select: { id: true, name: true } },
   tickets: { select: { status: true } },
+  issuedBy: { select: { name: true } },
 } as const;
 
 // A big event can have many grants, but the list is not endless.
 const MAX_GRANTS_LISTED = 500;
 
+// The grants of an event, or only the ones one person sent.
+const grantsWhere = (eventId: string, issuedById?: string) => ({
+  eventId,
+  ...(issuedById && { issuedById }),
+});
+
 @Injectable()
 export class FreeTicketsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  // Scoped to the organizer: someone else's event is simply not found.
-  async findOrganizerEvent(eventId: string, organizerId: string) {
-    return this.prisma.event.findFirst({
-      where: { id: eventId, organizerId },
+  // Who can see it was already checked by EventAccessService.
+  async findEvent(eventId: string) {
+    return this.prisma.event.findUnique({
+      where: { id: eventId },
       select: {
         id: true,
         title: true,
@@ -52,20 +59,38 @@ export class FreeTicketsRepository {
   }
 
   // The grant and its tickets, all or nothing. Free tickets do not touch the
-  // stock and belong to no account.
-  async createGrant({
-    quantity,
-    ...data
-  }: {
-    eventId: string;
-    ticketTypeId: string;
-    issuedById: string;
-    recipientEmail: string;
-    recipientName: string | null;
-    validUntil: Date | null;
-    quantity: number;
-  }) {
+  // stock and belong to no account. With a quota (a co-organizer's limit),
+  // their staff row stays locked while their tickets are counted, so two sends
+  // at the same time can't both fit; over the limit nothing is created.
+  async createGrant(
+    {
+      quantity,
+      ...data
+    }: {
+      eventId: string;
+      ticketTypeId: string;
+      issuedById: string;
+      recipientEmail: string;
+      recipientName: string | null;
+      validUntil: Date | null;
+      quantity: number;
+    },
+    quota: { coOrganizerId: string; limit: number } | null,
+  ) {
     return this.prisma.$transaction(async (tx) => {
+      if (quota) {
+        await tx.$queryRaw`
+          SELECT id FROM "EventStaff" WHERE id = ${quota.coOrganizerId} FOR UPDATE`;
+        const sent = await tx.ticket.count({
+          where: {
+            status: { not: 'CANCELLED' },
+            freeTicketGrant: grantsWhere(data.eventId, data.issuedById),
+          },
+        });
+        if (sent + quantity > quota.limit) {
+          return { overLimit: true as const, sent };
+        }
+      }
       const { id } = await tx.freeTicketGrant.create({
         data,
         select: { id: true },
@@ -77,25 +102,26 @@ export class FreeTicketsRepository {
           freeTicketGrantId: id,
         })),
       });
-      return tx.freeTicketGrant.findUniqueOrThrow({
+      const grant = await tx.freeTicketGrant.findUniqueOrThrow({
         where: { id },
         select: GRANT_SELECT,
       });
+      return { overLimit: false as const, grant };
     });
   }
 
-  async findGrants(eventId: string) {
+  async findGrants(eventId: string, issuedById?: string) {
     return this.prisma.freeTicketGrant.findMany({
-      where: { eventId },
+      where: grantsWhere(eventId, issuedById),
       orderBy: { createdAt: 'desc' },
       take: MAX_GRANTS_LISTED,
       select: GRANT_SELECT,
     });
   }
 
-  async findGrant(eventId: string, grantId: string) {
+  async findGrant(eventId: string, grantId: string, issuedById?: string) {
     return this.prisma.freeTicketGrant.findFirst({
-      where: { id: grantId, eventId },
+      where: { id: grantId, ...grantsWhere(eventId, issuedById) },
       select: GRANT_SELECT,
     });
   }

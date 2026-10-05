@@ -193,12 +193,12 @@ describe('Pagos a los RPPs del evento', () => {
   });
 
   describe('permisos', () => {
-    it('otro organizador no puede ver ni pagar a los RPPs del evento', async () => {
+    it('otro organizador no puede ver ni pagar a los RPPs del evento: para él no existe', async () => {
       const { event, promoter } = await eventWithPromoter();
       const intruder = await createUser(t.prisma, { role: 'ORGANIZER' });
 
-      await listPromoters(intruder, event.id).expect(403);
-      await pay(intruder, event.id, promoter.id, { amount: 10 }).expect(403);
+      await listPromoters(intruder, event.id).expect(404);
+      await pay(intruder, event.id, promoter.id, { amount: 10 }).expect(404);
       expect(await savedTotalPaid(promoter.id)).toBe(0);
     });
 
@@ -227,12 +227,12 @@ describe('Pagos a los RPPs del evento', () => {
       await pay(organizer, event.id, scanner.id, { amount: 10 }).expect(404);
     });
 
-    it('un comprador no puede ver ni pagar', async () => {
+    it('un comprador no puede ver ni pagar: para él el evento no existe', async () => {
       const { event, promoter } = await eventWithPromoter();
       const buyer = await createUser(t.prisma);
 
-      await listPromoters(buyer, event.id).expect(403);
-      await pay(buyer, event.id, promoter.id, { amount: 10 }).expect(403);
+      await listPromoters(buyer, event.id).expect(404);
+      await pay(buyer, event.id, promoter.id, { amount: 10 }).expect(404);
     });
   });
 

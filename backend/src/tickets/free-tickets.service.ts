@@ -7,11 +7,16 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { getEventPhase } from '../events/event-phase';
+import {
+  EventAccess,
+  EventAccessService,
+} from '../events/event-access.service';
 import { MailService } from '../mail/mail.service';
 import { SendFreeTicketsDto } from './dto/send-free-tickets.dto';
 import { eventForMail } from './event-for-mail';
 import {
   FREE_TICKETS_RESEND_COOLDOWN_MS,
+  freeTicketLimitMessage,
   MAX_FREE_TICKET_GRANTS_PER_HOUR,
   toGrantResponse,
   validUntilError,
@@ -20,19 +25,25 @@ import { FreeTicketsRepository } from './repositories/free-tickets.repository';
 
 const HOUR_MS = 60 * 60 * 1000;
 
-type OrganizerEvent = NonNullable<
-  Awaited<ReturnType<FreeTicketsRepository['findOrganizerEvent']>>
+type FreeTicketsEvent = NonNullable<
+  Awaited<ReturnType<FreeTicketsRepository['findEvent']>>
 >;
+
+// The owner sees and handles every grant; a co-organizer, only theirs.
+const ownGrantsOf = (access: EventAccess, userId: string) =>
+  access.role === 'OWNER' ? undefined : userId;
 
 @Injectable()
 export class FreeTicketsService {
   constructor(
+    private readonly eventAccess: EventAccessService,
     private readonly freeTicketsRepository: FreeTicketsRepository,
     private readonly mailService: MailService,
   ) {}
 
-  async send(eventId: string, organizerId: string, dto: SendFreeTicketsDto) {
-    const event = await this.findEvent(eventId, organizerId);
+  async send(eventId: string, userId: string, dto: SendFreeTicketsDto) {
+    const access = await this.assertCanSend(eventId, userId);
+    const event = await this.findEvent(eventId);
     if (event.status === 'DRAFT') {
       throw new ConflictException('Publicá el evento antes de mandar QR free');
     }
@@ -57,7 +68,7 @@ export class FreeTicketsService {
 
     const sentLastHour =
       await this.freeTicketsRepository.countGrantsIssuedSince(
-        organizerId,
+        userId,
         new Date(now.getTime() - HOUR_MS),
       );
     if (sentLastHour >= MAX_FREE_TICKET_GRANTS_PER_HOUR) {
@@ -67,28 +78,47 @@ export class FreeTicketsService {
       );
     }
 
-    const grant = await this.freeTicketsRepository.createGrant({
-      eventId,
-      ticketTypeId: ticketType.id,
-      issuedById: organizerId,
-      recipientEmail: dto.email,
-      recipientName: dto.name ?? null,
-      validUntil,
-      quantity: dto.quantity,
-    });
-    await this.queueMail(event, grant, `free-tickets-${grant.id}`);
-    return toGrantResponse(grant);
+    const { coOrganizerId, freeTicketLimit } = access;
+    const created = await this.freeTicketsRepository.createGrant(
+      {
+        eventId,
+        ticketTypeId: ticketType.id,
+        issuedById: userId,
+        recipientEmail: dto.email,
+        recipientName: dto.name ?? null,
+        validUntil,
+        quantity: dto.quantity,
+      },
+      coOrganizerId && freeTicketLimit !== null
+        ? { coOrganizerId, limit: freeTicketLimit }
+        : null,
+    );
+    if (created.overLimit) {
+      throw new ConflictException(
+        freeTicketLimitMessage(freeTicketLimit ?? 0, created.sent),
+      );
+    }
+    await this.queueMail(
+      event,
+      created.grant,
+      `free-tickets-${created.grant.id}`,
+    );
+    return toGrantResponse(created.grant);
   }
 
-  async list(eventId: string, organizerId: string) {
-    await this.findEvent(eventId, organizerId);
-    const grants = await this.freeTicketsRepository.findGrants(eventId);
+  async list(eventId: string, userId: string) {
+    const access = await this.assertCanSend(eventId, userId);
+    const grants = await this.freeTicketsRepository.findGrants(
+      eventId,
+      ownGrantsOf(access, userId),
+    );
     return grants.map(toGrantResponse);
   }
 
   // The tickets not used yet stop working; the used ones stay as they are.
-  async cancel(eventId: string, grantId: string, organizerId: string) {
-    await this.findGrant(eventId, grantId, organizerId);
+  async cancel(eventId: string, grantId: string, userId: string) {
+    const access = await this.assertCanSend(eventId, userId);
+    await this.findGrant(eventId, grantId, ownGrantsOf(access, userId));
     const cancelled = await this.freeTicketsRepository.cancelGrant(
       grantId,
       new Date(),
@@ -96,15 +126,19 @@ export class FreeTicketsService {
     if (!cancelled) {
       throw new ConflictException('Este envío ya estaba anulado');
     }
-    return toGrantResponse(await this.findGrant(eventId, grantId, organizerId));
+    return toGrantResponse(
+      await this.findGrant(eventId, grantId, ownGrantsOf(access, userId)),
+    );
   }
 
   // Sends again the tickets that can still be used, to the same email.
-  async resend(eventId: string, grantId: string, organizerId: string) {
-    const { event, grant } = await this.findGrantWithEvent(
+  async resend(eventId: string, grantId: string, userId: string) {
+    const access = await this.assertCanSend(eventId, userId);
+    const event = await this.findEvent(eventId);
+    const grant = await this.findGrant(
       eventId,
       grantId,
-      organizerId,
+      ownGrantsOf(access, userId),
     );
     if (grant.cancelledAt) {
       throw new ConflictException('Este envío está anulado');
@@ -137,37 +171,33 @@ export class FreeTicketsService {
     return toGrantResponse({ ...grant, lastSentAt: now });
   }
 
-  private async findEvent(eventId: string, organizerId: string) {
-    const event = await this.freeTicketsRepository.findOrganizerEvent(
-      eventId,
-      organizerId,
-    );
-    if (!event) throw new NotFoundException('Evento no encontrado');
-    return event;
+  private assertCanSend(eventId: string, userId: string) {
+    return this.eventAccess.assertCan(eventId, userId, 'SEND_FREE_TICKETS');
   }
 
-  private async findGrantWithEvent(
-    eventId: string,
-    grantId: string,
-    organizerId: string,
-  ) {
-    const event = await this.findEvent(eventId, organizerId);
-    const grant = await this.freeTicketsRepository.findGrant(eventId, grantId);
-    if (!grant) throw new NotFoundException('Envío no encontrado');
-    return { event, grant };
+  private async findEvent(eventId: string) {
+    const event = await this.freeTicketsRepository.findEvent(eventId);
+    if (!event) throw new NotFoundException('Evento no encontrado');
+    return event;
   }
 
   private async findGrant(
     eventId: string,
     grantId: string,
-    organizerId: string,
+    issuedById: string | undefined,
   ) {
-    return (await this.findGrantWithEvent(eventId, grantId, organizerId)).grant;
+    const grant = await this.freeTicketsRepository.findGrant(
+      eventId,
+      grantId,
+      issuedById,
+    );
+    if (!grant) throw new NotFoundException('Envío no encontrado');
+    return grant;
   }
 
   // After the grant is saved, never inside its transaction.
   private async queueMail(
-    event: OrganizerEvent,
+    event: FreeTicketsEvent,
     grant: {
       id: string;
       recipientEmail: string;
