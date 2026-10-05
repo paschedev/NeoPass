@@ -49,7 +49,7 @@ describe('splitSettledClosed', () => {
 });
 
 describe('lacksDoorStaff', () => {
-  it('avisa si un evento que no terminó no tiene scanner ni encargado aceptado', () => {
+  it('avisa si un evento que no terminó no tiene scanner ni co-organizador aceptado', () => {
     expect(lacksDoorStaff(group())).toBe(true);
     expect(
       lacksDoorStaff(
@@ -59,7 +59,7 @@ describe('lacksDoorStaff', () => {
     expect(lacksDoorStaff(group({ promoters: [person()] }))).toBe(true);
   });
 
-  it('no avisa si hay un scanner o un encargado aceptado, ni en eventos terminados', () => {
+  it('no avisa si hay un scanner o un co-organizador aceptado, ni en eventos terminados', () => {
     expect(lacksDoorStaff(group({ scanners: [person()] }))).toBe(false);
     expect(lacksDoorStaff(group({ managers: [person()] }))).toBe(false);
     expect(lacksDoorStaff(group({ phase: 'CLOSED' }))).toBe(false);
@@ -76,7 +76,7 @@ describe('staffCounts', () => {
           managers: [person(), person()],
         }),
       ),
-    ).toBe('2 RPPs · 1 scanner · 2 encargados · 1 pendiente');
+    ).toBe('2 RPPs · 1 scanner · 2 co-organizadores · 1 pendiente');
     expect(
       staffCounts(
         group({ promoters: [person()], scanners: [person(), person()] }),

@@ -180,7 +180,7 @@ describe('MyStaffEvents', () => {
     expect(
       within(await card('Sunset')).getByRole('link', { name: 'Escanear' }),
     ).toHaveAttribute('href', '/panel/escanear');
-    expect(await card('Sunset')).toHaveTextContent('Encargado');
+    expect(await card('Sunset')).toHaveTextContent('Co-organizador');
     expect(
       within(await card('Fiesta Bresh')).queryByRole('link', {
         name: 'Escanear',

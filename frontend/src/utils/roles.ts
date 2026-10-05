@@ -10,14 +10,14 @@ export function isOrganizer(user: RoleFlags | null): boolean {
   return user?.role === 'ORGANIZER' || user?.role === 'ADMIN';
 }
 
-// Organizadores, o quien tiene una invitación de scanner o encargado aceptada
+// Organizadores, o quien tiene una invitación de scanner o co-organizador aceptada
 // en un evento vigente.
 export function canScan(user: RoleFlags | null): boolean {
   return isOrganizer(user) || !!user?.isCurrentlyScanner;
 }
 
 // Quien trabaja o trabajó como staff de un evento: RPP alguna vez (por su
-// historial de plata) o scanner o encargado de un evento vigente. Un
+// historial de plata) o scanner o co-organizador de un evento vigente. Un
 // organizador lo ve solo si trabaja como staff de eventos ajenos.
 export function canSeeStaffPanel(user: RoleFlags | null): boolean {
   return !!user?.hasBeenRpp || !!user?.isCurrentlyScanner;

@@ -1,6 +1,7 @@
+import { freeTicketLimitError, type EventPermission } from './co-organizers';
 import { getEventPhase } from './event-edit';
 
-export type InviteRole = 'SCANNER' | 'RPP';
+export type InviteRole = 'SCANNER' | 'RPP' | 'CO_ORGANIZER';
 export type CommissionType = 'PERCENTAGE' | 'FIXED';
 
 export const MAX_INVITEES = 10;
@@ -34,9 +35,13 @@ export function validateInvitation(invite: {
   role: InviteRole;
   commissionType: CommissionType;
   commissionValue: string;
+  freeTicketLimit?: string;
 }): string | null {
   if (!invite.eventId) return 'Seleccioná un evento';
   if (invite.userCount === 0) return 'Seleccioná al menos un usuario';
+  if (invite.role === 'CO_ORGANIZER') {
+    return freeTicketLimitError(invite.freeTicketLimit ?? '');
+  }
   if (invite.role !== 'RPP') return null;
 
   const commission = Number(invite.commissionValue);
@@ -49,14 +54,20 @@ export function validateInvitation(invite: {
   return null;
 }
 
-// Body de POST /events/:id/staff. En el backend el RPP es el rol PROMOTER.
+// Body de POST /events/:id/staff. En el backend el RPP es el rol PROMOTER y
+// el co-organizador, MANAGER.
 export function buildInvitationPayload(
   userId: string,
   role: InviteRole,
   commissionType: CommissionType,
   commissionValue: string,
+  coOrganizer?: {
+    permissions: EventPermission[];
+    freeTicketLimit: number | null;
+  },
 ) {
   if (role === 'SCANNER') return { userId, role: 'SCANNER' };
+  if (role === 'CO_ORGANIZER') return { userId, role: 'MANAGER', ...coOrganizer };
   return {
     userId,
     role: 'PROMOTER',

@@ -35,7 +35,7 @@ describe('Detalle del evento', () => {
       if (path.endsWith('/check-ins')) {
         return Response.json({ checkedIn: 0, total: 0, byTicketType: [] });
       }
-      if (path.includes('/attendees')) {
+      if (path.includes('/attendees') || path.includes('/activity')) {
         return Response.json({ items: [], total: 0, page: 1, limit: 50 });
       }
       return Response.json([]);
@@ -71,6 +71,25 @@ describe('Detalle del evento', () => {
     expect(apiFetch).toHaveBeenCalledWith(
       '/events/organizer/event-1/free-tickets',
     );
+    const coOrganizers = screen.getByRole('region', {
+      name: 'Co-organizadores',
+    });
+    expect(
+      await within(coOrganizers).findByText(
+        'Este evento no tiene co-organizadores.',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(coOrganizers).getByRole('button', {
+        name: 'Invitar co-organizador',
+      }),
+    ).toBeInTheDocument();
+    const history = screen.getByRole('region', { name: 'Historial' });
+    expect(
+      await within(history).findByText(
+        'Todavía no hay cambios en este evento.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it.each([403, 404])(

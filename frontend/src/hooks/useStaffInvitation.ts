@@ -8,7 +8,7 @@ import { useCurrentUser } from './useCurrentUser';
 
 export type InvitationOutcome = 'done' | 'already-processed' | 'failed';
 
-// Aceptar o rechazar una invitación de staff (RPP, scanner o encargado), desde
+// Aceptar o rechazar una invitación de staff (RPP, scanner o co-organizador), desde
 // una notificación (que queda leída) o desde la página Staff. Cada pantalla
 // actualiza su lista según el resultado.
 export function useStaffInvitation() {
