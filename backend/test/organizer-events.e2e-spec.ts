@@ -117,14 +117,14 @@ describe('Eventos del organizador', () => {
       ]);
     });
 
-    it('otro organizador no puede verlo', async () => {
+    it('para otro organizador no existe', async () => {
       const { event } = await createOrganizerWithEvent(t.prisma);
       const intruder = await createUser(t.prisma, { role: 'ORGANIZER' });
 
       await request(t.app.getHttpServer())
         .get(`/events/organizer/${event.id}`)
         .set('Authorization', authHeader(t.app, intruder))
-        .expect(403);
+        .expect(404);
     });
 
     it('un evento que no existe da 404', async () => {

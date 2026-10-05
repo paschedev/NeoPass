@@ -26,5 +26,6 @@ import { EventAccessRepository } from './repositories/event-access.repository';
     EventAccessService,
     EventAccessRepository,
   ],
+  exports: [EventAccessService],
 })
 export class EventsModule {}

@@ -8,9 +8,10 @@ import { FreeTicketsService } from './free-tickets.service';
 import { FreeTicketsRepository } from './repositories/free-tickets.repository';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { MailModule } from '../mail/mail.module';
+import { EventsModule } from '../events/events.module';
 
 @Module({
-  imports: [PrismaModule, NotificationsModule, MailModule],
+  imports: [PrismaModule, NotificationsModule, MailModule, EventsModule],
   controllers: [TicketsController, FreeTicketsController],
   providers: [
     TicketsService,

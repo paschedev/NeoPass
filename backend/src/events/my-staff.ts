@@ -1,4 +1,10 @@
-import { CommissionType, Prisma, StaffRole, StaffStatus } from '@prisma/client';
+import {
+  CommissionType,
+  EventPermission,
+  Prisma,
+  StaffRole,
+  StaffStatus,
+} from '@prisma/client';
 import { compareByPhase, getEventPhase } from './event-phase';
 
 type MyAssignment = {
@@ -9,6 +15,9 @@ type MyAssignment = {
   commissionValue: Prisma.Decimal | null;
   totalEarned: Prisma.Decimal;
   totalPaid: Prisma.Decimal;
+  // Only co-organizers (MANAGER) have them.
+  permissions: EventPermission[];
+  freeTicketLimit: number | null;
   event: {
     id: string;
     title: string;
@@ -60,6 +69,7 @@ export function buildMyStaff(
     .map((roles) => {
       const { organizer, ...event } = roles[0].event;
       const promoter = roles.find((role) => role.role === 'PROMOTER');
+      const coOrganizer = roles.find((role) => role.role === 'MANAGER');
       return {
         ...event,
         phase: getEventPhase(event, now),
@@ -68,6 +78,12 @@ export function buildMyStaff(
         roles: roles
           .map((role) => role.role)
           .sort((a, b) => ROLE_ORDER[a] - ROLE_ORDER[b]),
+        coOrganizer: coOrganizer
+          ? {
+              permissions: coOrganizer.permissions,
+              freeTicketLimit: coOrganizer.freeTicketLimit,
+            }
+          : null,
         promoter: promoter
           ? {
               staffId: promoter.id,
@@ -90,18 +106,30 @@ export function buildMyStaff(
       (a) => a.status === 'PENDING' && getEventPhase(a.event, now) !== 'CLOSED',
     )
     .sort((a, b) => a.event.startDate.getTime() - b.event.startDate.getTime())
-    .map(({ id, role, commissionType, commissionValue, event }) => ({
-      id,
-      role,
-      commissionType,
-      commissionValue: commissionValue?.toNumber() ?? null,
-      event: {
-        id: event.id,
-        title: event.title,
-        startDate: event.startDate,
-        organizerName: event.organizer.name,
-      },
-    }));
+    .map(
+      ({
+        id,
+        role,
+        commissionType,
+        commissionValue,
+        permissions,
+        freeTicketLimit,
+        event,
+      }) => ({
+        id,
+        role,
+        commissionType,
+        commissionValue: commissionValue?.toNumber() ?? null,
+        permissions,
+        freeTicketLimit,
+        event: {
+          id: event.id,
+          title: event.title,
+          startDate: event.startDate,
+          organizerName: event.organizer.name,
+        },
+      }),
+    );
 
   return {
     promoterTotals:

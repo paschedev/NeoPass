@@ -15,7 +15,7 @@ export class EventAccessRepository {
         organizerId: true,
         staff: {
           where: { userId, role: 'MANAGER', status: 'ACCEPTED' },
-          select: { permissions: true, freeTicketLimit: true },
+          select: { id: true, permissions: true, freeTicketLimit: true },
           take: 1,
         },
       },

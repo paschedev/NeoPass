@@ -1,4 +1,5 @@
 import { EventPermission } from '@prisma/client';
+import { joinPhrases } from '../common/join-phrases';
 
 // What a co-organizer can do besides scanning, in the order of the checkboxes.
 export const EVENT_PERMISSIONS: EventPermission[] = [
@@ -21,6 +22,9 @@ const PERMISSION_PHRASE: Record<EventPermission, string> = {
 
 const sortPermissions = (permissions: EventPermission[]) =>
   EVENT_PERMISSIONS.filter((permission) => permissions.includes(permission));
+
+export const permissionDeniedMessage = (permission: EventPermission) =>
+  `No tenés permiso para ${PERMISSION_PHRASE[permission]}`;
 
 // Paying promoters shows what each one sold.
 export function permissionsError(
@@ -56,15 +60,12 @@ export function describePermissions(
   permissions: EventPermission[],
   freeTicketLimit: number | null,
 ): string {
-  const phrases = [
+  return joinPhrases([
     'escanear',
     ...sortPermissions(permissions).map((permission) =>
       permission === 'SEND_FREE_TICKETS' && freeTicketLimit
         ? `${PERMISSION_PHRASE[permission]} (hasta ${freeTicketLimit} ${freeTicketLimit === 1 ? 'entrada' : 'entradas'})`
         : PERMISSION_PHRASE[permission],
     ),
-  ];
-  return phrases.length === 1
-    ? phrases[0]
-    : `${phrases.slice(0, -1).join(', ')} y ${phrases[phrases.length - 1]}`;
+  ]);
 }

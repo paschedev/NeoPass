@@ -131,10 +131,16 @@ export class EventsRepository {
     });
   }
 
-  async update(id: string, data: Prisma.EventUpdateInput) {
-    return this.prisma.event.update({
-      where: { id },
-      data,
+  // The event and what changed in its history, all or nothing.
+  async update(
+    id: string,
+    data: Prisma.EventUpdateInput,
+    activity: ActivityEntry[],
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const event = await tx.event.update({ where: { id }, data });
+      await tx.eventActivity.createMany({ data: activity });
+      return event;
     });
   }
 
@@ -152,9 +158,14 @@ export class EventsRepository {
     });
   }
 
-  async updateBatchesTransaction(eventId: string, changes: BatchChanges) {
+  async updateBatchesTransaction(
+    eventId: string,
+    changes: BatchChanges,
+    activity: ActivityEntry[],
+  ) {
     return this.prisma.$transaction(async (tx) => {
       await this.applyBatchChanges(tx, eventId, changes);
+      await tx.eventActivity.createMany({ data: activity });
       return tx.event.findUnique({
         where: { id: eventId },
         include: { ticketBatches: { include: { ticketTypes: true } } },
@@ -169,24 +180,31 @@ export class EventsRepository {
       Prisma.TicketBatchUpdateInput,
       'isVisible' | 'publishAt' | 'closeAt'
     >,
+    activity: ActivityEntry,
   ) {
-    return this.prisma.ticketBatch.update({
-      where: { id: batchId, eventId },
-      data,
-      select: { id: true, isVisible: true, publishAt: true, closeAt: true },
+    return this.prisma.$transaction(async (tx) => {
+      const batch = await tx.ticketBatch.update({
+        where: { id: batchId, eventId },
+        data,
+        select: { id: true, isVisible: true, publishAt: true, closeAt: true },
+      });
+      await tx.eventActivity.create({ data: activity });
+      return batch;
     });
   }
 
-  // Event fields and batches in one transaction: a failed batch leaves the
-  // event as it was, instead of half edited.
+  // Event fields, batches and history in one transaction: a failed batch
+  // leaves the event as it was, instead of half edited.
   async updateWithBatches(
     id: string,
     data: Prisma.EventUpdateInput,
     changes: BatchChanges,
+    activity: ActivityEntry[],
   ) {
     return this.prisma.$transaction(async (tx) => {
       const event = await tx.event.update({ where: { id }, data });
       await this.applyBatchChanges(tx, id, changes);
+      await tx.eventActivity.createMany({ data: activity });
       return event;
     });
   }
@@ -426,6 +444,8 @@ export class EventsRepository {
         commissionValue: true,
         totalEarned: true,
         totalPaid: true,
+        permissions: true,
+        freeTicketLimit: true,
         event: {
           select: {
             id: true,
@@ -621,24 +641,32 @@ export class EventsRepository {
   async findEventPromoterTotals(eventId: string, staffId: string) {
     return this.prisma.eventStaff.findFirst({
       where: { id: staffId, eventId, role: 'PROMOTER' },
-      select: { totalEarned: true, totalPaid: true },
+      select: {
+        totalEarned: true,
+        totalPaid: true,
+        user: { select: { name: true } },
+      },
     });
   }
 
   // Records the payment only if it fits in what is still owed, in the same
-  // transaction that adds it to totalPaid. Returns null when it doesn't fit,
-  // also when another payment recorded at the same time took the balance.
-  async registerPromoterPayment({
-    eventStaffId,
-    amount,
-    note,
-    registeredById,
-  }: {
-    eventStaffId: string;
-    amount: Prisma.Decimal;
-    note: string | null;
-    registeredById: string;
-  }) {
+  // transaction that adds it to totalPaid and writes it in the history.
+  // Returns null when it doesn't fit, also when another payment recorded at
+  // the same time took the balance.
+  async registerPromoterPayment(
+    {
+      eventStaffId,
+      amount,
+      note,
+      registeredById,
+    }: {
+      eventStaffId: string;
+      amount: Prisma.Decimal;
+      note: string | null;
+      registeredById: string;
+    },
+    activity: ActivityEntry,
+  ) {
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.$executeRaw`
         UPDATE "EventStaff" SET "totalPaid" = "totalPaid" + ${amount.toFixed(2)}::numeric
@@ -649,6 +677,7 @@ export class EventsRepository {
         data: { eventStaffId, amount, note, registeredById },
         select: PAYMENT_HISTORY.select,
       });
+      await tx.eventActivity.create({ data: activity });
       const totals = await tx.eventStaff.findUniqueOrThrow({
         where: { id: eventStaffId },
         select: { totalEarned: true, totalPaid: true },
