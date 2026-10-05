@@ -7,6 +7,8 @@ import PromoterPayouts from '@/components/panel/event-detail/PromoterPayouts';
 import FreeTickets from '@/components/panel/event-detail/FreeTickets';
 import CheckInProgress from '@/components/panel/event-detail/CheckInProgress';
 import AttendeeList from '@/components/panel/event-detail/AttendeeList';
+import CoOrganizers from '@/components/panel/event-detail/CoOrganizers';
+import EventActivity from '@/components/panel/event-detail/EventActivity';
 import type { EventSales } from '@/components/panel/event-detail/types';
 import { apiFetch } from '@/utils/api';
 import { getEventPhase } from '@/utils/event-edit';
@@ -29,7 +31,8 @@ function ticketTypeOptions(sales: EventSales) {
 }
 
 // Detalle del evento para su organizador: ventas, ingreso en puerta, RPPs, QR
-// free y asistentes. Reemplaza el "Ver página" de Mis eventos.
+// free, asistentes, co-organizadores e historial. Reemplaza el "Ver página"
+// de Mis eventos.
 export default function EventDetailPage() {
   const { id } = useParams();
   const [loaded, setLoaded] = useState<Loaded>({ state: 'loading' });
@@ -108,6 +111,13 @@ export default function EventDetailPage() {
             )}
           />
           <AttendeeList eventId={loaded.sales.event.id} />
+          <CoOrganizers
+            event={loaded.sales.event}
+            canInvite={
+              getEventPhase(loaded.sales.event, new Date()) !== 'CLOSED'
+            }
+          />
+          <EventActivity eventId={loaded.sales.event.id} />
         </div>
       )}
     </div>

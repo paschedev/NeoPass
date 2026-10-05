@@ -33,7 +33,7 @@ export function splitSettledClosed<T extends Pick<StaffGroup, 'phase' | 'owed'>>
 }
 
 // Nadie puede controlar en la puerta salvo el organizador: no hay scanner ni
-// encargado que haya aceptado.
+// co-organizador que haya aceptado.
 export function lacksDoorStaff(
   event: Pick<StaffGroup, 'phase' | 'scanners' | 'managers'>,
 ): boolean {
@@ -59,7 +59,7 @@ export function staffCounts(
   const parts = [
     promoters.length && counted(promoters.length, 'RPP', 'RPPs'),
     scanners.length && counted(scanners.length, 'scanner', 'scanners'),
-    managers.length && counted(managers.length, 'encargado', 'encargados'),
+    managers.length && counted(managers.length, 'co-organizador', 'co-organizadores'),
     pending && counted(pending, 'pendiente', 'pendientes'),
   ].filter(Boolean);
   return parts.join(' · ') || 'Sin staff todavía';

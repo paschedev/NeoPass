@@ -58,6 +58,17 @@ describe('validateInvitation', () => {
   ])('%j → "%s"', (change, message) => {
     expect(validateInvitation({ ...valid, ...change })).toBe(message);
   });
+
+  it('un co-organizador no lleva comisión, y su tope de QR free tiene que ser válido', () => {
+    const coOrganizer = { ...valid, role: 'CO_ORGANIZER' as const };
+
+    expect(
+      validateInvitation({ ...coOrganizer, commissionValue: '', freeTicketLimit: '' }),
+    ).toBeNull();
+    expect(validateInvitation({ ...coOrganizer, freeTicketLimit: '0' })).toBe(
+      'El tope de QR free tiene que ser un número entero mayor a 0',
+    );
+  });
 });
 
 describe('buildInvitationPayload', () => {
@@ -73,6 +84,20 @@ describe('buildInvitationPayload', () => {
       role: 'PROMOTER',
       commissionType: 'FIXED',
       commissionValue: 1500,
+    });
+  });
+
+  it('un co-organizador viaja como MANAGER con sus permisos y su tope', () => {
+    expect(
+      buildInvitationPayload('u1', 'CO_ORGANIZER', 'PERCENTAGE', '', {
+        permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
+        freeTicketLimit: 20,
+      }),
+    ).toEqual({
+      userId: 'u1',
+      role: 'MANAGER',
+      permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
+      freeTicketLimit: 20,
     });
   });
 });

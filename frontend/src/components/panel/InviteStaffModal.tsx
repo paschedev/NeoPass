@@ -18,20 +18,28 @@ import {
   type InviteRole,
 } from '@/utils/staff-invitation';
 import { STAFF_ROLE_LABELS } from '@/utils/staff-roles';
+import {
+  buildCoOrganizerTerms,
+  type EventPermission,
+} from '@/utils/co-organizers';
+import CoOrganizerPermissionsFields from './CoOrganizerPermissionsFields';
 
 const ROLE_OPTIONS: { value: InviteRole; label: string }[] = [
   { value: 'SCANNER', label: STAFF_ROLE_LABELS.SCANNER },
   { value: 'RPP', label: STAFF_ROLE_LABELS.PROMOTER },
+  { value: 'CO_ORGANIZER', label: STAFF_ROLE_LABELS.MANAGER },
 ];
 
-// Invita a varios usuarios a un evento como scanner o RPP. Abierto desde un
-// evento, llega con ese evento (y a veces el rol) ya elegidos.
+// Invita a varios usuarios a un evento como scanner, RPP o co-organizador.
+// Abierto desde un evento, llega con ese evento (y a veces el rol) ya
+// elegidos. Un co-organizador no puede invitar a otros co-organizadores.
 export default function InviteStaffModal({
   open,
   onClose,
   events,
   initialEventId = '',
   initialRole = 'SCANNER',
+  allowCoOrganizer = true,
   onInvited,
 }: {
   open: boolean;
@@ -39,6 +47,7 @@ export default function InviteStaffModal({
   events: { id: string; title: string }[];
   initialEventId?: string;
   initialRole?: InviteRole;
+  allowCoOrganizer?: boolean;
   onInvited: () => void;
 }) {
   const [eventId, setEventId] = useState(initialEventId);
@@ -46,6 +55,11 @@ export default function InviteStaffModal({
   const [commissionType, setCommissionType] =
     useState<CommissionType>('PERCENTAGE');
   const [commissionValue, setCommissionValue] = useState('');
+  const [permissions, setPermissions] = useState<EventPermission[]>([]);
+  const [freeTicketLimit, setFreeTicketLimit] = useState('');
+  const roleOptions = allowCoOrganizer
+    ? ROLE_OPTIONS
+    : ROLE_OPTIONS.filter((option) => option.value !== 'CO_ORGANIZER');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUsers, setSelectedUsers] = useState<UserSearchResult[]>([]);
   const [sending, setSending] = useState(false);
@@ -58,6 +72,7 @@ export default function InviteStaffModal({
       role,
       commissionType,
       commissionValue,
+      freeTicketLimit,
     });
     if (error) return toast.error(error);
 
@@ -73,6 +88,7 @@ export default function InviteStaffModal({
               role,
               commissionType,
               commissionValue,
+              buildCoOrganizerTerms(permissions, freeTicketLimit),
             ),
           ),
         });
@@ -99,6 +115,8 @@ export default function InviteStaffModal({
     setSelectedUsers([]);
     setRole('SCANNER');
     setCommissionValue('');
+    setPermissions([]);
+    setFreeTicketLimit('');
     setSearchTerm('');
     onClose();
   };
@@ -148,7 +166,7 @@ export default function InviteStaffModal({
           </label>
 
           <div className="flex bg-black/40 rounded-lg p-1">
-            {ROLE_OPTIONS.map((option) => (
+            {roleOptions.map((option) => (
               <button
                 key={option.value}
                 type="button"
@@ -203,6 +221,15 @@ export default function InviteStaffModal({
                 />
               </div>
             </div>
+          )}
+
+          {role === 'CO_ORGANIZER' && (
+            <CoOrganizerPermissionsFields
+              permissions={permissions}
+              onPermissionsChange={setPermissions}
+              freeTicketLimit={freeTicketLimit}
+              onFreeTicketLimitChange={setFreeTicketLimit}
+            />
           )}
         </div>
 

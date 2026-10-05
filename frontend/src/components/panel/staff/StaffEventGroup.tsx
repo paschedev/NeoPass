@@ -101,7 +101,7 @@ function PeopleBlock({
 }
 
 // Un evento con su staff: RPPs (con lo que se les debe), scanners y
-// encargados.
+// co-organizadores.
 export default function StaffEventGroup({
   event,
   onInvite,
@@ -210,7 +210,7 @@ export default function StaffEventGroup({
             </div>
           )}
           <PeopleBlock title="Scanners" people={event.scanners} />
-          <PeopleBlock title="Encargados" people={event.managers} />
+          <PeopleBlock title="Co-organizadores" people={event.managers} />
         </div>
       )}
     </section>

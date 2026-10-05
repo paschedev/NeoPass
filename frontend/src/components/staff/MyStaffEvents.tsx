@@ -31,7 +31,7 @@ function Tile({
 }
 
 // Página Staff: los eventos donde la persona trabaja como RPP, scanner o
-// encargado, sus números como RPP y las invitaciones que tiene que responder.
+// co-organizador, sus números como RPP y las invitaciones que tiene que responder.
 export default function MyStaffEvents() {
   const [data, setData] = useState<MyStaff | null>(null);
   const [failed, setFailed] = useState(false);

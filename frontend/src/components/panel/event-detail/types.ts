@@ -1,4 +1,29 @@
 import type { BatchSaleStatus } from '@/utils/batches';
+import type { EventPermission } from '@/utils/co-organizers';
+
+// Respuesta de GET /events/organizer/:id/co-organizers.
+export interface CoOrganizer {
+  id: string;
+  status: string;
+  name: string;
+  email: string;
+  permissions: EventPermission[];
+  freeTicketLimit: number | null;
+}
+
+// Respuesta de GET /events/organizer/:id/activity.
+export interface ActivityPage {
+  items: {
+    id: string;
+    type: string;
+    summary: string;
+    actor: { name: string };
+    createdAt: string;
+  }[];
+  total: number;
+  page: number;
+  limit: number;
+}
 
 // Respuesta de GET /events/organizer/:id/sales.
 export interface EventSales {
