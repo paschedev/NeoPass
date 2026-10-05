@@ -9,7 +9,7 @@ import {
 } from 'class-validator';
 
 export class ListAttendeesQueryDto {
-  // Part of the holder's name or email.
+  // Part of the holder's name.
   @IsOptional()
   @IsString({ message: 'La búsqueda no es válida' })
   @MaxLength(100, { message: 'La búsqueda puede tener hasta 100 caracteres' })
@@ -25,6 +25,6 @@ export class ListAttendeesQueryDto {
   @Type(() => Number)
   @IsInt({ message: 'La cantidad por página no es válida' })
   @Min(1, { message: 'La cantidad por página no es válida' })
-  @Max(100, { message: 'Se pueden pedir hasta 100 asistentes por página' })
+  @Max(100, { message: 'Se pueden pedir hasta 100 entradas por página' })
   limit = 50;
 }

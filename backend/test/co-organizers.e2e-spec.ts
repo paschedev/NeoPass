@@ -363,7 +363,7 @@ describe('Co-organizadores', () => {
       expect(history.items[0]).toMatchObject({
         type: 'CO_ORGANIZER_UPDATED',
         summary:
-          'Cambió los permisos de Ana Pérez. Ahora puede escanear, mandar QR free (hasta 5 entradas) y ver y exportar asistentes.',
+          'Cambió los permisos de Ana Pérez. Ahora puede escanear, mandar QR free (hasta 5 entradas) y ver y exportar la lista del público.',
       });
     });
 

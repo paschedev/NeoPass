@@ -79,7 +79,7 @@ export class EventsController {
   @UseGuards(JwtAuthGuard)
   @Get('organizer/:id/attendees/export')
   @Header('Content-Type', 'text/csv; charset=utf-8')
-  @Header('Content-Disposition', 'attachment; filename="asistentes.csv"')
+  @Header('Content-Disposition', 'attachment; filename="publico.csv"')
   exportEventAttendees(
     @Param('id', ParseIdPipe) id: string,
     @CurrentUser('userId') userId: string,

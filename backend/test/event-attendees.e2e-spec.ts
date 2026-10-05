@@ -15,7 +15,6 @@ type User = Parameters<typeof authHeader>[1];
 type Attendee = {
   ticketId: string;
   name: string | null;
-  email: string | null;
   ticketType: string;
   batch: string | null;
   status: string;
@@ -39,7 +38,7 @@ type CheckIns = {
   }[];
 };
 
-describe('Asistentes e ingreso del evento', () => {
+describe('Público e ingreso del evento', () => {
   let t: TestApp;
 
   beforeAll(async () => {
@@ -142,8 +141,8 @@ describe('Asistentes e ingreso del evento', () => {
     });
   }
 
-  describe('la lista de asistentes', () => {
-    it('muestra a cada dueño de entrada con su email, la entrada, la tanda, el estado y el ingreso', async () => {
+  describe('la lista del público', () => {
+    it('muestra a cada dueño de entrada con la entrada, la tanda, el estado y el ingreso, sin su email', async () => {
       const { organizer, event, usedAt } = await eventWithAttendees();
 
       const res = await get(
@@ -161,7 +160,6 @@ describe('Asistentes e ingreso del evento', () => {
       ).toEqual([
         {
           name: 'Ana Pérez',
-          email: 'ana@mail.test',
           ticketType: 'General',
           batch: 'Preventa',
           status: 'USED',
@@ -170,7 +168,6 @@ describe('Asistentes e ingreso del evento', () => {
         },
         {
           name: 'Ana Pérez',
-          email: 'ana@mail.test',
           ticketType: 'General',
           batch: 'Preventa',
           status: 'VALID',
@@ -179,7 +176,6 @@ describe('Asistentes e ingreso del evento', () => {
         },
         {
           name: 'Bruno Díaz',
-          email: 'bruno@mail.test',
           ticketType: 'Campo',
           batch: 'General',
           status: 'VALID',
@@ -188,7 +184,6 @@ describe('Asistentes e ingreso del evento', () => {
         },
         {
           name: 'Carla Gómez',
-          email: 'carla@mail.test',
           ticketType: 'General',
           batch: 'Preventa',
           status: 'REFUNDED',
@@ -196,9 +191,10 @@ describe('Asistentes e ingreso del evento', () => {
           freeTicket: false,
         },
       ]);
+      expect(JSON.stringify(res.body)).not.toContain('@mail.test');
     });
 
-    it('los QR free figuran con el correo y el nombre del envío, marcados como QR free', async () => {
+    it('los QR free figuran con el nombre del envío, sin el correo, marcados como QR free', async () => {
       const { organizer, event } = await eventWithAttendees();
       await freeTicketFor(event.id, organizer.id);
 
@@ -211,11 +207,11 @@ describe('Asistentes e ingreso del evento', () => {
       expect(page.total).toBe(1);
       expect(page.items[0]).toMatchObject({
         name: 'Dani Invitada',
-        email: 'dani@mail.test',
         ticketType: 'General',
         status: 'VALID',
         freeTicket: true,
       });
+      expect(JSON.stringify(res.body)).not.toContain('dani@mail.test');
     });
 
     it('nunca expone el código del QR', async () => {
@@ -235,23 +231,43 @@ describe('Asistentes e ingreso del evento', () => {
       }
     });
 
-    it('busca por nombre o email, sin importar mayúsculas', async () => {
+    it('busca por nombre sin importar mayúsculas, también el del envío de un QR free', async () => {
       const { organizer, event } = await eventWithAttendees();
+      await freeTicketFor(event.id, organizer.id);
 
       const byName = await get(
         organizer,
-        `/events/organizer/${event.id}/attendees?q=bruno`,
+        `/events/organizer/${event.id}/attendees?q=BRUNO`,
       ).expect(200);
-      const byEmail = await get(
+      const byRecipientName = await get(
         organizer,
-        `/events/organizer/${event.id}/attendees?q=ANA@MAIL`,
+        `/events/organizer/${event.id}/attendees?q=invitada`,
       ).expect(200);
 
       expect(
         (byName.body as AttendeePage).items.map(({ name }) => name),
       ).toEqual(['Bruno Díaz']);
-      expect((byEmail.body as AttendeePage).total).toBe(2);
+      expect(
+        (byRecipientName.body as AttendeePage).items.map(({ name }) => name),
+      ).toEqual(['Dani Invitada']);
     });
+
+    // Searching by email would tell whether an address has a ticket even
+    // though the list never shows it.
+    it.each(['ana@mail.test', 'ANA@MAIL', 'mail.test', 'dani@'])(
+      'buscar por un email no encuentra a nadie: %s',
+      async (q) => {
+        const { organizer, event } = await eventWithAttendees();
+        await freeTicketFor(event.id, organizer.id);
+
+        const res = await get(
+          organizer,
+          `/events/organizer/${event.id}/attendees?q=${encodeURIComponent(q)}`,
+        ).expect(200);
+
+        expect((res.body as AttendeePage).total).toBe(0);
+      },
+    );
 
     it('pagina la lista', async () => {
       const { organizer, event } = await eventWithAttendees();
@@ -283,14 +299,11 @@ describe('Asistentes e ingreso del evento', () => {
       ).expect(200);
 
       expect((res.body as AttendeePage).items).toEqual([
-        expect.objectContaining({
-          name: 'Zoe Transferida',
-          email: 'zoe@mail.test',
-        }),
+        expect.objectContaining({ name: 'Zoe Transferida' }),
       ]);
     });
 
-    it('no mezcla asistentes de otros eventos', async () => {
+    it('no mezcla el público de otros eventos', async () => {
       const mine = await createOrganizerWithEvent(t.prisma);
       await eventWithAttendees();
 
@@ -337,7 +350,7 @@ describe('Asistentes e ingreso del evento', () => {
   });
 
   describe('la exportación', () => {
-    it('descarga un CSV con todos los asistentes', async () => {
+    it('descarga un CSV con todo el público, sin emails', async () => {
       const { organizer, event } = await eventWithAttendees();
 
       const res = await get(
@@ -347,23 +360,24 @@ describe('Asistentes e ingreso del evento', () => {
 
       expect(res.headers['content-type']).toContain('text/csv');
       expect(res.headers['content-disposition']).toContain(
-        'attachment; filename="asistentes.csv"',
+        'attachment; filename="publico.csv"',
       );
       const lines = res.text
         .replace(/^\uFEFF/, '')
         .trim()
         .split('\r\n');
       expect(lines[0]).toBe(
-        '"Nombre","Email","Entrada","Tanda","Estado","Ingreso","Origen"',
+        '"Nombre","Entrada","Tanda","Estado","Ingreso","Origen"',
       );
       expect(lines).toHaveLength(5);
       expect(lines[1]).toBe(
-        '"Ana Pérez","ana@mail.test","General","Preventa","Ingresó","9/10/2026 23:30","Compra"',
+        '"Ana Pérez","General","Preventa","Ingresó","9/10/2026 23:30","Compra"',
       );
       expect(lines[4]).toContain('"Devuelta"');
+      expect(res.text).not.toContain('@mail.test');
     });
 
-    it('incluye los QR free con el correo del envío', async () => {
+    it('incluye los QR free con el nombre del envío, sin el correo', async () => {
       const { organizer, event } = await eventWithAttendees();
       await freeTicketFor(event.id, organizer.id);
 
@@ -373,8 +387,9 @@ describe('Asistentes e ingreso del evento', () => {
       ).expect(200);
 
       expect(res.text).toContain(
-        '"Dani Invitada","dani@mail.test","General","Preventa","Válida","","QR free"',
+        '"Dani Invitada","General","Preventa","Válida","","QR free"',
       );
+      expect(res.text).not.toContain('dani@mail.test');
     });
 
     it('neutraliza las fórmulas que alguien haya puesto como nombre', async () => {
@@ -406,7 +421,7 @@ describe('Asistentes e ingreso del evento', () => {
       },
     );
 
-    it('para un comprador los asistentes del evento no existen', async () => {
+    it('para un comprador el público del evento no existe', async () => {
       const { event, ana } = await eventWithAttendees();
 
       await get(ana, `/events/organizer/${event.id}/attendees`).expect(404);

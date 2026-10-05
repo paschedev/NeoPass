@@ -13,7 +13,7 @@ describe('describePermissions', () => {
     expect(
       describePermissions(['VIEW_ATTENDEES', 'EDIT_EVENT', 'VIEW_SALES'], null),
     ).toBe(
-      'escanear, editar la info del evento, ver ventas y recaudación y ver y exportar asistentes',
+      'escanear, editar la info del evento, ver ventas y recaudación y ver y exportar la lista del público',
     );
   });
 

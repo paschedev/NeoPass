@@ -1,4 +1,9 @@
-import { attendeesCsv, summarizeCheckIns, toCsvCell } from './attendees';
+import {
+  attendeesCsv,
+  exportActivitySummary,
+  summarizeCheckIns,
+  toCsvCell,
+} from './attendees';
 
 describe('toCsvCell', () => {
   it('entrecomilla y duplica las comillas', () => {
@@ -18,11 +23,10 @@ describe('toCsvCell', () => {
 });
 
 describe('attendeesCsv', () => {
-  it('arma el CSV con encabezado, estados en español y la hora de ingreso en Argentina', () => {
+  it('arma el CSV con encabezado, estados en español y la hora de ingreso en Argentina, sin emails', () => {
     const csv = attendeesCsv([
       {
         name: 'Ana',
-        email: 'ana@mail.test',
         ticketType: 'General',
         batch: 'Preventa',
         status: 'USED',
@@ -31,7 +35,6 @@ describe('attendeesCsv', () => {
       },
       {
         name: null,
-        email: null,
         ticketType: 'Campo',
         batch: null,
         status: 'CANCELLED',
@@ -42,10 +45,21 @@ describe('attendeesCsv', () => {
 
     expect(csv.startsWith('\uFEFF')).toBe(true);
     expect(csv.slice(1).split('\r\n')).toEqual([
-      '"Nombre","Email","Entrada","Tanda","Estado","Ingreso","Origen"',
-      '"Ana","ana@mail.test","General","Preventa","Ingresó","9/10/2026 23:30","Compra"',
-      '"","","Campo","","Anulada","","QR free"',
+      '"Nombre","Entrada","Tanda","Estado","Ingreso","Origen"',
+      '"Ana","General","Preventa","Ingresó","9/10/2026 23:30","Compra"',
+      '"","Campo","","Anulada","","QR free"',
     ]);
+  });
+});
+
+describe('exportActivitySummary', () => {
+  it('cuenta las entradas de la lista descargada, en singular si es una', () => {
+    expect(exportActivitySummary(12)).toBe(
+      'Descargó la lista del público (12 entradas).',
+    );
+    expect(exportActivitySummary(1)).toBe(
+      'Descargó la lista del público (1 entrada).',
+    );
   });
 });
 

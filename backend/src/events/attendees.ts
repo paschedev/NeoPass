@@ -1,9 +1,10 @@
 import { TicketStatus } from '@prisma/client';
 import { ARGENTINA_TIME_ZONE } from '../common/argentina-time-zone';
 
+// Without the holder's email: buyers haven't agreed to share it with the
+// organizer's team yet (FEAT-20).
 export type Attendee = {
   name: string | null;
-  email: string | null;
   ticketType: string;
   batch: string | null;
   status: TicketStatus;
@@ -45,10 +46,9 @@ const checkInTime = new Intl.DateTimeFormat('es-AR', {
 // and CRLF line breaks.
 export function attendeesCsv(attendees: Attendee[]): string {
   const rows = [
-    ['Nombre', 'Email', 'Entrada', 'Tanda', 'Estado', 'Ingreso', 'Origen'],
+    ['Nombre', 'Entrada', 'Tanda', 'Estado', 'Ingreso', 'Origen'],
     ...attendees.map((attendee) => [
       attendee.name,
-      attendee.email,
       attendee.ticketType,
       attendee.batch,
       STATUS_LABEL[attendee.status],
@@ -60,6 +60,10 @@ export function attendeesCsv(attendees: Attendee[]): string {
   ];
   return `\uFEFF${rows.map((row) => row.map(toCsvCell).join(',')).join('\r\n')}`;
 }
+
+// The CSV leaves NeoPass for good, so the owner sees who downloaded it.
+export const exportActivitySummary = (tickets: number) =>
+  `Descargó la lista del público (${tickets} ${tickets === 1 ? 'entrada' : 'entradas'}).`;
 
 // Door check-in: used tickets over the tickets that can still get in (valid or
 // used; refunded and cancelled ones don't count), overall and per ticket type.
