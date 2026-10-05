@@ -11,12 +11,7 @@ import {
 } from './repositories/events.repository';
 import { UserRepository } from '../auth/repositories/user.repository';
 import { ConfigService } from '@nestjs/config';
-import {
-  StaffRole,
-  CommissionType,
-  Prisma,
-  TicketStatus,
-} from '@prisma/client';
+import { StaffRole, Prisma, TicketStatus } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import { buildRevenueChart } from './revenue-chart';
 import { getBatchSaleStatus } from './batch-sale-status';
@@ -37,13 +32,19 @@ import { BatchDto } from './dto/batch.dto';
 import { EventLocationDto } from './dto/event-location.dto';
 import { RegisterPromoterPaymentDto } from './dto/register-promoter-payment.dto';
 import { ListAttendeesQueryDto } from './dto/list-attendees-query.dto';
+import { AddStaffDto } from './dto/add-staff.dto';
+import {
+  coOrganizerTerms,
+  describePermissions,
+  permissionsError,
+} from './co-organizers';
 import { formatPesos } from '../common/amounts';
 
 // Role names as the organizer reads them (errors and notices in their panel).
 const STAFF_ROLE_LABEL: Record<StaffRole, string> = {
   PROMOTER: 'promotor',
   SCANNER: 'scanner',
-  MANAGER: 'encargado',
+  MANAGER: 'co-organizador',
 };
 
 // The invitee reads it first: "RPP" is what their panel is called.
@@ -597,10 +598,14 @@ export class EventsService {
   async addStaff(
     eventId: string,
     organizerId: string,
-    inviteeId: string,
-    role: StaffRole,
-    commissionType?: CommissionType,
-    commissionValue?: number,
+    {
+      userId: inviteeId,
+      role,
+      commissionType,
+      commissionValue,
+      permissions,
+      freeTicketLimit,
+    }: AddStaffDto,
   ) {
     const event = await this.findOneForOrganizer(eventId, organizerId);
     // Nobody can work an event that is over: a promoter couldn't sell anymore.
@@ -612,7 +617,8 @@ export class EventsService {
       );
     }
 
-    // Only promoters earn a commission: for the other roles it is ignored.
+    // Only promoters earn a commission and only co-organizers have
+    // permissions: for the other roles they are ignored.
     const commissionTerms =
       role === 'PROMOTER' ? { commissionType, commissionValue } : {};
     if (
@@ -624,6 +630,13 @@ export class EventsService {
         'El porcentaje de comisión tiene que estar entre 0 y 100',
       );
     }
+    const coOrganizer =
+      role === 'MANAGER'
+        ? coOrganizerTerms(permissions ?? [], freeTicketLimit)
+        : null;
+    const permissionsProblem =
+      coOrganizer && permissionsError(coOrganizer.permissions);
+    if (permissionsProblem) throw new BadRequestException(permissionsProblem);
 
     const user = await this.userRepository.findById(inviteeId);
     if (!user) {
@@ -649,36 +662,55 @@ export class EventsService {
       );
     }
 
-    const staff = existing
-      ? await this.eventsRepository.updateEventStaff(existing.id, {
-          status: 'PENDING',
-          ...commissionTerms,
-        })
-      : await this.eventsRepository.createEventStaff({
-          event: { connect: { id: eventId } },
-          user: { connect: { id: user.id } },
-          role,
-          ...commissionTerms,
-        });
-
-    let commission = '';
+    let terms = '';
     if (role === 'PROMOTER' && commissionType && commissionValue) {
-      commission =
+      terms =
         commissionType === 'PERCENTAGE'
           ? `, con ${commissionValue}% de comisión por entrada`
           : `, con $${commissionValue} de comisión por entrada`;
     }
+    const canDo =
+      coOrganizer &&
+      describePermissions(coOrganizer.permissions, coOrganizer.freeTicketLimit);
 
+    const staff = await this.eventsRepository.saveStaffInvitation(
+      existing?.id ?? null,
+      {
+        eventId,
+        userId: user.id,
+        role,
+        ...commissionTerms,
+        ...coOrganizer,
+      },
+      coOrganizer
+        ? {
+            eventId,
+            actorId: organizerId,
+            type: 'CO_ORGANIZER_INVITED',
+            summary: `Invitó a ${user.name} a co-organizar. Va a poder ${canDo}.`,
+          }
+        : {
+            eventId,
+            actorId: organizerId,
+            type: 'STAFF_INVITED',
+            summary: `Invitó a ${user.name} como ${INVITED_ROLE_LABEL[role]}${terms}.`,
+          },
+    );
+
+    const again = existing ? ' de nuevo' : '';
     await this.notificationsService.create({
       userId: user.id,
       type: 'STAFF_INVITE',
       title: 'Nueva invitación',
-      message: `Te invitaron${existing ? ' de nuevo' : ''} como ${INVITED_ROLE_LABEL[role]} al evento "${event.title}"${commission}.`,
+      message: coOrganizer
+        ? `Te invitaron${again} como co-organizador al evento "${event.title}". Vas a poder ${canDo}.`
+        : `Te invitaron${again} como ${INVITED_ROLE_LABEL[role]} al evento "${event.title}"${terms}.`,
       eventId: event.id,
       metadata: {
         eventStaffId: staff.id,
         role,
         ...commissionTerms,
+        ...coOrganizer,
         status: 'PENDING',
       },
     });
