@@ -1,5 +1,11 @@
 import Link from 'next/link';
-import { ArrowLeft, Calendar, ExternalLink, MapPin, Pencil } from 'lucide-react';
+import {
+  ArrowLeft,
+  Calendar,
+  ExternalLink,
+  MapPin,
+  Pencil,
+} from 'lucide-react';
 import { canEditEvent, type EventAccess } from '@/utils/co-organizers';
 import { closedEventLabel, getEventPhase } from '@/utils/event-edit';
 import {

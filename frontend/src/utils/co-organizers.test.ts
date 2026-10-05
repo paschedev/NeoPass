@@ -69,7 +69,9 @@ describe('qué puede hacer quien está en sesión', () => {
         { status: 'CANCELLED', quantity: 4, checkedIn: 2 },
       ]),
     ).toBe(5);
-    expect(freeTicketsLeft(2, [{ status: 'ACTIVE', quantity: 3, checkedIn: 0 }])).toBe(0);
+    expect(
+      freeTicketsLeft(2, [{ status: 'ACTIVE', quantity: 3, checkedIn: 0 }]),
+    ).toBe(0);
   });
 });
 
@@ -83,7 +85,10 @@ describe('permisos de un co-organizador', () => {
 
   it('desmarcar "Ver ventas" también desmarca "Staff y pagos"', () => {
     expect(
-      togglePermission(['VIEW_SALES', 'MANAGE_STAFF', 'EDIT_EVENT'], 'VIEW_SALES'),
+      togglePermission(
+        ['VIEW_SALES', 'MANAGE_STAFF', 'EDIT_EVENT'],
+        'VIEW_SALES',
+      ),
     ).toEqual(['EDIT_EVENT']);
   });
 
@@ -92,9 +97,9 @@ describe('permisos de un co-organizador', () => {
       'EDIT_EVENT',
       'SEND_FREE_TICKETS',
     ]);
-    expect(togglePermission(['EDIT_EVENT', 'VIEW_SALES'], 'EDIT_EVENT')).toEqual([
-      'VIEW_SALES',
-    ]);
+    expect(
+      togglePermission(['EDIT_EVENT', 'VIEW_SALES'], 'EDIT_EVENT'),
+    ).toEqual(['VIEW_SALES']);
   });
 
   it('el tope de QR free vacío es sin tope; si se completa, entero desde 1', () => {
@@ -125,8 +130,8 @@ describe('permisos de un co-organizador', () => {
 
   it('resume lo que puede hacer, siempre empezando por escanear', () => {
     expect(permissionsSummary([], null)).toBe('Escanear');
-    expect(
-      permissionsSummary(['VIEW_SALES', 'SEND_FREE_TICKETS'], 20),
-    ).toBe('Escanear · Ver ventas · QR free (hasta 20)');
+    expect(permissionsSummary(['VIEW_SALES', 'SEND_FREE_TICKETS'], 20)).toBe(
+      'Escanear · Ver ventas · QR free (hasta 20)',
+    );
   });
 });

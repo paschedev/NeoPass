@@ -103,9 +103,7 @@ describe('promoterDebtState', () => {
     expect(promoterDebtState({ balance: -5, totalEarned: 10 })).toBe(
       'overpaid',
     );
-    expect(promoterDebtState({ balance: 0, totalEarned: 10 })).toBe(
-      'settled',
-    );
+    expect(promoterDebtState({ balance: 0, totalEarned: 10 })).toBe('settled');
     expect(promoterDebtState({ balance: 0, totalEarned: 0 })).toBe('no-sales');
   });
 });

@@ -325,7 +325,9 @@ describe('EventForm', () => {
       const onSubmit = renderAs({ canEditInfo: true, canManageBatches: false });
 
       expect(
-        screen.getByText(/las tandas y los precios los ves sin poder cambiarlos/i),
+        screen.getByText(
+          /las tandas y los precios los ves sin poder cambiarlos/i,
+        ),
       ).toBeInTheDocument();
       expect(screen.getByLabelText('Nombre de la tanda')).toBeDisabled();
       expect(

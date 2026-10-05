@@ -103,7 +103,10 @@ describe('MyStaffEvents', () => {
     expect(fiesta).toHaveTextContent('Organiza Organizadora');
     expect(
       within(fiesta).getByRole('link', { name: 'Cómo llegar' }),
-    ).toHaveAttribute('href', expect.stringContaining('query_place_id=place-1'));
+    ).toHaveAttribute(
+      'href',
+      expect.stringContaining('query_place_id=place-1'),
+    );
   });
 
   it('como RPP muestra la comisión, lo vendido, lo ganado y lo que le deben, y lleva a sus ventas', async () => {
@@ -213,10 +216,9 @@ describe('MyStaffEvents', () => {
     expect(fiesta).toHaveTextContent(
       'Podés: Escanear · Ver ventas · QR free (hasta 10)',
     );
-    expect(within(fiesta).getByRole('link', { name: 'Gestionar' })).toHaveAttribute(
-      'href',
-      '/panel/eventos/e1',
-    );
+    expect(
+      within(fiesta).getByRole('link', { name: 'Gestionar' }),
+    ).toHaveAttribute('href', '/panel/eventos/e1');
   });
 
   it('la invitación de co-organizador dice qué vas a poder hacer', async () => {

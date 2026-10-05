@@ -67,7 +67,8 @@ export function buildInvitationPayload(
   },
 ) {
   if (role === 'SCANNER') return { userId, role: 'SCANNER' };
-  if (role === 'CO_ORGANIZER') return { userId, role: 'MANAGER', ...coOrganizer };
+  if (role === 'CO_ORGANIZER')
+    return { userId, role: 'MANAGER', ...coOrganizer };
   return {
     userId,
     role: 'PROMOTER',

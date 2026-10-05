@@ -26,7 +26,8 @@ export const PERMISSION_OPTIONS: {
     value: 'MANAGE_BATCHES',
     label: 'Tandas y precios',
     short: 'Tandas',
-    description: 'Crear y cambiar tandas, precios y stock; cortar o reabrir la venta.',
+    description:
+      'Crear y cambiar tandas, precios y stock; cortar o reabrir la venta.',
   },
   {
     value: 'VIEW_SALES',
@@ -50,7 +51,8 @@ export const PERMISSION_OPTIONS: {
     value: 'MANAGE_STAFF',
     label: 'Staff y pagos a RPPs',
     short: 'Staff',
-    description: 'Invitar scanners y RPPs y registrar pagos. Incluye ver ventas.',
+    description:
+      'Invitar scanners y RPPs y registrar pagos. Incluye ver ventas.',
   },
 ];
 
@@ -67,11 +69,15 @@ export function togglePermission(
 ): EventPermission[] {
   if (permissions.includes(permission)) {
     const dropped =
-      permission === 'VIEW_SALES' ? ['VIEW_SALES', 'MANAGE_STAFF'] : [permission];
+      permission === 'VIEW_SALES'
+        ? ['VIEW_SALES', 'MANAGE_STAFF']
+        : [permission];
     return sorted(permissions.filter((p) => !dropped.includes(p)));
   }
   const added: EventPermission[] =
-    permission === 'MANAGE_STAFF' ? ['VIEW_SALES', 'MANAGE_STAFF'] : [permission];
+    permission === 'MANAGE_STAFF'
+      ? ['VIEW_SALES', 'MANAGE_STAFF']
+      : [permission];
   return sorted([...permissions, ...added]);
 }
 

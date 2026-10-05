@@ -63,7 +63,11 @@ describe('validateInvitation', () => {
     const coOrganizer = { ...valid, role: 'CO_ORGANIZER' as const };
 
     expect(
-      validateInvitation({ ...coOrganizer, commissionValue: '', freeTicketLimit: '' }),
+      validateInvitation({
+        ...coOrganizer,
+        commissionValue: '',
+        freeTicketLimit: '',
+      }),
     ).toBeNull();
     expect(validateInvitation({ ...coOrganizer, freeTicketLimit: '0' })).toBe(
       'El tope de QR free tiene que ser un número entero mayor a 0',
