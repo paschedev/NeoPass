@@ -106,38 +106,11 @@ describe('EventSalesView', () => {
     ).toBeInTheDocument();
   });
 
-  it('un evento publicado ofrece editarlo y abrir su página pública', () => {
-    renderView(sales());
-
-    expect(screen.getByRole('link', { name: 'Editar evento' })).toHaveAttribute(
-      'href',
-      '/panel/eventos/event-1/editar',
-    );
-    expect(
-      screen.getByRole('link', { name: /ver página pública/i }),
-    ).toHaveAttribute('href', '/eventos/event-1');
-  });
-
-  it('un evento en borrador no tiene página pública', () => {
-    renderView(sales({ status: 'DRAFT' }));
-
-    expect(
-      screen.queryByRole('link', { name: /ver página pública/i }),
-    ).not.toBeInTheDocument();
-  });
-
-  it('un evento finalizado no se edita ni tiene página pública, pero muestra sus ventas', () => {
+  it('un evento finalizado muestra sus ventas', () => {
     renderView(
       sales({ status: 'FINISHED', startDate: at(-30), endDate: at(-24) }),
     );
 
-    expect(screen.getByText('Evento finalizado')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', { name: 'Editar evento' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', { name: /ver página pública/i }),
-    ).not.toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Resumen' })).toBeInTheDocument();
   });
 

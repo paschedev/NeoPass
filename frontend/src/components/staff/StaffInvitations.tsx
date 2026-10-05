@@ -5,6 +5,7 @@ import { useStaffInvitation } from '@/hooks/useStaffInvitation';
 import { formatWeekdayDateTime } from '@/utils/format';
 import { ownRoleLabel } from '@/utils/staff-roles';
 import { commissionLabel } from '@/utils/staff-overview';
+import { permissionsSummary } from '@/utils/co-organizers';
 import toast from '@/utils/toast';
 import type { MyStaffInvitation } from './types';
 
@@ -61,6 +62,15 @@ export default function StaffInvitations({
                 <p className="text-xs text-neutral-500">
                   Organiza {invitation.event.organizerName}
                 </p>
+                {invitation.role === 'MANAGER' && (
+                  <p className="text-xs text-neutral-300 mt-1">
+                    Vas a poder:{' '}
+                    {permissionsSummary(
+                      invitation.permissions,
+                      invitation.freeTicketLimit,
+                    )}
+                  </p>
+                )}
               </div>
               <div className="flex gap-2 shrink-0">
                 <button

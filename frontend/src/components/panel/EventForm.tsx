@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Calendar, Info, MapPin, Save, Video } from 'lucide-react';
+import { Calendar, Info, Lock, MapPin, Save, Video } from 'lucide-react';
 import TandasManager from '@/components/TandasManager';
 import { useCloudinaryUpload } from '@/hooks/useCloudinaryUpload';
 import type { EventFormValues } from '@/utils/event-edit';
@@ -90,13 +90,17 @@ function Section({
   );
 }
 
+const ALL_ALLOWED = { canEditInfo: true, canManageBatches: true };
+
 // Formulario de crear y editar evento. Valida cada campo al cambiar, con las
-// mismas reglas de fechas que el backend según el momento del evento.
+// mismas reglas de fechas que el backend según el momento del evento. Un
+// co-organizador ve en solo lectura lo que no tiene permitido cambiar.
 export default function EventForm({
   mode,
   eventId,
   rules,
   defaultValues = EMPTY_EVENT,
+  permissions = ALL_ALLOWED,
   onSubmit,
 }: {
   mode: 'create' | 'edit';
@@ -105,11 +109,21 @@ export default function EventForm({
   // Se leen al montar: la página arma el formulario con el evento ya cargado.
   rules: EventDateRules;
   defaultValues?: EventFormInput;
+  permissions?: { canEditInfo: boolean; canManageBatches: boolean };
   onSubmit: (event: EventFormValues) => Promise<void>;
 }) {
   const router = useRouter();
   const [schema] = useState(() => buildEventSchema(rules));
-  const { uploading, upload } = useCloudinaryUpload();
+  const { uploading, upload } = useCloudinaryUpload(
+    mode === 'edit' ? eventId : undefined,
+  );
+  const { canEditInfo, canManageBatches } = permissions;
+  const readOnlyNotes = [
+    canEditInfo ? null : 'La info del evento la ves sin poder cambiarla.',
+    canManageBatches
+      ? null
+      : 'Las tandas y los precios los ves sin poder cambiarlos.',
+  ].filter(Boolean);
   const form = useForm<EventFormInput, unknown, EventFormOutput>({
     resolver: zodResolver(schema),
     defaultValues,
@@ -156,6 +170,18 @@ export default function EventForm({
         </div>
       )}
 
+      {readOnlyNotes.length > 0 && (
+        <div className="bg-sky-500/10 border border-sky-500/20 rounded-2xl p-4 text-sm text-sky-200 flex gap-3">
+          <Lock className="w-5 h-5 shrink-0 text-sky-400" />
+          <p>Sos co-organizador. {readOnlyNotes.join(' ')}</p>
+        </div>
+      )}
+
+      <fieldset
+        disabled={!canEditInfo}
+        aria-label="Info del evento"
+        className="space-y-8 min-w-0 disabled:opacity-60"
+      >
       <Section
         icon={<Info className="text-indigo-400 w-5 h-5" />}
         title="Información general"
@@ -297,14 +323,15 @@ export default function EventForm({
           </Field>
         </div>
       </Section>
+      </fieldset>
 
       <div className="mt-12 pt-12 border-t border-white/10">
         <fieldset aria-label="Tandas" className="min-w-0">
           <FormProvider {...form}>
             <TandasManager
               saved={rules.saved?.batches}
-              eventId={eventId}
-              locked={inProgress}
+              eventId={canManageBatches ? eventId : undefined}
+              locked={inProgress || !canManageBatches}
             />
           </FormProvider>
         </fieldset>
@@ -316,8 +343,9 @@ export default function EventForm({
           onClick={() => router.back()}
           className="px-6 py-3 rounded-xl font-medium text-neutral-400 hover:bg-white/5 transition-colors"
         >
-          Cancelar
+          {canEditInfo || canManageBatches ? 'Cancelar' : 'Volver'}
         </button>
+        {(canEditInfo || canManageBatches) && (
         <button
           type="submit"
           disabled={isSubmitting || uploading}
@@ -331,6 +359,7 @@ export default function EventForm({
             {isSubmitting ? labels.busy : labels.full}
           </span>
         </button>
+        )}
       </div>
     </form>
   );

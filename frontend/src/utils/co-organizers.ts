@@ -1,3 +1,5 @@
+import { freeTicketsSent } from './free-tickets';
+
 export type EventPermission =
   | 'EDIT_EVENT'
   | 'MANAGE_BATCHES'
@@ -106,6 +108,50 @@ export function permissionsSummary(
   );
   return ['Escanear', ...parts].join(' · ');
 }
+
+// Lo que GET /events/organizer/:id dice que puede hacer quien está en sesión:
+// el dueño, todo; un co-organizador, lo que tiene marcado.
+export interface EventAccess {
+  role: 'OWNER' | 'CO_ORGANIZER';
+  permissions: EventPermission[];
+  freeTicketLimit: number | null;
+}
+
+export const can = (access: EventAccess, permission: EventPermission) =>
+  access.permissions.includes(permission);
+
+export const canEditEvent = (access: EventAccess) =>
+  can(access, 'EDIT_EVENT') || can(access, 'MANAGE_BATCHES');
+
+// Qué partes del formulario de edición puede cambiar; el resto se ve en solo
+// lectura.
+export const editPermissions = (access: EventAccess) => ({
+  canEditInfo: can(access, 'EDIT_EVENT'),
+  canManageBatches: can(access, 'MANAGE_BATCHES'),
+});
+
+// El dueño vuelve a Mis eventos; un co-organizador, al detalle del evento
+// (Mis eventos es solo de los organizadores).
+export const afterEditPath = (access: EventAccess, eventId: string) =>
+  access.role === 'OWNER' ? '/panel?tab=events' : `/panel/eventos/${eventId}`;
+
+// Igual que el mensaje del backend al rechazar la acción.
+const DENIED_PHRASE: Record<EventPermission, string> = {
+  EDIT_EVENT: 'editar la info del evento',
+  MANAGE_BATCHES: 'manejar tandas y precios',
+  VIEW_SALES: 'ver ventas y recaudación',
+  SEND_FREE_TICKETS: 'mandar QR free',
+  VIEW_ATTENDEES: 'ver y exportar asistentes',
+  MANAGE_STAFF: 'manejar el staff y los pagos a RPPs',
+};
+
+export const permissionDeniedMessage = (permission: EventPermission) =>
+  `No tenés permiso para ${DENIED_PHRASE[permission]}`;
+
+export const freeTicketsLeft = (
+  limit: number,
+  grants: Parameters<typeof freeTicketsSent>[0],
+) => Math.max(0, limit - freeTicketsSent(grants));
 
 export const INVITATION_STATUS_LABEL: Record<string, string> = {
   ACCEPTED: 'Aceptó',

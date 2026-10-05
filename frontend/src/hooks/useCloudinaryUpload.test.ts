@@ -66,6 +66,20 @@ describe('useCloudinaryUpload', () => {
     });
   });
 
+  it('al editar un evento pide la firma de ese evento (así un co-organizador puede cambiar el flyer)', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(Response.json(SIGNATURE));
+    cloudinaryFetch.mockResolvedValue(
+      Response.json({ secure_url: SECURE_URL }),
+    );
+    const { result } = renderHook(() => useCloudinaryUpload('event-1'));
+
+    await act(async () => {
+      await result.current.upload(flyer());
+    });
+
+    expect(apiFetch).toHaveBeenCalledWith('/media/presign?eventId=event-1');
+  });
+
   it('con un archivo no permitido avisa y no pide la firma', async () => {
     const { result } = renderHook(() => useCloudinaryUpload());
     const pdf = new File(['x'], 'flyer.pdf', { type: 'application/pdf' });

@@ -36,6 +36,7 @@ type GrantRow = {
   cancelledAt: Date | null;
   ticketType: { id: string; name: string };
   tickets: { status: string }[];
+  issuedById: string;
   issuedBy: { name: string };
 };
 
