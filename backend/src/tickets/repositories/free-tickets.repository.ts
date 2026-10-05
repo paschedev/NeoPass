@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { ActivityEntry } from '../../events/event-activity';
 
 const GRANT_SELECT = {
   id: true,
@@ -48,7 +49,7 @@ export class FreeTicketsRepository {
   async findEventTicketType(eventId: string, ticketTypeId: string) {
     return this.prisma.ticketType.findFirst({
       where: { id: ticketTypeId, eventId },
-      select: { id: true },
+      select: { id: true, name: true },
     });
   }
 
@@ -58,10 +59,11 @@ export class FreeTicketsRepository {
     });
   }
 
-  // The grant and its tickets, all or nothing. Free tickets do not touch the
-  // stock and belong to no account. With a quota (a co-organizer's limit),
-  // their staff row stays locked while their tickets are counted, so two sends
-  // at the same time can't both fit; over the limit nothing is created.
+  // The grant, its tickets and its line in the event history, all or nothing.
+  // Free tickets do not touch the stock and belong to no account. With a quota
+  // (a co-organizer's limit), their staff row stays locked while their tickets
+  // are counted, so two sends at the same time can't both fit; over the limit
+  // nothing is created.
   async createGrant(
     {
       quantity,
@@ -76,6 +78,7 @@ export class FreeTicketsRepository {
       quantity: number;
     },
     quota: { coOrganizerId: string; limit: number } | null,
+    activity: ActivityEntry,
   ) {
     return this.prisma.$transaction(async (tx) => {
       if (quota) {
@@ -102,6 +105,7 @@ export class FreeTicketsRepository {
           freeTicketGrantId: id,
         })),
       });
+      await tx.eventActivity.create({ data: activity });
       const grant = await tx.freeTicketGrant.findUniqueOrThrow({
         where: { id },
         select: GRANT_SELECT,
@@ -140,8 +144,9 @@ export class FreeTicketsRepository {
   }
 
   // Conditional on the grant not being cancelled yet, and each ticket on still
-  // being VALID: a ticket scanned at the same time stays USED.
-  async cancelGrant(grantId: string, now: Date) {
+  // being VALID: a ticket scanned at the same time stays USED. The history
+  // line goes in the same transaction.
+  async cancelGrant(grantId: string, now: Date, activity: ActivityEntry) {
     return this.prisma.$transaction(async (tx) => {
       const { count } = await tx.freeTicketGrant.updateMany({
         where: { id: grantId, cancelledAt: null },
@@ -152,20 +157,30 @@ export class FreeTicketsRepository {
         where: { freeTicketGrantId: grantId, status: 'VALID' },
         data: { status: 'CANCELLED' },
       });
+      await tx.eventActivity.create({ data: activity });
       return true;
     });
   }
 
   // Only if it was not cancelled and the last send is old enough.
-  async markResent(grantId: string, now: Date, sentBefore: Date) {
-    const { count } = await this.prisma.freeTicketGrant.updateMany({
-      where: {
-        id: grantId,
-        cancelledAt: null,
-        lastSentAt: { lte: sentBefore },
-      },
-      data: { lastSentAt: now },
+  async markResent(
+    grantId: string,
+    now: Date,
+    sentBefore: Date,
+    activity: ActivityEntry,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.freeTicketGrant.updateMany({
+        where: {
+          id: grantId,
+          cancelledAt: null,
+          lastSentAt: { lte: sentBefore },
+        },
+        data: { lastSentAt: now },
+      });
+      if (count === 0) return false;
+      await tx.eventActivity.create({ data: activity });
+      return true;
     });
-    return count > 0;
   }
 }

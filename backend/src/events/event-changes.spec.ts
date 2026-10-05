@@ -1,8 +1,10 @@
 import { Prisma } from '@prisma/client';
 import { BatchDto } from './dto/batch.dto';
 import {
+  batchChangesSummary,
   changedEventInfo,
   describeBatchChanges,
+  eventUpdateSummary,
   statusChange,
 } from './event-changes';
 
@@ -106,6 +108,29 @@ describe('qué cambia al editar un evento', () => {
           youtubeLink: 'https://www.youtube.com/watch?v=abc',
         }),
       ).toEqual(['el video']);
+    });
+  });
+
+  describe('el texto del historial', () => {
+    it('junta la info y el estado, y sin cambios no hay texto', () => {
+      expect(
+        eventUpdateSummary(['el título', 'la fecha de fin'], 'PUBLISHED'),
+      ).toBe('Editó el título y la fecha de fin. Publicó el evento.');
+      expect(eventUpdateSummary([], 'DRAFT')).toBe(
+        'Pasó el evento a borrador.',
+      );
+      expect(eventUpdateSummary([], null)).toBeNull();
+    });
+
+    it('los cambios de tandas van en una oración', () => {
+      expect(
+        batchChangesSummary([
+          'borró la tanda "VIP"',
+          'cambió el stock de "General" en "Preventa" de 100 a 150',
+        ]),
+      ).toBe(
+        'Borró la tanda "VIP" y cambió el stock de "General" en "Preventa" de 100 a 150.',
+      );
     });
   });
 

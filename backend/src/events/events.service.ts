@@ -50,10 +50,13 @@ import {
   EventAccessService,
 } from './event-access.service';
 import {
+  batchChangesSummary,
   changedEventInfo,
   describeBatchChanges,
+  eventUpdateSummary,
   statusChange,
 } from './event-changes';
+import { ActivityEntry } from './event-activity';
 
 // Role names as the organizer reads them (errors and notices in their panel).
 const STAFF_ROLE_LABEL: Record<StaffRole, string> = {
@@ -164,6 +167,36 @@ const ALREADY_APPLIED_MESSAGE: Record<BatchSaleAction, string> = {
   HIDE: 'La tanda ya está oculta',
   SHOW: 'La tanda ya está visible',
 };
+
+const BATCH_SALE_SUMMARY: Record<BatchSaleAction, (name: string) => string> = {
+  END: (name) => `Finalizó la venta de "${name}".`,
+  REOPEN: (name) => `Reabrió la venta de "${name}".`,
+  HIDE: (name) => `Ocultó la tanda "${name}".`,
+  SHOW: (name) => `Mostró la tanda "${name}".`,
+};
+
+// What an edit leaves in the event history: the info and status in one line,
+// the batches in another, and nothing when nothing changed.
+function editActivity(
+  who: Pick<ActivityEntry, 'eventId' | 'actorId'>,
+  eventSummary: string | null,
+  batchChanges: string[],
+): ActivityEntry[] {
+  return [
+    ...(eventSummary
+      ? [{ ...who, type: 'EVENT_UPDATED' as const, summary: eventSummary }]
+      : []),
+    ...(batchChanges.length > 0
+      ? [
+          {
+            ...who,
+            type: 'BATCHES_UPDATED' as const,
+            summary: batchChangesSummary(batchChanges),
+          },
+        ]
+      : []),
+  ];
+}
 
 // Once the event starts, buyers already hold tickets for its start and venue:
 // only texts and the image change, the end can only move later and the
@@ -414,9 +447,10 @@ export class EventsService {
     const batchChanges = batches
       ? describeBatchChanges(event.ticketBatches, batches)
       : [];
+    const newStatus = statusChange(event, changes);
     if (infoChanges.length > 0) assertPermission(access, 'EDIT_EVENT');
     if (batchChanges.length > 0) assertPermission(access, 'MANAGE_BATCHES');
-    if (statusChange(event, changes) && access.role !== 'OWNER') {
+    if (newStatus && access.role !== 'OWNER') {
       throw new ForbiddenException(
         'Solo quien organiza el evento puede publicarlo o pasarlo a borrador',
       );
@@ -456,13 +490,21 @@ export class EventsService {
       endDate,
       now,
     );
-    if (!batches) return this.eventsRepository.update(id, eventData);
+    const activity = editActivity(
+      { eventId: id, actorId: userId },
+      eventUpdateSummary(infoChanges, newStatus),
+      batchChanges,
+    );
+    if (!batches) {
+      return this.eventsRepository.update(id, eventData, activity);
+    }
 
     await this.assertBatchChangesAllowed(event.ticketBatches, batches);
     return this.eventsRepository.updateWithBatches(
       id,
       eventData,
       planBatchChanges(event.ticketBatches, batches),
+      activity,
     );
   }
 
@@ -538,6 +580,11 @@ export class EventsService {
     return this.eventsRepository.updateBatchesTransaction(
       eventId,
       planBatchChanges(eventContext.ticketBatches, batchesData),
+      editActivity(
+        { eventId, actorId: userId },
+        null,
+        describeBatchChanges(eventContext.ticketBatches, batchesData),
+      ),
     );
   }
 
@@ -557,7 +604,12 @@ export class EventsService {
 
     const change = planBatchSaleAction(batch, action, now);
     if (!change) throw new ConflictException(ALREADY_APPLIED_MESSAGE[action]);
-    return this.eventsRepository.updateBatchSale(eventId, batchId, change);
+    return this.eventsRepository.updateBatchSale(eventId, batchId, change, {
+      eventId,
+      actorId: userId,
+      type: 'BATCH_SALE_CHANGED',
+      summary: BATCH_SALE_SUMMARY[action](batch.name),
+    });
   }
 
   // Sold and reserved tickets keep their place in the stock, and a ticket type
@@ -875,12 +927,20 @@ export class EventsService {
     );
     if (!promoter) throw new NotFoundException('RPP no encontrado');
 
-    const recorded = await this.eventsRepository.registerPromoterPayment({
-      eventStaffId: staffId,
-      amount: new Prisma.Decimal(amount),
-      note: note ?? null,
-      registeredById: userId,
-    });
+    const recorded = await this.eventsRepository.registerPromoterPayment(
+      {
+        eventStaffId: staffId,
+        amount: new Prisma.Decimal(amount),
+        note: note ?? null,
+        registeredById: userId,
+      },
+      {
+        eventId,
+        actorId: userId,
+        type: 'PROMOTER_PAYMENT_REGISTERED',
+        summary: `Registró un pago de ${formatPesos(amount)} a ${promoter.user.name}.`,
+      },
+    );
     if (!recorded) {
       // Read again: another payment may have just taken the balance.
       const current = await this.eventsRepository.findEventPromoterTotals(

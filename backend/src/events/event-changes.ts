@@ -69,6 +69,29 @@ export function statusChange(event: StoredEvent, changes: UpdateEventDto) {
     : null;
 }
 
+const STATUS_SENTENCE = {
+  PUBLISHED: 'Publicó el evento.',
+  DRAFT: 'Pasó el evento a borrador.',
+};
+
+// "Editó el título y la fecha de fin. Publicó el evento.", or null when
+// nothing changed.
+export function eventUpdateSummary(
+  info: string[],
+  status: keyof typeof STATUS_SENTENCE | null,
+): string | null {
+  const sentences = [
+    ...(info.length > 0 ? [`Editó ${joinPhrases(info)}.`] : []),
+    ...(status ? [STATUS_SENTENCE[status]] : []),
+  ];
+  return sentences.length > 0 ? sentences.join(' ') : null;
+}
+
+export function batchChangesSummary(phrases: string[]): string {
+  const text = joinPhrases(phrases);
+  return `${text.charAt(0).toUpperCase()}${text.slice(1)}.`;
+}
+
 const pesos = (price: Prisma.Decimal.Value) =>
   formatPesos(new Prisma.Decimal(price).toNumber());
 

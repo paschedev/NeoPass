@@ -92,6 +92,12 @@ export class FreeTicketsService {
       coOrganizerId && freeTicketLimit !== null
         ? { coOrganizerId, limit: freeTicketLimit }
         : null,
+      {
+        eventId,
+        actorId: userId,
+        type: 'FREE_TICKETS_SENT',
+        summary: `Mandó ${dto.quantity} QR free de "${ticketType.name}" a ${dto.email}.`,
+      },
     );
     if (created.overLimit) {
       throw new ConflictException(
@@ -118,10 +124,20 @@ export class FreeTicketsService {
   // The tickets not used yet stop working; the used ones stay as they are.
   async cancel(eventId: string, grantId: string, userId: string) {
     const access = await this.assertCanSend(eventId, userId);
-    await this.findGrant(eventId, grantId, ownGrantsOf(access, userId));
+    const grant = await this.findGrant(
+      eventId,
+      grantId,
+      ownGrantsOf(access, userId),
+    );
     const cancelled = await this.freeTicketsRepository.cancelGrant(
       grantId,
       new Date(),
+      {
+        eventId,
+        actorId: userId,
+        type: 'FREE_TICKETS_CANCELLED',
+        summary: `Anuló el envío de ${grant.tickets.length} QR free a ${grant.recipientEmail}.`,
+      },
     );
     if (!cancelled) {
       throw new ConflictException('Este envío ya estaba anulado');
@@ -156,6 +172,12 @@ export class FreeTicketsService {
       grantId,
       now,
       new Date(now.getTime() - FREE_TICKETS_RESEND_COOLDOWN_MS),
+      {
+        eventId,
+        actorId: userId,
+        type: 'FREE_TICKETS_RESENT',
+        summary: `Reenvió los QR free de ${grant.recipientEmail}.`,
+      },
     );
     if (!resent) {
       throw new HttpException(
