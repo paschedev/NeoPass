@@ -7,6 +7,7 @@ import {
   editPermissions,
   freeTicketLimitError,
   freeTicketsLeft,
+  PERMISSION_OPTIONS,
   permissionDeniedMessage,
   permissionsSummary,
   togglePermission,
@@ -59,6 +60,9 @@ describe('qué puede hacer quien está en sesión', () => {
     );
     expect(permissionDeniedMessage('MANAGE_STAFF')).toBe(
       'No tenés permiso para manejar el staff y los pagos a RPPs',
+    );
+    expect(permissionDeniedMessage('VIEW_ATTENDEES')).toBe(
+      'No tenés permiso para ver y exportar la lista del público',
     );
   });
 
@@ -133,5 +137,17 @@ describe('permisos de un co-organizador', () => {
     expect(permissionsSummary(['VIEW_SALES', 'SEND_FREE_TICKETS'], 20)).toBe(
       'Escanear · Ver ventas · QR free (hasta 20)',
     );
+    expect(permissionsSummary(['VIEW_ATTENDEES'], null)).toBe(
+      'Escanear · Público',
+    );
+  });
+
+  it('la casilla de la lista de gente con entrada dice "Público", que no se confunde con el staff', () => {
+    expect(
+      PERMISSION_OPTIONS.find((option) => option.value === 'VIEW_ATTENDEES'),
+    ).toMatchObject({
+      label: 'Público y exportar',
+      description: 'La lista de quienes tienen entrada, por nombre, y el CSV.',
+    });
   });
 });

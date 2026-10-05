@@ -57,7 +57,7 @@ async function loadEvent(id: string): Promise<Loaded> {
 }
 
 // Detalle del evento para quien lo organiza o lo co-organiza: ventas, ingreso
-// en puerta, RPPs, QR free, asistentes y, solo para el dueño,
+// en puerta, RPPs, QR free, público y, solo para el dueño,
 // co-organizadores e historial. Un co-organizador ve bloqueado lo que no
 // tiene permitido.
 export default function EventDetailPage() {
@@ -162,7 +162,7 @@ function EventSections({
       {can(access, 'VIEW_ATTENDEES') ? (
         <AttendeeList eventId={event.id} />
       ) : (
-        <LockedSection title="Asistentes" permission="VIEW_ATTENDEES" />
+        <LockedSection title="Público" permission="VIEW_ATTENDEES" />
       )}
       {access.role === 'OWNER' && (
         <>

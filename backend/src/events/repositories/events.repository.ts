@@ -12,8 +12,8 @@ const ATTENDEE_SELECT = {
   id: true,
   status: true,
   usedAt: true,
-  user: { select: { name: true, email: true } },
-  freeTicketGrant: { select: { recipientName: true, recipientEmail: true } },
+  user: { select: { name: true } },
+  freeTicketGrant: { select: { recipientName: true } },
   ticketType: { select: { name: true, batch: { select: { name: true } } } },
 } satisfies Prisma.TicketSelect;
 
@@ -553,18 +553,14 @@ export class EventsRepository {
   ) {
     const where: Prisma.TicketWhereInput = {
       ticketType: { eventId },
+      // Only by name: searching emails the list doesn't show would still
+      // tell whether an address has a ticket.
       ...(search && {
         OR: [
           { user: { name: { contains: search, mode: 'insensitive' } } },
-          { user: { email: { contains: search, mode: 'insensitive' } } },
           {
             freeTicketGrant: {
               recipientName: { contains: search, mode: 'insensitive' },
-            },
-          },
-          {
-            freeTicketGrant: {
-              recipientEmail: { contains: search, mode: 'insensitive' },
             },
           },
         ],
@@ -589,6 +585,10 @@ export class EventsRepository {
       select: ATTENDEE_SELECT,
       orderBy: ATTENDEE_ORDER,
     });
+  }
+
+  async recordActivity(entry: ActivityEntry) {
+    await this.prisma.eventActivity.create({ data: entry });
   }
 
   async countTicketsByTypeAndStatus(eventId: string) {

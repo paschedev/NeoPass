@@ -86,7 +86,7 @@ const region = (name: string) => screen.findByRole('region', { name });
 describe('Detalle del evento', () => {
   afterEach(() => vi.clearAllMocks());
 
-  it('quien organiza ve todo: ventas, ingreso, RPPs, QR free, asistentes, co-organizadores e historial', async () => {
+  it('quien organiza ve todo: ventas, ingreso, RPPs, QR free, público, co-organizadores e historial', async () => {
     server(OWNER);
 
     render(<EventDetailPage />);
@@ -109,7 +109,9 @@ describe('Detalle del evento', () => {
       await within(freeTickets).findByText('Todavía no mandaste QR free.'),
     ).toBeInTheDocument();
     expect(
-      await screen.findByText('Todavía no hay entradas emitidas.'),
+      await within(await region('Público')).findByText(
+        'Todavía no hay entradas emitidas.',
+      ),
     ).toBeInTheDocument();
     const coOrganizers = await region('Co-organizadores');
     expect(
@@ -139,8 +141,8 @@ describe('Detalle del evento', () => {
     expect(await region('QR free')).toHaveTextContent(
       'No tenés permiso para mandar QR free',
     );
-    expect(await region('Asistentes')).toHaveTextContent(
-      'No tenés permiso para ver y exportar asistentes',
+    expect(await region('Público')).toHaveTextContent(
+      'No tenés permiso para ver y exportar la lista del público',
     );
     expect(
       screen.queryByRole('region', { name: 'Co-organizadores' }),

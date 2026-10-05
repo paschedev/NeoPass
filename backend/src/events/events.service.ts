@@ -22,7 +22,11 @@ import { buildRevenueChart } from './revenue-chart';
 import { getBatchSaleStatus } from './batch-sale-status';
 import { getEventPhase } from './event-phase';
 import { buildEventSales } from './event-sales';
-import { attendeesCsv, summarizeCheckIns } from './attendees';
+import {
+  attendeesCsv,
+  exportActivitySummary,
+  summarizeCheckIns,
+} from './attendees';
 import { toPaymentRecord } from './promoter-payment-record';
 import { buildStaffOverview } from './staff-overview';
 import { buildMyStaff } from './my-staff';
@@ -75,15 +79,11 @@ const INVITED_ROLE_LABEL: Record<StaffRole, string> = {
 const toAttendee = (ticket: {
   status: TicketStatus;
   usedAt: Date | null;
-  user: { name: string; email: string } | null;
-  freeTicketGrant: {
-    recipientName: string | null;
-    recipientEmail: string;
-  } | null;
+  user: { name: string } | null;
+  freeTicketGrant: { recipientName: string | null } | null;
   ticketType: { name: string; batch: { name: string } | null };
 }) => ({
   name: ticket.user?.name ?? ticket.freeTicketGrant?.recipientName ?? null,
-  email: ticket.user?.email ?? ticket.freeTicketGrant?.recipientEmail ?? null,
   ticketType: ticket.ticketType.name,
   batch: ticket.ticketType.batch?.name ?? null,
   status: ticket.status,
@@ -847,8 +847,7 @@ export class EventsService {
     return staff;
   }
 
-  // Holders of the event's tickets, as the organizer decided to see them: name
-  // and email of whoever holds each ticket now.
+  // Holders of the event's tickets: the name of whoever holds each one now.
   async getEventAttendees(
     eventId: string,
     userId: string,
@@ -873,6 +872,13 @@ export class EventsService {
   async exportEventAttendees(eventId: string, userId: string) {
     await this.eventAccess.assertCan(eventId, userId, 'VIEW_ATTENDEES');
     const tickets = await this.eventsRepository.findAllEventAttendees(eventId);
+    // Recorded before handing it out: no list leaves without a trace.
+    await this.eventsRepository.recordActivity({
+      eventId,
+      actorId: userId,
+      type: 'ATTENDEES_EXPORTED',
+      summary: exportActivitySummary(tickets.length),
+    });
     return attendeesCsv(tickets.map(toAttendee));
   }
 
