@@ -444,6 +444,8 @@ export class EventsRepository {
         commissionValue: true,
         totalEarned: true,
         totalPaid: true,
+        permissions: true,
+        freeTicketLimit: true,
         event: {
           select: {
             id: true,

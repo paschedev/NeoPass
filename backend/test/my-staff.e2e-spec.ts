@@ -1,5 +1,5 @@
 import request from 'supertest';
-import { StaffRole, StaffStatus, User } from '@prisma/client';
+import { EventPermission, StaffRole, StaffStatus, User } from '@prisma/client';
 import { authHeader } from './utils/auth';
 import {
   createOrder,
@@ -16,8 +16,18 @@ type MyStaff = {
     owed: number;
     ticketsSold: number;
   } | null;
-  invitations: { id: string; role: StaffRole; event: { id: string } }[];
+  invitations: {
+    id: string;
+    role: StaffRole;
+    permissions: EventPermission[];
+    freeTicketLimit: number | null;
+    event: { id: string };
+  }[];
   events: {
+    coOrganizer: {
+      permissions: EventPermission[];
+      freeTicketLimit: number | null;
+    } | null;
     id: string;
     organizerName: string;
     venueName: string | null;
@@ -168,6 +178,51 @@ describe('Staff: los eventos donde trabaja cada uno', () => {
 
     expect(body.promoterTotals).toBeNull();
     expect(body.events.map((ev) => ev.roles)).toEqual([['SCANNER']]);
+  });
+
+  it('muestra cada co-organización con sus permisos, y la invitación pendiente con lo que va a poder hacer', async () => {
+    const worker = await createUser(t.prisma);
+    const accepted = await createOrganizerWithEvent(t.prisma);
+    const pending = await createOrganizerWithEvent(t.prisma);
+    const scanning = await createOrganizerWithEvent(t.prisma);
+    await t.prisma.eventStaff.create({
+      data: {
+        eventId: accepted.event.id,
+        userId: worker.id,
+        role: 'MANAGER',
+        status: 'ACCEPTED',
+        permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
+        freeTicketLimit: 5,
+      },
+    });
+    const invitation = await t.prisma.eventStaff.create({
+      data: {
+        eventId: pending.event.id,
+        userId: worker.id,
+        role: 'MANAGER',
+        status: 'PENDING',
+        permissions: ['EDIT_EVENT'],
+      },
+    });
+    await addStaff(scanning.event.id, worker, 'SCANNER');
+
+    const body = await myStaff(worker);
+
+    const coOrganizerOf = (eventId: string) =>
+      body.events.find((ev) => ev.id === eventId)?.coOrganizer;
+    expect(coOrganizerOf(accepted.event.id)).toEqual({
+      permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
+      freeTicketLimit: 5,
+    });
+    expect(coOrganizerOf(scanning.event.id)).toBeNull();
+    expect(body.invitations).toEqual([
+      expect.objectContaining({
+        id: invitation.id,
+        role: 'MANAGER',
+        permissions: ['EDIT_EVENT'],
+        freeTicketLimit: null,
+      }),
+    ]);
   });
 
   it('sin sesión responde 401', async () => {
