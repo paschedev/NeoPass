@@ -7,7 +7,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { getHomePath } from '@/utils/navigation';
 import { canSeeStaffPanel } from '@/utils/roles';
 
-// Staff: los eventos donde trabajás como RPP, scanner o encargado. Reemplaza al
+// Staff: los eventos donde trabajás como RPP, scanner o co-organizador. Reemplaza al
 // Panel RPP; el detalle de ventas de cada evento sigue en /panel/rpp/:id.
 export default function StaffPage() {
   const router = useRouter();
@@ -27,7 +27,7 @@ export default function StaffPage() {
           Tus eventos como staff
         </h1>
         <p className="text-neutral-400">
-          Dónde trabajás como RPP, scanner o encargado.
+          Dónde trabajás como RPP, scanner o co-organizador.
         </p>
       </div>
       <MyStaffEvents />

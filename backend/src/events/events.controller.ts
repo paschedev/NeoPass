@@ -8,6 +8,7 @@ import {
   UseGuards,
   Query,
   Ip,
+  Header,
 } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -18,11 +19,14 @@ import { UpdateEventDto } from './dto/update-event.dto';
 import { UpdateBatchesDto } from './dto/update-batches.dto';
 import { BatchSaleActionDto } from './dto/batch-sale-action.dto';
 import { RegisterPromoterPaymentDto } from './dto/register-promoter-payment.dto';
+import { ListAttendeesQueryDto } from './dto/list-attendees-query.dto';
 import { AddStaffDto } from './dto/add-staff.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ListEventsQueryDto } from './dto/list-events-query.dto';
 import { ParseIdPipe } from '../common/parse-id.pipe';
 
+// The routes of one event are for its team: the owner and the co-organizers,
+// who can have any account. The service checks who can do what on each event.
 @Controller('events')
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
@@ -53,8 +57,7 @@ export class EventsController {
     return this.eventsService.getOrganizerStats(userId);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ORGANIZER', 'ADMIN')
+  @UseGuards(JwtAuthGuard)
   @Get('organizer/:id/sales')
   getEventSales(
     @Param('id', ParseIdPipe) id: string,
@@ -63,8 +66,37 @@ export class EventsController {
     return this.eventsService.getEventSales(id, userId);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ORGANIZER', 'ADMIN')
+  @UseGuards(JwtAuthGuard)
+  @Get('organizer/:id/attendees')
+  getEventAttendees(
+    @Param('id', ParseIdPipe) id: string,
+    @Query() query: ListAttendeesQueryDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.eventsService.getEventAttendees(id, userId, query);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('organizer/:id/attendees/export')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @Header('Content-Disposition', 'attachment; filename="asistentes.csv"')
+  exportEventAttendees(
+    @Param('id', ParseIdPipe) id: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.eventsService.exportEventAttendees(id, userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('organizer/:id/check-ins')
+  getEventCheckIns(
+    @Param('id', ParseIdPipe) id: string,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.eventsService.getEventCheckIns(id, userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('organizer/:id/promoters')
   getEventPromoters(
     @Param('id', ParseIdPipe) id: string,
@@ -73,8 +105,7 @@ export class EventsController {
     return this.eventsService.getEventPromoters(id, userId);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ORGANIZER', 'ADMIN')
+  @UseGuards(JwtAuthGuard)
   @Post('organizer/:id/promoters/:staffId/payments')
   registerPromoterPayment(
     @Param('id', ParseIdPipe) id: string,
@@ -91,14 +122,13 @@ export class EventsController {
   }
 
   // After the fixed organizer/* routes so it doesn't swallow them.
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ORGANIZER', 'ADMIN')
+  @UseGuards(JwtAuthGuard)
   @Get('organizer/:id')
-  findOneForOrganizer(
+  findOneForTeam(
     @Param('id', ParseIdPipe) id: string,
     @CurrentUser('userId') userId: string,
   ) {
-    return this.eventsService.findOneForOrganizer(id, userId);
+    return this.eventsService.findOneForTeam(id, userId);
   }
 
   @Get(':id')
@@ -122,8 +152,7 @@ export class EventsController {
     return this.eventsService.create(userId, body);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ORGANIZER', 'ADMIN')
+  @UseGuards(JwtAuthGuard)
   @Put(':id')
   update(
     @Param('id', ParseIdPipe) id: string,
@@ -133,8 +162,7 @@ export class EventsController {
     return this.eventsService.update(id, userId, body);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ORGANIZER', 'ADMIN')
+  @UseGuards(JwtAuthGuard)
   @Put(':id/batches')
   updateBatches(
     @Param('id', ParseIdPipe) eventId: string,
@@ -144,8 +172,7 @@ export class EventsController {
     return this.eventsService.updateBatches(eventId, userId, body.batches);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ORGANIZER', 'ADMIN')
+  @UseGuards(JwtAuthGuard)
   @Put(':id/batches/:batchId/sale')
   changeBatchSale(
     @Param('id', ParseIdPipe) eventId: string,
@@ -178,26 +205,17 @@ export class EventsController {
     return this.eventsService.getPromoterEventStats(userId, eventId);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ORGANIZER', 'ADMIN')
+  @UseGuards(JwtAuthGuard)
   @Post(':id/staff')
   addStaff(
     @Param('id', ParseIdPipe) eventId: string,
     @Body() body: AddStaffDto,
     @CurrentUser('userId') userId: string,
   ) {
-    return this.eventsService.addStaff(
-      eventId,
-      userId,
-      body.userId,
-      body.role,
-      body.commissionType,
-      body.commissionValue,
-    );
+    return this.eventsService.addStaff(eventId, userId, body);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ORGANIZER', 'ADMIN')
+  @UseGuards(JwtAuthGuard)
   @Get(':id/staff')
   getStaff(
     @Param('id', ParseIdPipe) eventId: string,

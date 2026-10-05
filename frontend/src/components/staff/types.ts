@@ -1,4 +1,11 @@
 import type { EventPhase } from '@/utils/event-edit';
+import type { EventPermission } from '@/utils/co-organizers';
+
+// Lo que puede hacer un co-organizador (además de escanear).
+export interface CoOrganizerTerms {
+  permissions: EventPermission[];
+  freeTicketLimit: number | null;
+}
 
 export type StaffRoleName = 'PROMOTER' | 'SCANNER' | 'MANAGER';
 
@@ -31,9 +38,10 @@ export interface MyStaffEvent {
   owed: number;
   roles: StaffRoleName[];
   promoter: MyPromoterRole | null;
+  coOrganizer: CoOrganizerTerms | null;
 }
 
-export interface MyStaffInvitation {
+export interface MyStaffInvitation extends CoOrganizerTerms {
   id: string;
   role: StaffRoleName;
   commissionType: string | null;

@@ -3,7 +3,7 @@
 export const STAFF_ROLE_LABELS = {
   SCANNER: 'Scanner',
   PROMOTER: 'Promotor',
-  MANAGER: 'Encargado',
+  MANAGER: 'Co-organizador',
 } as const;
 
 export function staffRoleLabel(role: string): string {

@@ -39,11 +39,6 @@
       "count": 1
     }
   },
-  "src/events/dto/add-staff.dto.ts": {
-    "@typescript-eslint/no-unsafe-member-access": {
-      "count": 2
-    }
-  },
   "src/notifications/notifications.controller.ts": {
     "@typescript-eslint/no-unsafe-member-access": {
       "count": 4

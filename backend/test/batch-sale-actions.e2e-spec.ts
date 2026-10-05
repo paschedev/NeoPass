@@ -265,7 +265,7 @@ describe('Acciones de venta de una tanda', () => {
   });
 
   describe('permisos', () => {
-    it('otro organizador no puede actuar sobre la tanda', async () => {
+    it('para otro organizador el evento no existe', async () => {
       const created = await eventInProgress();
       const other = await createOrganizerWithEvent(t.prisma);
 
@@ -274,7 +274,7 @@ describe('Acciones de venta de una tanda', () => {
         created.event.id,
         created.batch.id,
         'END',
-      ).expect(403);
+      ).expect(404);
 
       expect((await savedBatch(created.batch.id)).closeAt).toBeNull();
     });
@@ -293,11 +293,11 @@ describe('Acciones de venta de una tanda', () => {
       expect((await savedBatch(created.batch.id)).closeAt).toBeNull();
     });
 
-    it('un comprador no puede actuar', async () => {
+    it('para un comprador el evento no existe', async () => {
       const created = await eventInProgress();
       const buyer = await createUser(t.prisma);
 
-      await act(buyer, created.event.id, created.batch.id, 'END').expect(403);
+      await act(buyer, created.event.id, created.batch.id, 'END').expect(404);
     });
 
     it('sin sesión no se puede actuar', async () => {

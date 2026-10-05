@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { FormProvider, useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Calendar, Info, MapPin, Save, Video } from 'lucide-react';
+import { Calendar, Info, Lock, MapPin, Save, Video } from 'lucide-react';
 import TandasManager from '@/components/TandasManager';
 import { useCloudinaryUpload } from '@/hooks/useCloudinaryUpload';
 import type { EventFormValues } from '@/utils/event-edit';
@@ -90,13 +90,17 @@ function Section({
   );
 }
 
+const ALL_ALLOWED = { canEditInfo: true, canManageBatches: true };
+
 // Formulario de crear y editar evento. Valida cada campo al cambiar, con las
-// mismas reglas de fechas que el backend según el momento del evento.
+// mismas reglas de fechas que el backend según el momento del evento. Un
+// co-organizador ve en solo lectura lo que no tiene permitido cambiar.
 export default function EventForm({
   mode,
   eventId,
   rules,
   defaultValues = EMPTY_EVENT,
+  permissions = ALL_ALLOWED,
   onSubmit,
 }: {
   mode: 'create' | 'edit';
@@ -105,11 +109,21 @@ export default function EventForm({
   // Se leen al montar: la página arma el formulario con el evento ya cargado.
   rules: EventDateRules;
   defaultValues?: EventFormInput;
+  permissions?: { canEditInfo: boolean; canManageBatches: boolean };
   onSubmit: (event: EventFormValues) => Promise<void>;
 }) {
   const router = useRouter();
   const [schema] = useState(() => buildEventSchema(rules));
-  const { uploading, upload } = useCloudinaryUpload();
+  const { uploading, upload } = useCloudinaryUpload(
+    mode === 'edit' ? eventId : undefined,
+  );
+  const { canEditInfo, canManageBatches } = permissions;
+  const readOnlyNotes = [
+    canEditInfo ? null : 'La info del evento la ves sin poder cambiarla.',
+    canManageBatches
+      ? null
+      : 'Las tandas y los precios los ves sin poder cambiarlos.',
+  ].filter(Boolean);
   const form = useForm<EventFormInput, unknown, EventFormOutput>({
     resolver: zodResolver(schema),
     defaultValues,
@@ -156,155 +170,168 @@ export default function EventForm({
         </div>
       )}
 
-      <Section
-        icon={<Info className="text-indigo-400 w-5 h-5" />}
-        title="Información general"
+      {readOnlyNotes.length > 0 && (
+        <div className="bg-sky-500/10 border border-sky-500/20 rounded-2xl p-4 text-sm text-sky-200 flex gap-3">
+          <Lock className="w-5 h-5 shrink-0 text-sky-400" />
+          <p>Sos co-organizador. {readOnlyNotes.join(' ')}</p>
+        </div>
+      )}
+
+      <fieldset
+        disabled={!canEditInfo}
+        aria-label="Info del evento"
+        className="space-y-8 min-w-0 disabled:opacity-60"
       >
-        <div className="space-y-5">
-          <FlyerField
-            imageUrl={imageUrl}
-            uploading={uploading}
-            error={errors.imageUrl?.message}
-            onFile={handleFlyer}
-          />
-          <Field
-            id="title"
-            label="Nombre del evento"
-            error={errors.title?.message}
-          >
-            <input
+        <Section
+          icon={<Info className="text-indigo-400 w-5 h-5" />}
+          title="Información general"
+        >
+          <div className="space-y-5">
+            <FlyerField
+              imageUrl={imageUrl}
+              uploading={uploading}
+              error={errors.imageUrl?.message}
+              onFile={handleFlyer}
+            />
+            <Field
               id="title"
-              type="text"
-              placeholder="Ej: Tech Meetup 2026"
-              className={fieldClass(errors.title?.message)}
-              {...register('title')}
-            />
-          </Field>
-          <Field
-            id="youtubeLink"
-            label={
-              <>
-                <Video className="w-4 h-4" /> Link de YouTube (opcional)
-              </>
-            }
-            error={errors.youtubeLink?.message}
-          >
-            <input
-              id="youtubeLink"
-              type="url"
-              placeholder="Ej: https://youtube.com/watch?v=..."
-              className={fieldClass(errors.youtubeLink?.message)}
-              {...register('youtubeLink')}
-            />
-          </Field>
-          <Field
-            id="description"
-            label="Descripción"
-            error={errors.description?.message}
-          >
-            <textarea
-              id="description"
-              rows={4}
-              spellCheck
-              placeholder="Contá de qué trata el evento..."
-              className={fieldClass(errors.description?.message)}
-              {...register('description')}
-            />
-          </Field>
-        </div>
-      </Section>
-
-      <Section
-        icon={<Calendar className="text-purple-400 w-5 h-5" />}
-        title="Fecha y hora"
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Field
-            id="startDate"
-            label="Inicio"
-            error={errors.startDate?.message}
-          >
-            <input
-              id="startDate"
-              type="datetime-local"
-              readOnly={inProgress}
-              min={limits.startMin}
-              max={limits.startMax}
-              className={dateFieldClass(errors.startDate?.message)}
-              {...register('startDate', {
-                // El fin se valida contra el inicio: si ya estaba elegido, se revisa de nuevo.
-                onChange: () => {
-                  if (getValues('endDate')) void trigger('endDate');
-                },
-              })}
-            />
-          </Field>
-          <Field id="endDate" label="Fin" error={errors.endDate?.message}>
-            <input
-              id="endDate"
-              type="datetime-local"
-              min={limits.endMin}
-              className={dateFieldClass(errors.endDate?.message)}
-              {...register('endDate', {
-                // Las ventanas de venta de las tandas no pueden pasar del fin.
-                onChange: () => {
-                  const windows = getValues('batches').flatMap((_, index) => [
-                    `batches.${index}.publishAt` as const,
-                    `batches.${index}.closeAt` as const,
-                  ]);
-                  if (windows.length) void trigger(windows);
-                },
-              })}
-            />
-          </Field>
-        </div>
-        <p className="text-xs text-neutral-500 mt-3">
-          Las entradas se pueden escanear desde{' '}
-          {CHECK_IN_OPENS_HOURS_BEFORE_START} horas antes del inicio.
-        </p>
-      </Section>
-
-      <Section
-        icon={<MapPin className="text-emerald-400 w-5 h-5" />}
-        title="Ubicación"
-      >
-        <div className="space-y-5">
-          <Field
-            id="venueName"
-            label="Nombre del lugar"
-            error={errors.venueName?.message}
-          >
-            <input
-              id="venueName"
-              type="text"
-              readOnly={inProgress}
-              placeholder="Ej: Centro de Convenciones"
-              className={fieldClass(errors.venueName?.message)}
-              {...register('venueName')}
-            />
-          </Field>
-          <Field
-            id="venueAddress"
-            label="Dirección"
-            error={errors.venueAddress?.message}
-          >
-            <FormProvider {...form}>
-              <VenueLocationField
-                readOnly={inProgress}
-                className={fieldClass(errors.venueAddress?.message)}
+              label="Nombre del evento"
+              error={errors.title?.message}
+            >
+              <input
+                id="title"
+                type="text"
+                placeholder="Ej: Tech Meetup 2026"
+                className={fieldClass(errors.title?.message)}
+                {...register('title')}
               />
-            </FormProvider>
-          </Field>
-        </div>
-      </Section>
+            </Field>
+            <Field
+              id="youtubeLink"
+              label={
+                <>
+                  <Video className="w-4 h-4" /> Link de YouTube (opcional)
+                </>
+              }
+              error={errors.youtubeLink?.message}
+            >
+              <input
+                id="youtubeLink"
+                type="url"
+                placeholder="Ej: https://youtube.com/watch?v=..."
+                className={fieldClass(errors.youtubeLink?.message)}
+                {...register('youtubeLink')}
+              />
+            </Field>
+            <Field
+              id="description"
+              label="Descripción"
+              error={errors.description?.message}
+            >
+              <textarea
+                id="description"
+                rows={4}
+                spellCheck
+                placeholder="Contá de qué trata el evento..."
+                className={fieldClass(errors.description?.message)}
+                {...register('description')}
+              />
+            </Field>
+          </div>
+        </Section>
+
+        <Section
+          icon={<Calendar className="text-purple-400 w-5 h-5" />}
+          title="Fecha y hora"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <Field
+              id="startDate"
+              label="Inicio"
+              error={errors.startDate?.message}
+            >
+              <input
+                id="startDate"
+                type="datetime-local"
+                readOnly={inProgress}
+                min={limits.startMin}
+                max={limits.startMax}
+                className={dateFieldClass(errors.startDate?.message)}
+                {...register('startDate', {
+                  // El fin se valida contra el inicio: si ya estaba elegido, se revisa de nuevo.
+                  onChange: () => {
+                    if (getValues('endDate')) void trigger('endDate');
+                  },
+                })}
+              />
+            </Field>
+            <Field id="endDate" label="Fin" error={errors.endDate?.message}>
+              <input
+                id="endDate"
+                type="datetime-local"
+                min={limits.endMin}
+                className={dateFieldClass(errors.endDate?.message)}
+                {...register('endDate', {
+                  // Las ventanas de venta de las tandas no pueden pasar del fin.
+                  onChange: () => {
+                    const windows = getValues('batches').flatMap((_, index) => [
+                      `batches.${index}.publishAt` as const,
+                      `batches.${index}.closeAt` as const,
+                    ]);
+                    if (windows.length) void trigger(windows);
+                  },
+                })}
+              />
+            </Field>
+          </div>
+          <p className="text-xs text-neutral-500 mt-3">
+            Las entradas se pueden escanear desde{' '}
+            {CHECK_IN_OPENS_HOURS_BEFORE_START} horas antes del inicio.
+          </p>
+        </Section>
+
+        <Section
+          icon={<MapPin className="text-emerald-400 w-5 h-5" />}
+          title="Ubicación"
+        >
+          <div className="space-y-5">
+            <Field
+              id="venueName"
+              label="Nombre del lugar"
+              error={errors.venueName?.message}
+            >
+              <input
+                id="venueName"
+                type="text"
+                readOnly={inProgress}
+                placeholder="Ej: Centro de Convenciones"
+                className={fieldClass(errors.venueName?.message)}
+                {...register('venueName')}
+              />
+            </Field>
+            <Field
+              id="venueAddress"
+              label="Dirección"
+              error={errors.venueAddress?.message}
+            >
+              <FormProvider {...form}>
+                <VenueLocationField
+                  readOnly={inProgress}
+                  className={fieldClass(errors.venueAddress?.message)}
+                />
+              </FormProvider>
+            </Field>
+          </div>
+        </Section>
+      </fieldset>
 
       <div className="mt-12 pt-12 border-t border-white/10">
         <fieldset aria-label="Tandas" className="min-w-0">
           <FormProvider {...form}>
             <TandasManager
               saved={rules.saved?.batches}
-              eventId={eventId}
-              locked={inProgress}
+              eventId={canManageBatches ? eventId : undefined}
+              locked={inProgress || !canManageBatches}
             />
           </FormProvider>
         </fieldset>
@@ -316,21 +343,23 @@ export default function EventForm({
           onClick={() => router.back()}
           className="px-6 py-3 rounded-xl font-medium text-neutral-400 hover:bg-white/5 transition-colors"
         >
-          Cancelar
+          {canEditInfo || canManageBatches ? 'Cancelar' : 'Volver'}
         </button>
-        <button
-          type="submit"
-          disabled={isSubmitting || uploading}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 md:px-8 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-        >
-          <Save className="w-5 h-5" />
-          <span className="md:hidden">
-            {isSubmitting ? labels.busy : labels.short}
-          </span>
-          <span className="hidden md:inline">
-            {isSubmitting ? labels.busy : labels.full}
-          </span>
-        </button>
+        {(canEditInfo || canManageBatches) && (
+          <button
+            type="submit"
+            disabled={isSubmitting || uploading}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 md:px-8 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            <Save className="w-5 h-5" />
+            <span className="md:hidden">
+              {isSubmitting ? labels.busy : labels.short}
+            </span>
+            <span className="hidden md:inline">
+              {isSubmitting ? labels.busy : labels.full}
+            </span>
+          </button>
+        )}
       </div>
     </form>
   );

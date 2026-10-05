@@ -102,7 +102,7 @@ describe('staff de un evento', () => {
     it.each([
       ['PROMOTER', 'promotor (RPP)', ', con 10% de comisión por entrada.'],
       ['SCANNER', 'scanner', '.'],
-      ['MANAGER', 'encargado', '.'],
+      ['MANAGER', 'co-organizador', '. Vas a poder escanear.'],
     ] as const)(
       'el aviso al invitado como %s nombra el rol en español',
       async (role, label, ending) => {
@@ -121,12 +121,12 @@ describe('staff de un evento', () => {
       },
     );
 
-    it('no puede invitar a un evento ajeno', async () => {
+    it('no puede invitar a un evento ajeno: para él no existe', async () => {
       const { organizer } = await createOrganizerWithEvent(t.prisma);
       const other = await createOrganizerWithEvent(t.prisma);
       const invitee = await createUser(t.prisma);
 
-      await invite(organizer, other.event.id, invitee.id).expect(403);
+      await invite(organizer, other.event.id, invitee.id).expect(404);
     });
 
     it('invitar a un evento que no existe da 404', async () => {
@@ -321,11 +321,11 @@ describe('staff de un evento', () => {
       ]);
     });
 
-    it('no puede ver el staff de un evento ajeno', async () => {
+    it('no puede ver el staff de un evento ajeno: para él no existe', async () => {
       const { organizer } = await createOrganizerWithEvent(t.prisma);
       const other = await createOrganizerWithEvent(t.prisma);
 
-      await listStaff(organizer, other.event.id).expect(403);
+      await listStaff(organizer, other.event.id).expect(404);
     });
 
     it('un evento que no existe da 404', async () => {

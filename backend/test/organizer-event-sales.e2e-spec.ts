@@ -234,18 +234,18 @@ describe('Detalle de ventas del evento para el organizador', () => {
   });
 
   describe('permisos', () => {
-    it('otro organizador no puede ver el detalle', async () => {
+    it('para otro organizador el detalle no existe', async () => {
       const { event } = await createOrganizerWithEvent(t.prisma);
       const intruder = await createUser(t.prisma, { role: 'ORGANIZER' });
 
-      await getSales(intruder, event.id).expect(403);
+      await getSales(intruder, event.id).expect(404);
     });
 
-    it('un comprador no puede ver el detalle', async () => {
+    it('para un comprador el detalle no existe', async () => {
       const { event } = await createOrganizerWithEvent(t.prisma);
       const buyer = await createUser(t.prisma);
 
-      await getSales(buyer, event.id).expect(403);
+      await getSales(buyer, event.id).expect(404);
     });
 
     it('un evento que no existe responde que no lo encontró', async () => {
