@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "EventActivityType" ADD VALUE 'ATTENDEES_EXPORTED';

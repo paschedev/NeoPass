@@ -80,7 +80,7 @@ describe('Historial del evento: cada cambio queda con quién lo hizo', () => {
 
   function call(
     user: User,
-    method: 'put' | 'post',
+    method: 'get' | 'put' | 'post',
     path: string,
     body: object = {},
   ) {
@@ -353,6 +353,53 @@ describe('Historial del evento: cada cambio queda con quién lo hizo', () => {
     });
   });
 
+  describe('descargar la lista del público', () => {
+    it('cada descarga queda con quién la hizo y cuántas entradas tenía', async () => {
+      const s = await scenario();
+      const csv = `/events/organizer/${s.event.id}/attendees/export`;
+
+      await call(s.member, 'get', csv).expect(200);
+      await call(s.organizer, 'get', csv).expect(200);
+
+      expect(await history(s.event.id)).toEqual([
+        {
+          type: 'ATTENDEES_EXPORTED',
+          summary: 'Descargó la lista del público (2 entradas).',
+          actor: 'Ana Pérez',
+        },
+        {
+          type: 'ATTENDEES_EXPORTED',
+          summary: 'Descargó la lista del público (2 entradas).',
+          actor: 'Dueña',
+        },
+      ]);
+    });
+
+    it('mirar la lista en pantalla no queda', async () => {
+      const s = await scenario();
+
+      await call(
+        s.member,
+        'get',
+        `/events/organizer/${s.event.id}/attendees`,
+      ).expect(200);
+
+      expect(await history(s.event.id)).toEqual([]);
+    });
+
+    it('sin el permiso no hay CSV ni registro', async () => {
+      const s = await scenario(['VIEW_SALES']);
+
+      await call(
+        s.member,
+        'get',
+        `/events/organizer/${s.event.id}/attendees/export`,
+      ).expect(403);
+
+      expect(await history(s.event.id)).toEqual([]);
+    });
+  });
+
   describe('si el historial no se puede guardar, el cambio tampoco queda', () => {
     const changes: [
       string,
@@ -469,6 +516,17 @@ describe('Historial del evento: cada cambio queda con quién lo hizo', () => {
           });
           expect(promoter.totalPaid.toNumber()).toBe(0);
         },
+      ],
+      [
+        'descargar la lista del público',
+        (s) =>
+          call(
+            s.member,
+            'get',
+            `/events/organizer/${s.event.id}/attendees/export`,
+          ),
+        // The 500 is the point: the list didn't go out unrecorded.
+        async () => {},
       ],
     ];
 

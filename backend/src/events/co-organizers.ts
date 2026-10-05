@@ -16,7 +16,7 @@ const PERMISSION_PHRASE: Record<EventPermission, string> = {
   MANAGE_BATCHES: 'manejar tandas y precios',
   VIEW_SALES: 'ver ventas y recaudación',
   SEND_FREE_TICKETS: 'mandar QR free',
-  VIEW_ATTENDEES: 'ver y exportar asistentes',
+  VIEW_ATTENDEES: 'ver y exportar la lista del público',
   MANAGE_STAFF: 'manejar el staff y los pagos a RPPs',
 };
 

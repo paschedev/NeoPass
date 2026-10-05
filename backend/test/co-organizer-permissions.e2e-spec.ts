@@ -26,7 +26,7 @@ const DENIED_MESSAGE: Record<EventPermission, string> = {
   MANAGE_BATCHES: 'No tenés permiso para manejar tandas y precios',
   VIEW_SALES: 'No tenés permiso para ver ventas y recaudación',
   SEND_FREE_TICKETS: 'No tenés permiso para mandar QR free',
-  VIEW_ATTENDEES: 'No tenés permiso para ver y exportar asistentes',
+  VIEW_ATTENDEES: 'No tenés permiso para ver y exportar la lista del público',
   MANAGE_STAFF: 'No tenés permiso para manejar el staff y los pagos a RPPs',
 };
 
@@ -215,13 +215,13 @@ describe('Co-organizadores: permisos sobre el evento', () => {
       200,
     ],
     [
-      'ver los asistentes',
+      'ver la lista del público',
       'VIEW_ATTENDEES',
       (s, u) => get(u, `/events/organizer/${s.event.id}/attendees`),
       200,
     ],
     [
-      'exportar los asistentes',
+      'exportar la lista del público',
       'VIEW_ATTENDEES',
       (s, u) => get(u, `/events/organizer/${s.event.id}/attendees/export`),
       200,

@@ -6,15 +6,16 @@ import { apiFetch } from '@/utils/api';
 import { formatShortDateTime } from '@/utils/format';
 import toast from '@/utils/toast';
 
+// Sin el email: los compradores todavía no aceptaron compartirlo con el
+// equipo del organizador (FEAT-20).
 type Attendee = {
   ticketId: string;
   name: string | null;
-  email: string | null;
   ticketType: string;
   batch: string | null;
   status: string;
   checkedInAt: string | null;
-  // Llegó como QR free: el nombre y el email son los del envío.
+  // Llegó como QR free: el nombre es el del envío.
   freeTicket: boolean;
 };
 
@@ -83,12 +84,12 @@ export default function AttendeeList({ eventId }: { eventId: string }) {
       const url = URL.createObjectURL(await res.blob());
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'asistentes.csv';
+      link.download = 'publico.csv';
       link.click();
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error(error);
-      toast.error('No se pudo exportar la lista de asistentes');
+      toast.error('No se pudo exportar la lista del público');
     } finally {
       setExporting(false);
     }
@@ -99,10 +100,10 @@ export default function AttendeeList({ eventId }: { eventId: string }) {
     : 1;
 
   return (
-    <section aria-label="Asistentes" className="space-y-4">
+    <section aria-label="Público" className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h2 className="text-xl font-bold flex items-center gap-2">
-          <UserCheck className="w-5 h-5 text-indigo-400" /> Asistentes
+          <UserCheck className="w-5 h-5 text-indigo-400" /> Público
         </h2>
         <div className="flex gap-2">
           <div className="relative flex-1 sm:w-64">
@@ -110,7 +111,7 @@ export default function AttendeeList({ eventId }: { eventId: string }) {
             <input
               type="search"
               aria-label="Buscar"
-              placeholder="Buscar por nombre o email"
+              placeholder="Buscar por nombre"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               className="w-full bg-black/40 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500"
@@ -130,7 +131,7 @@ export default function AttendeeList({ eventId }: { eventId: string }) {
 
       {failed && !result && (
         <p className="text-sm text-neutral-400">
-          No pudimos cargar los asistentes.
+          No pudimos cargar la lista del público.
         </p>
       )}
       {result?.total === 0 && (
@@ -144,11 +145,10 @@ export default function AttendeeList({ eventId }: { eventId: string }) {
       {result && result.total > 0 && (
         <>
           <div className="relative bg-neutral-900 border border-white/5 rounded-2xl overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
+            <table className="w-full min-w-[520px] text-sm">
               <thead className="text-xs text-neutral-500">
                 <tr>
                   <th className="px-3 py-2 text-left font-medium">Nombre</th>
-                  <th className="px-3 py-2 text-left font-medium">Email</th>
                   <th className="px-3 py-2 text-left font-medium">Entrada</th>
                   <th className="px-3 py-2 text-left font-medium">Estado</th>
                   <th className="px-3 py-2 text-right font-medium">Ingreso</th>
@@ -161,9 +161,6 @@ export default function AttendeeList({ eventId }: { eventId: string }) {
                     <tr key={attendee.ticketId}>
                       <td className="px-3 py-3 font-medium text-white">
                         {attendee.name ?? '—'}
-                      </td>
-                      <td className="px-3 py-3 text-neutral-400">
-                        {attendee.email ?? '—'}
                       </td>
                       <td className="px-3 py-3">
                         {attendee.batch
