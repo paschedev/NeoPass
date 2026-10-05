@@ -17,8 +17,12 @@ const entry = (id: string, summary: string, actor = 'Ana Pérez') => ({
 
 function server(pages: Record<number, unknown>) {
   vi.mocked(apiFetch).mockImplementation(async (path) => {
-    const page = Number(new URL(String(path), 'http://x').searchParams.get('page'));
-    return pages[page] ? Response.json(pages[page]) : Response.json({}, { status: 500 });
+    const page = Number(
+      new URL(String(path), 'http://x').searchParams.get('page'),
+    );
+    return pages[page]
+      ? Response.json(pages[page])
+      : Response.json({}, { status: 500 });
   });
 }
 
@@ -31,7 +35,10 @@ describe('EventActivity', () => {
     server({
       1: {
         items: [
-          entry('a1', 'Cambió el precio de "General" en "Preventa" de $1.000 a $1.500.'),
+          entry(
+            'a1',
+            'Cambió el precio de "General" en "Preventa" de $1.000 a $1.500.',
+          ),
           entry('a2', 'Invitó a Bruno como scanner.', 'Dueña'),
         ],
         total: 2,
@@ -69,7 +76,9 @@ describe('EventActivity', () => {
       await screen.findByRole('listitem', { name: /Cambio viejo/ }),
     ).toBeInTheDocument();
     expect(
-      screen.getAllByRole('listitem').map((item) => item.getAttribute('aria-label')),
+      screen
+        .getAllByRole('listitem')
+        .map((item) => item.getAttribute('aria-label')),
     ).toEqual(['Cambio nuevo', 'Cambio viejo']);
     expect(
       screen.queryByRole('button', { name: 'Ver más' }),

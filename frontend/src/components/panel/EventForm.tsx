@@ -182,147 +182,147 @@ export default function EventForm({
         aria-label="Info del evento"
         className="space-y-8 min-w-0 disabled:opacity-60"
       >
-      <Section
-        icon={<Info className="text-indigo-400 w-5 h-5" />}
-        title="Información general"
-      >
-        <div className="space-y-5">
-          <FlyerField
-            imageUrl={imageUrl}
-            uploading={uploading}
-            error={errors.imageUrl?.message}
-            onFile={handleFlyer}
-          />
-          <Field
-            id="title"
-            label="Nombre del evento"
-            error={errors.title?.message}
-          >
-            <input
+        <Section
+          icon={<Info className="text-indigo-400 w-5 h-5" />}
+          title="Información general"
+        >
+          <div className="space-y-5">
+            <FlyerField
+              imageUrl={imageUrl}
+              uploading={uploading}
+              error={errors.imageUrl?.message}
+              onFile={handleFlyer}
+            />
+            <Field
               id="title"
-              type="text"
-              placeholder="Ej: Tech Meetup 2026"
-              className={fieldClass(errors.title?.message)}
-              {...register('title')}
-            />
-          </Field>
-          <Field
-            id="youtubeLink"
-            label={
-              <>
-                <Video className="w-4 h-4" /> Link de YouTube (opcional)
-              </>
-            }
-            error={errors.youtubeLink?.message}
-          >
-            <input
-              id="youtubeLink"
-              type="url"
-              placeholder="Ej: https://youtube.com/watch?v=..."
-              className={fieldClass(errors.youtubeLink?.message)}
-              {...register('youtubeLink')}
-            />
-          </Field>
-          <Field
-            id="description"
-            label="Descripción"
-            error={errors.description?.message}
-          >
-            <textarea
-              id="description"
-              rows={4}
-              spellCheck
-              placeholder="Contá de qué trata el evento..."
-              className={fieldClass(errors.description?.message)}
-              {...register('description')}
-            />
-          </Field>
-        </div>
-      </Section>
-
-      <Section
-        icon={<Calendar className="text-purple-400 w-5 h-5" />}
-        title="Fecha y hora"
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <Field
-            id="startDate"
-            label="Inicio"
-            error={errors.startDate?.message}
-          >
-            <input
-              id="startDate"
-              type="datetime-local"
-              readOnly={inProgress}
-              min={limits.startMin}
-              max={limits.startMax}
-              className={dateFieldClass(errors.startDate?.message)}
-              {...register('startDate', {
-                // El fin se valida contra el inicio: si ya estaba elegido, se revisa de nuevo.
-                onChange: () => {
-                  if (getValues('endDate')) void trigger('endDate');
-                },
-              })}
-            />
-          </Field>
-          <Field id="endDate" label="Fin" error={errors.endDate?.message}>
-            <input
-              id="endDate"
-              type="datetime-local"
-              min={limits.endMin}
-              className={dateFieldClass(errors.endDate?.message)}
-              {...register('endDate', {
-                // Las ventanas de venta de las tandas no pueden pasar del fin.
-                onChange: () => {
-                  const windows = getValues('batches').flatMap((_, index) => [
-                    `batches.${index}.publishAt` as const,
-                    `batches.${index}.closeAt` as const,
-                  ]);
-                  if (windows.length) void trigger(windows);
-                },
-              })}
-            />
-          </Field>
-        </div>
-        <p className="text-xs text-neutral-500 mt-3">
-          Las entradas se pueden escanear desde{' '}
-          {CHECK_IN_OPENS_HOURS_BEFORE_START} horas antes del inicio.
-        </p>
-      </Section>
-
-      <Section
-        icon={<MapPin className="text-emerald-400 w-5 h-5" />}
-        title="Ubicación"
-      >
-        <div className="space-y-5">
-          <Field
-            id="venueName"
-            label="Nombre del lugar"
-            error={errors.venueName?.message}
-          >
-            <input
-              id="venueName"
-              type="text"
-              readOnly={inProgress}
-              placeholder="Ej: Centro de Convenciones"
-              className={fieldClass(errors.venueName?.message)}
-              {...register('venueName')}
-            />
-          </Field>
-          <Field
-            id="venueAddress"
-            label="Dirección"
-            error={errors.venueAddress?.message}
-          >
-            <FormProvider {...form}>
-              <VenueLocationField
-                readOnly={inProgress}
-                className={fieldClass(errors.venueAddress?.message)}
+              label="Nombre del evento"
+              error={errors.title?.message}
+            >
+              <input
+                id="title"
+                type="text"
+                placeholder="Ej: Tech Meetup 2026"
+                className={fieldClass(errors.title?.message)}
+                {...register('title')}
               />
-            </FormProvider>
-          </Field>
-        </div>
-      </Section>
+            </Field>
+            <Field
+              id="youtubeLink"
+              label={
+                <>
+                  <Video className="w-4 h-4" /> Link de YouTube (opcional)
+                </>
+              }
+              error={errors.youtubeLink?.message}
+            >
+              <input
+                id="youtubeLink"
+                type="url"
+                placeholder="Ej: https://youtube.com/watch?v=..."
+                className={fieldClass(errors.youtubeLink?.message)}
+                {...register('youtubeLink')}
+              />
+            </Field>
+            <Field
+              id="description"
+              label="Descripción"
+              error={errors.description?.message}
+            >
+              <textarea
+                id="description"
+                rows={4}
+                spellCheck
+                placeholder="Contá de qué trata el evento..."
+                className={fieldClass(errors.description?.message)}
+                {...register('description')}
+              />
+            </Field>
+          </div>
+        </Section>
+
+        <Section
+          icon={<Calendar className="text-purple-400 w-5 h-5" />}
+          title="Fecha y hora"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <Field
+              id="startDate"
+              label="Inicio"
+              error={errors.startDate?.message}
+            >
+              <input
+                id="startDate"
+                type="datetime-local"
+                readOnly={inProgress}
+                min={limits.startMin}
+                max={limits.startMax}
+                className={dateFieldClass(errors.startDate?.message)}
+                {...register('startDate', {
+                  // El fin se valida contra el inicio: si ya estaba elegido, se revisa de nuevo.
+                  onChange: () => {
+                    if (getValues('endDate')) void trigger('endDate');
+                  },
+                })}
+              />
+            </Field>
+            <Field id="endDate" label="Fin" error={errors.endDate?.message}>
+              <input
+                id="endDate"
+                type="datetime-local"
+                min={limits.endMin}
+                className={dateFieldClass(errors.endDate?.message)}
+                {...register('endDate', {
+                  // Las ventanas de venta de las tandas no pueden pasar del fin.
+                  onChange: () => {
+                    const windows = getValues('batches').flatMap((_, index) => [
+                      `batches.${index}.publishAt` as const,
+                      `batches.${index}.closeAt` as const,
+                    ]);
+                    if (windows.length) void trigger(windows);
+                  },
+                })}
+              />
+            </Field>
+          </div>
+          <p className="text-xs text-neutral-500 mt-3">
+            Las entradas se pueden escanear desde{' '}
+            {CHECK_IN_OPENS_HOURS_BEFORE_START} horas antes del inicio.
+          </p>
+        </Section>
+
+        <Section
+          icon={<MapPin className="text-emerald-400 w-5 h-5" />}
+          title="Ubicación"
+        >
+          <div className="space-y-5">
+            <Field
+              id="venueName"
+              label="Nombre del lugar"
+              error={errors.venueName?.message}
+            >
+              <input
+                id="venueName"
+                type="text"
+                readOnly={inProgress}
+                placeholder="Ej: Centro de Convenciones"
+                className={fieldClass(errors.venueName?.message)}
+                {...register('venueName')}
+              />
+            </Field>
+            <Field
+              id="venueAddress"
+              label="Dirección"
+              error={errors.venueAddress?.message}
+            >
+              <FormProvider {...form}>
+                <VenueLocationField
+                  readOnly={inProgress}
+                  className={fieldClass(errors.venueAddress?.message)}
+                />
+              </FormProvider>
+            </Field>
+          </div>
+        </Section>
       </fieldset>
 
       <div className="mt-12 pt-12 border-t border-white/10">
@@ -346,19 +346,19 @@ export default function EventForm({
           {canEditInfo || canManageBatches ? 'Cancelar' : 'Volver'}
         </button>
         {(canEditInfo || canManageBatches) && (
-        <button
-          type="submit"
-          disabled={isSubmitting || uploading}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 md:px-8 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-        >
-          <Save className="w-5 h-5" />
-          <span className="md:hidden">
-            {isSubmitting ? labels.busy : labels.short}
-          </span>
-          <span className="hidden md:inline">
-            {isSubmitting ? labels.busy : labels.full}
-          </span>
-        </button>
+          <button
+            type="submit"
+            disabled={isSubmitting || uploading}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 md:px-8 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            <Save className="w-5 h-5" />
+            <span className="md:hidden">
+              {isSubmitting ? labels.busy : labels.short}
+            </span>
+            <span className="hidden md:inline">
+              {isSubmitting ? labels.busy : labels.full}
+            </span>
+          </button>
         )}
       </div>
     </form>

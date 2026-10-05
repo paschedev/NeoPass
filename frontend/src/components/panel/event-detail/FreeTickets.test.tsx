@@ -139,7 +139,9 @@ describe('FreeTickets', () => {
 
   it('sin tope no muestra cuántos quedan, ni quién mandó (el co-organizador ve solo lo suyo)', async () => {
     server({
-      lists: [[grant({ issuedById: 'u-ana', issuedBy: { name: 'Ana Pérez' } })]],
+      lists: [
+        [grant({ issuedById: 'u-ana', issuedBy: { name: 'Ana Pérez' } })],
+      ],
     });
 
     renderSection();

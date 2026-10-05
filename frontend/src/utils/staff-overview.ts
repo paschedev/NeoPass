@@ -59,7 +59,8 @@ export function staffCounts(
   const parts = [
     promoters.length && counted(promoters.length, 'RPP', 'RPPs'),
     scanners.length && counted(scanners.length, 'scanner', 'scanners'),
-    managers.length && counted(managers.length, 'co-organizador', 'co-organizadores'),
+    managers.length &&
+      counted(managers.length, 'co-organizador', 'co-organizadores'),
     pending && counted(pending, 'pendiente', 'pendientes'),
   ].filter(Boolean);
   return parts.join(' · ') || 'Sin staff todavía';

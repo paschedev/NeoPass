@@ -59,7 +59,11 @@ export default function EditarEventoPage() {
           router.replace(afterEditPath(data.access, String(id)));
           return;
         }
-        setLoaded({ phase, values: toEventFormInput(data), access: data.access });
+        setLoaded({
+          phase,
+          values: toEventFormInput(data),
+          access: data.access,
+        });
         setFetching(false);
       })
       .catch((err) => {

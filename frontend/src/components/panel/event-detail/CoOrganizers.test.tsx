@@ -110,11 +110,11 @@ describe('CoOrganizers', () => {
     );
     const dialog = screen.getByRole('dialog');
     fireEvent.click(
-      within(dialog).getByRole('checkbox', { name: /Ver ventas y recaudación/ }),
+      within(dialog).getByRole('checkbox', {
+        name: /Ver ventas y recaudación/,
+      }),
     );
-    fireEvent.click(
-      within(dialog).getByRole('checkbox', { name: /QR free/ }),
-    );
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: /QR free/ }));
     fireEvent.click(
       within(dialog).getByRole('checkbox', { name: /Editar la info/ }),
     );

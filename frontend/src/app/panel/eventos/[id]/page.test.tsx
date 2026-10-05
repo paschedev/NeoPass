@@ -40,7 +40,11 @@ const teamEvent = (access: EventAccess) => ({
   venueName: 'Club Central',
   venueAddress: 'Av. Corrientes 1234',
   ticketBatches: [
-    { id: 'b1', name: 'Preventa', ticketTypes: [{ id: 't1', name: 'General' }] },
+    {
+      id: 'b1',
+      name: 'Preventa',
+      ticketTypes: [{ id: 't1', name: 'General' }],
+    },
   ],
   access,
 });

@@ -149,8 +149,8 @@ export default function CoOrganizers({
         )}
       </div>
       <p className="text-sm text-neutral-400">
-        Te ayudan con el evento con los permisos que les des. Cobrar,
-        publicar, cancelar y sumar co-organizadores es solo tuyo.
+        Te ayudan con el evento con los permisos que les des. Cobrar, publicar,
+        cancelar y sumar co-organizadores es solo tuyo.
       </p>
 
       {failed && (
@@ -271,8 +271,8 @@ export default function CoOrganizers({
               ¿Quitar a {removing.name}?
             </h2>
             <p className="text-sm text-neutral-400">
-              Deja de poder manejar el evento y de escanear. Lo que ya hizo
-              (QR free mandados, pagos registrados) queda como está y en el
+              Deja de poder manejar el evento y de escanear. Lo que ya hizo (QR
+              free mandados, pagos registrados) queda como está y en el
               historial.
             </p>
             <div className="flex gap-3">
