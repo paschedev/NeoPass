@@ -18,7 +18,6 @@ vi.mock('@/utils/toast', () => ({
 const ana = {
   ticketId: 'k1',
   name: 'Ana Pérez',
-  email: 'ana@mail.test',
   ticketType: 'General',
   batch: 'Preventa',
   status: 'USED',
@@ -28,7 +27,6 @@ const ana = {
 const bruno = {
   ticketId: 'k2',
   name: 'Bruno Díaz',
-  email: 'bruno@mail.test',
   ticketType: 'Campo',
   batch: 'General',
   status: 'VALID',
@@ -47,19 +45,22 @@ const listCalls = () =>
 
 describe('AttendeeList', () => {
   beforeEach(() => {
-    URL.createObjectURL = vi.fn(() => 'blob:asistentes');
+    URL.createObjectURL = vi.fn(() => 'blob:publico');
     URL.revokeObjectURL = vi.fn();
   });
 
   afterEach(() => vi.clearAllMocks());
 
-  it('muestra a cada asistente con su email, la entrada, el estado y la hora de ingreso', async () => {
+  it('el público: cada persona con la entrada, el estado y la hora de ingreso, sin email', async () => {
     vi.mocked(apiFetch).mockImplementation(async () => page([ana, bruno]));
 
     render(<AttendeeList eventId="e1" />);
 
-    const row = await screen.findByRole('row', { name: /Ana Pérez/ });
-    expect(row).toHaveTextContent('ana@mail.test');
+    const section = screen.getByRole('region', { name: 'Público' });
+    const row = await within(section).findByRole('row', { name: /Ana Pérez/ });
+    expect(
+      within(section).queryByRole('columnheader', { name: 'Email' }),
+    ).not.toBeInTheDocument();
     expect(row).toHaveTextContent('General · Preventa');
     expect(row).toHaveTextContent('Ingresó');
     expect(row).toHaveTextContent('9/10 23:30');
@@ -74,7 +75,6 @@ describe('AttendeeList', () => {
       ...bruno,
       ticketId: 'k3',
       name: 'Dani Invitada',
-      email: 'dani@mail.test',
       freeTicket: true,
     };
     vi.mocked(apiFetch).mockImplementation(async () => page([ana, dani]));
@@ -88,16 +88,16 @@ describe('AttendeeList', () => {
     ).not.toHaveTextContent('QR free');
   });
 
-  it('busca por nombre o email', async () => {
+  it('busca por nombre', async () => {
     vi.mocked(apiFetch).mockImplementation(async (path) =>
       path.includes('q=bru') ? page([bruno]) : page([ana, bruno]),
     );
     render(<AttendeeList eventId="e1" />);
     await screen.findByRole('row', { name: /Ana Pérez/ });
 
-    fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar' }), {
-      target: { value: 'bru' },
-    });
+    const search = screen.getByRole('searchbox', { name: 'Buscar' });
+    expect(search).toHaveAttribute('placeholder', 'Buscar por nombre');
+    fireEvent.change(search, { target: { value: 'bru' } });
 
     await waitFor(() =>
       expect(
@@ -123,7 +123,7 @@ describe('AttendeeList', () => {
     expect(screen.getByRole('button', { name: 'Siguiente' })).toBeDisabled();
   });
 
-  it('exporta todos los asistentes a CSV', async () => {
+  it('exporta todo el público a publico.csv', async () => {
     const click = vi
       .spyOn(HTMLAnchorElement.prototype, 'click')
       .mockImplementation(() => {});
@@ -141,7 +141,10 @@ describe('AttendeeList', () => {
     expect(apiFetch).toHaveBeenCalledWith(
       '/events/organizer/e1/attendees/export',
     );
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:asistentes');
+    expect((click.mock.contexts[0] as HTMLAnchorElement).download).toBe(
+      'publico.csv',
+    );
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:publico');
     click.mockRestore();
   });
 
@@ -158,12 +161,12 @@ describe('AttendeeList', () => {
 
     await waitFor(() =>
       expect(toast.error).toHaveBeenCalledWith(
-        'No se pudo exportar la lista de asistentes',
+        'No se pudo exportar la lista del público',
       ),
     );
   });
 
-  it('sin asistentes lo dice, y una búsqueda sin resultados también', async () => {
+  it('sin entradas lo dice, y una búsqueda sin resultados también', async () => {
     vi.mocked(apiFetch).mockImplementation(async () => page([]));
     render(<AttendeeList eventId="e1" />);
 
@@ -174,7 +177,7 @@ describe('AttendeeList', () => {
     fireEvent.change(screen.getByRole('searchbox', { name: 'Buscar' }), {
       target: { value: 'zzz' },
     });
-    const section = screen.getByRole('region', { name: 'Asistentes' });
+    const section = screen.getByRole('region', { name: 'Público' });
     expect(
       await within(section).findByText('Nadie coincide con «zzz».'),
     ).toBeInTheDocument();

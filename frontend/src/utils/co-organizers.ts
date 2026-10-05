@@ -43,9 +43,9 @@ export const PERMISSION_OPTIONS: {
   },
   {
     value: 'VIEW_ATTENDEES',
-    label: 'Asistentes y exportar',
-    short: 'Asistentes',
-    description: 'La lista de asistentes con nombre y email, y el CSV.',
+    label: 'Público y exportar',
+    short: 'Público',
+    description: 'La lista de quienes tienen entrada, por nombre, y el CSV.',
   },
   {
     value: 'MANAGE_STAFF',
@@ -147,7 +147,7 @@ const DENIED_PHRASE: Record<EventPermission, string> = {
   MANAGE_BATCHES: 'manejar tandas y precios',
   VIEW_SALES: 'ver ventas y recaudación',
   SEND_FREE_TICKETS: 'mandar QR free',
-  VIEW_ATTENDEES: 'ver y exportar asistentes',
+  VIEW_ATTENDEES: 'ver y exportar la lista del público',
   MANAGE_STAFF: 'manejar el staff y los pagos a RPPs',
 };
 
