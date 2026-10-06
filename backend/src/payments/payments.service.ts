@@ -229,6 +229,7 @@ export class PaymentsService {
       userId: event.organizerId,
       type: 'SYSTEM',
       eventId: event.id,
+      actionUrl: `/panel/eventos/${event.id}`,
       ...PAYMENT_ISSUE_MESSAGES[reason](paymentId),
       metadata: { reason, orderId: order.id, paymentId, ...details },
     });

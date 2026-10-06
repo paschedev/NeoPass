@@ -835,6 +835,7 @@ export class EventsService {
         ? `Te invitaron${again} como co-organizador al evento "${event.title}". Vas a poder ${willDo}.`
         : `Te invitaron${again} como ${INVITED_ROLE_LABEL[role]} al evento "${event.title}"${terms}.`,
       eventId: event.id,
+      actionUrl: '/panel/staff',
       metadata: {
         eventStaffId: staff.id,
         role,

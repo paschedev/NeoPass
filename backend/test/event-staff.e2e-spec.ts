@@ -95,7 +95,11 @@ describe('staff de un evento', () => {
         where: { userId: invitee.id },
       });
       expect(notifications).toEqual([
-        expect.objectContaining({ type: 'STAFF_INVITE', eventId: event.id }),
+        expect.objectContaining({
+          type: 'STAFF_INVITE',
+          eventId: event.id,
+          actionUrl: '/panel/staff',
+        }),
       ]);
     });
 
@@ -367,6 +371,31 @@ describe('staff de un evento', () => {
         title: 'Invitación rechazada',
         message: `${user.name} rechazó tu invitación para ser promotor en "${event.title}".`,
       });
+    });
+
+    it('al responderla, su aviso queda leído con la respuesta y el de otra invitación no cambia', async () => {
+      const first = await createOrganizerWithEvent(t.prisma);
+      const second = await createOrganizerWithEvent(t.prisma);
+      const invitee = await createUser(t.prisma);
+      await invite(first.organizer, first.event.id, invitee.id).expect(201);
+      await invite(second.organizer, second.event.id, invitee.id).expect(201);
+      const staff = await t.prisma.eventStaff.findFirstOrThrow({
+        where: { eventId: first.event.id, userId: invitee.id },
+      });
+
+      await respond(invitee, staff.id, 'accept').expect(200);
+
+      const notifications = await t.prisma.notification.findMany({
+        where: { userId: invitee.id, type: 'STAFF_INVITE' },
+      });
+      const byEvent = (eventId: string) =>
+        notifications.find((n) => n.eventId === eventId);
+      const answered = byEvent(first.event.id);
+      const untouched = byEvent(second.event.id);
+      expect(answered?.isRead).toBe(true);
+      expect(answered?.metadata).toMatchObject({ status: 'ACCEPTED' });
+      expect(untouched?.isRead).toBe(false);
+      expect(untouched?.metadata).toMatchObject({ status: 'PENDING' });
     });
 
     it('al rechazarla queda rechazada', async () => {

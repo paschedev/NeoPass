@@ -1,61 +1,66 @@
-import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { Prisma, NotificationType } from '@prisma/client';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { ListNotificationsQueryDto } from './dto/list-notifications-query.dto';
+import {
+  NewNotification,
+  NotificationsRepository,
+} from './repositories/notifications.repository';
+
+// What the old full list (`GET /notifications`) still returns, for the tabs
+// opened before the paginated feed existed.
+const LEGACY_LIST_LIMIT = 50;
 
 @Injectable()
 export class NotificationsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private readonly notificationsRepository: NotificationsRepository,
+  ) {}
 
-  async create(data: {
-    userId: string;
-    type: NotificationType;
-    title: string;
-    message: string;
-    eventId?: string;
-    actionUrl?: string;
-    metadata?: any;
-  }) {
-    return this.prisma.notification.create({
-      data: {
-        userId: data.userId,
-        type: data.type,
-        title: data.title,
-        message: data.message,
-        eventId: data.eventId,
-        actionUrl: data.actionUrl,
-        metadata: data.metadata
-          ? (data.metadata as Prisma.InputJsonValue)
-          : Prisma.JsonNull,
-      },
-    });
+  create(notification: NewNotification) {
+    return this.notificationsRepository.create(notification);
   }
 
-  async findAllForUser(userId: string) {
-    return this.prisma.notification.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-    });
+  findAllForUser(userId: string) {
+    return this.notificationsRepository.findNewest(userId, LEGACY_LIST_LIMIT);
   }
 
-  async markAsRead(id: string, userId: string) {
-    // Only allow marking their own notifications as read
-    return this.prisma.notification.updateMany({
-      where: { id, userId },
-      data: { isRead: true },
-    });
+  async findFeed(
+    userId: string,
+    { cursor, limit, onlyRequests }: ListNotificationsQueryDto,
+  ) {
+    if (
+      cursor &&
+      !(await this.notificationsRepository.belongsTo(cursor, userId))
+    ) {
+      throw new BadRequestException(
+        'No pudimos seguir cargando los avisos. Recargá la página.',
+      );
+    }
+    const [rows, unreadCount] = await Promise.all([
+      this.notificationsRepository.findPage(userId, {
+        cursor,
+        take: limit + 1,
+        type: onlyRequests ? 'STAFF_INVITE' : undefined,
+      }),
+      this.notificationsRepository.countUnread(userId),
+    ]);
+    const items = rows.slice(0, limit);
+    return {
+      items,
+      nextCursor: rows.length > limit ? items[items.length - 1].id : null,
+      unreadCount,
+    };
   }
 
-  async markAllAsRead(userId: string) {
-    return this.prisma.notification.updateMany({
-      where: { userId, isRead: false },
-      data: { isRead: true },
-    });
+  markAsRead(id: string, userId: string) {
+    return this.notificationsRepository.markAsRead(id, userId);
   }
 
-  async delete(id: string, userId: string) {
-    return this.prisma.notification.deleteMany({
-      where: { id, userId },
-    });
+  markAllAsRead(userId: string) {
+    return this.notificationsRepository.markAllAsRead(userId);
+  }
+
+  delete(id: string, userId: string) {
+    return this.notificationsRepository.delete(id, userId);
   }
 
   async updateStaffInviteStatus(
@@ -63,17 +68,10 @@ export class NotificationsService {
     eventStaffId: string,
     status: 'ACCEPTED' | 'REJECTED',
   ) {
-    const notifications = await this.prisma.notification.findMany({
-      where: { userId, type: 'STAFF_INVITE' },
-    });
-    for (const n of notifications) {
-      if (n.metadata && (n.metadata as any).eventStaffId === eventStaffId) {
-        const updatedMetadata = { ...(n.metadata as any), status };
-        await this.prisma.notification.update({
-          where: { id: n.id },
-          data: { metadata: updatedMetadata, isRead: true },
-        });
-      }
-    }
+    await this.notificationsRepository.markStaffInviteAnswered(
+      userId,
+      eventStaffId,
+      status,
+    );
   }
 }
