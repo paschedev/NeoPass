@@ -8,6 +8,8 @@ import { JwtStrategy } from './jwt.strategy';
 import { MailModule } from '../mail/mail.module';
 import { UserRepository } from './repositories/user.repository';
 import { CaptchaService } from './captcha.service';
+import { GoogleIdentityService } from './google-identity.service';
+import { GoogleSignInService } from './google-sign-in.service';
 
 @Module({
   imports: [
@@ -22,7 +24,14 @@ import { CaptchaService } from './captcha.service';
     MailModule,
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, UserRepository, CaptchaService],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    UserRepository,
+    CaptchaService,
+    GoogleIdentityService,
+    GoogleSignInService,
+  ],
   exports: [AuthService, UserRepository, CaptchaService, JwtModule],
 })
 export class AuthModule {}

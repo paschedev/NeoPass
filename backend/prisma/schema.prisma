@@ -111,11 +111,18 @@ model User {
   // write (trigger "User_normalize_email", which also stores the email in
   // lowercase) and accounts are looked up with its function email_key().
   emailKey     String   @unique @default("")
-  passwordHash String
+  // Null for accounts that only enter with Google.
+  passwordHash String?
   name         String
   role         UserRole @default(CUSTOMER)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now()) @updatedAt
+
+  // Sign in with Google: the linked Google account (its "sub", which never
+  // changes) and when the email was proven to be the user's (Google with the
+  // same email or the password reset link).
+  googleId        String?   @unique
+  emailVerifiedAt DateTime?
 
   // Mercado Pago (OAuth). The access token lasts 180 days and is renewed with
   // the refresh token, which changes on every renewal. Accounts linked before

@@ -15,6 +15,7 @@ const PRODUCTION_ENV = {
   RESEND_API_KEY: 're_resend_key',
   TURNSTILE_SECRET_KEY: 'turnstile-secret',
   CLOUDINARY_URL: 'cloudinary://key:secret@neopass',
+  GOOGLE_CLIENT_ID: 'neopass.apps.googleusercontent.com',
 };
 
 const REQUIRED_VARIABLES = Object.keys(PRODUCTION_ENV).filter(

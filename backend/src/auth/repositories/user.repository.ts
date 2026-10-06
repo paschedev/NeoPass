@@ -14,6 +14,10 @@ export class UserRepository {
     return this.prisma.user.findUnique({ where: { emailKey: key } });
   }
 
+  findByGoogleId(googleId: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { googleId } });
+  }
+
   async findById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { id } });
   }
@@ -29,6 +33,16 @@ export class UserRepository {
 
   async create(data: Prisma.UserCreateInput): Promise<User> {
     return this.prisma.user.create({ data });
+  }
+
+  // Only while the account has no Google account linked, so two links at the
+  // same time can't overwrite each other. Null when it already had one.
+  async linkGoogle(id: string, googleId: string, emailVerifiedAt: Date) {
+    const { count } = await this.prisma.user.updateMany({
+      where: { id, googleId: null },
+      data: { googleId, emailVerifiedAt },
+    });
+    return count === 1 ? this.findById(id) : null;
   }
 
   async update(id: string, data: Prisma.UserUpdateInput): Promise<User> {

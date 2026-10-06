@@ -16,13 +16,21 @@ import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
+import { GoogleSignInDto } from './dto/google-sign-in.dto';
+import { GoogleLinkDto } from './dto/google-link.dto';
+import { GoogleSignInService } from './google-sign-in.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
+
+// Stricter than the global limit: linking checks a password, which is slow on
+// purpose, and signing in can create an account.
+const GOOGLE_LIMIT = { default: { limit: 30, ttl: 60_000 } };
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly captchaService: CaptchaService,
+    private readonly googleSignIn: GoogleSignInService,
   ) {}
 
   @Post('login')
@@ -41,6 +49,19 @@ export class AuthController {
     await this.captchaService.assertHuman(body.captchaToken);
 
     return this.authService.register(body);
+  }
+
+  // No captcha: the credential signed by Google is the proof.
+  @Throttle(GOOGLE_LIMIT)
+  @Post('google')
+  signInWithGoogle(@Body() body: GoogleSignInDto) {
+    return this.googleSignIn.signIn(body.credential);
+  }
+
+  @Throttle(GOOGLE_LIMIT)
+  @Post('google/link')
+  linkGoogle(@Body() body: GoogleLinkDto) {
+    return this.googleSignIn.link(body.credential, body.password);
   }
 
   @UseGuards(JwtAuthGuard)

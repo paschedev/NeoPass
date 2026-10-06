@@ -32,7 +32,8 @@ export class AuthService {
 
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.userRepository.findByEmail(email);
-    if (user && (await bcrypt.compare(pass, user.passwordHash))) {
+    // An account that only enters with Google has no password to match.
+    if (user?.passwordHash && (await bcrypt.compare(pass, user.passwordHash))) {
       const { passwordHash, ...result } = user;
       return result;
     }
@@ -125,9 +126,12 @@ export class AuthService {
       throw error;
     }
 
-    const { passwordHash, ...result } = user;
+    // The same profile as /auth/me: none of the account's internal columns.
     return {
-      ...result,
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
       hasBeenRpp: false,
       isCurrentlyScanner: false,
       hasLinkedMp: false,
@@ -138,6 +142,11 @@ export class AuthService {
     const user = await this.userRepository.findById(userId);
     if (!user) throw new UnauthorizedException('Usuario no encontrado');
 
+    if (!user.passwordHash) {
+      throw new BadRequestException(
+        'Tu cuenta no tiene contraseña: podés crearla con "Olvidé mi contraseña".',
+      );
+    }
     const isValid = await bcrypt.compare(oldPass, user.passwordHash);
     // 400 and not 401: the front treats a 401 as an expired session.
     if (!isValid) {
@@ -206,12 +215,18 @@ export class AuthService {
     const salt = await bcrypt.genSalt();
     const newHash = await bcrypt.hash(newPass, salt);
 
-    // Whoever had the old password loses their open sessions too.
+    // The link proves the mailbox is theirs, so the email is verified and the
+    // account starts over: whoever had the old password or linked a Google
+    // account (and may no longer have the mailbox) loses every session, and
+    // Google is linked again with the new password.
+    const now = new Date();
     await this.userRepository.update(user.id, {
       passwordHash: newHash,
       passwordResetToken: null,
       passwordResetExpires: null,
-      passwordChangedAt: new Date(),
+      passwordChangedAt: now,
+      emailVerifiedAt: user.emailVerifiedAt ?? now,
+      googleId: null,
     });
 
     return { message: 'Contraseña restablecida con éxito' };

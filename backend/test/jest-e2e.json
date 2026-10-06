@@ -11,7 +11,8 @@
   "setupFilesAfterEnv": ["<rootDir>/setup/external-services.ts"],
   "moduleNameMapper": {
     "^mercadopago$": "<rootDir>/mocks/mercadopago.ts",
-    "^resend$": "<rootDir>/mocks/resend.ts"
+    "^resend$": "<rootDir>/mocks/resend.ts",
+    "^google-auth-library$": "<rootDir>/mocks/google-auth-library.ts"
   },
   "clearMocks": true,
   "testTimeout": 30000
