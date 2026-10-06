@@ -28,6 +28,7 @@ enum NotificationType {
   TICKET_PURCHASE
   EVENT_UPDATE
   PROMOTER_SALE
+  EVENT_SALES
 }
 
 enum OrderStatus {
@@ -392,8 +393,17 @@ model Notification {
   actionUrl String?
   metadata  Json?
 
-  createdAt DateTime @default(now())
+  // Notices that add up (sales of an event, of a promoter) share this key
+  // while unread: the next one adds to it. Reading it clears the key, so the
+  // next one opens a new notice.
+  openGroupKey String?
 
+  createdAt  DateTime @default(now())
+  // Last news on the notice (it moves up when it adds up); lists sort by it.
+  activityAt DateTime @default(now())
+
+  @@unique([userId, openGroupKey])
+  @@index([userId, activityAt])
   @@index([userId])
   @@index([eventId])
 }

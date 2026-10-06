@@ -129,6 +129,12 @@ describe('QR free', () => {
   }
 
   describe('enviar', () => {
+    it('no genera avisos de venta ni de compra: no es una venta', async () => {
+      await sentGrant();
+
+      expect(await t.prisma.notification.count()).toBe(0);
+    });
+
     it('crea las entradas válidas sin tocar el stock y manda un solo mail con todos los QR', async () => {
       const { organizer, event, ticketType } = await organizerEvent();
 

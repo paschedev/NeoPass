@@ -151,6 +151,18 @@ describe('Estados de la orden al pagar y al vencer', () => {
     expect(await issues(organizer.id)).toEqual(['AMOUNT_MISMATCH']);
   });
 
+  it('el aviso de un pago con problemas lleva al detalle del evento', async () => {
+    const { organizer, ticketType, buyer } = await setup();
+    const order = await createOrder(t.prisma, { user: buyer, ticketType });
+
+    await pay('pago-1', order.id, 1);
+
+    const notification = await t.prisma.notification.findFirstOrThrow({
+      where: { userId: organizer.id, type: 'SYSTEM' },
+    });
+    expect(notification.actionUrl).toBe(`/panel/eventos/${ticketType.eventId}`);
+  });
+
   it('un pago tardío de una orden vencida con stock la paga y solo suma vendidas', async () => {
     const { ticketType, buyer } = await setup();
     const order = await createOrder(t.prisma, {

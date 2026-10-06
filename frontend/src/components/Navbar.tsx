@@ -13,7 +13,10 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useNotificationFeed } from '@/hooks/useNotificationFeed';
 import { useStaffInvitation } from '@/hooks/useStaffInvitation';
+import { NoticeLink } from '@/components/notifications/NoticeLink';
+import { noticeTime, pendingInvitationStaffId } from '@/utils/notifications';
 
 const SUPPORT_EMAIL = 'soporte@neopass.ar';
 
@@ -28,7 +31,8 @@ export default function Navbar() {
 
   const pathname = usePathname();
 
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const feed = useNotificationFeed({ limit: 3 });
+  const { reload: reloadNotifications } = feed;
   const { processingIds, respond } = useStaffInvitation();
 
   useEffect(() => {
@@ -43,23 +47,11 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    if (isLoggedIn) fetchNotifications();
+    if (isLoggedIn) void reloadNotifications();
     // Cerrar modales al cambiar de ruta
     setShowProfile(false);
     setShowNotifications(false);
-  }, [pathname, isLoggedIn]);
-
-  const fetchNotifications = async () => {
-    try {
-      const { apiFetch } = await import('@/utils/api');
-      const res = await apiFetch('/notifications');
-      if (res.ok) {
-        setNotifications(await res.json());
-      }
-    } catch (e) {
-      console.error('Failed to fetch notifications');
-    }
-  };
+  }, [pathname, isLoggedIn, reloadNotifications]);
 
   const handleStaffAction = async (
     eventStaffId: string,
@@ -67,28 +59,15 @@ export default function Navbar() {
     notificationId: string,
   ) => {
     const outcome = await respond(eventStaffId, action, notificationId);
-    if (outcome !== 'failed') {
-      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+    if (outcome === 'done') {
+      feed.markAnswered(
+        notificationId,
+        action === 'accept' ? 'ACCEPTED' : 'REJECTED',
+      );
+    } else if (outcome === 'already-processed') {
+      await feed.reload();
     }
   };
-
-  const handleMarkAllAsRead = async () => {
-    try {
-      const { apiFetch } = await import('@/utils/api');
-      await apiFetch('/notifications/read-all', { method: 'PUT' });
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const unreadNotifs = notifications.filter((n) => !n.isRead);
-  const readNotifs = notifications.filter((n) => n.isRead);
-  const displayNotifs = [...unreadNotifs];
-  if (displayNotifs.length < 3) {
-    displayNotifs.push(...readNotifs.slice(0, 3 - displayNotifs.length));
-  }
-  const finalDisplayNotifs = displayNotifs.slice(0, 3);
 
   return (
     <header className="fixed top-0 z-[100] w-full border-b border-white/5 bg-black/40 backdrop-blur-xl">
@@ -129,10 +108,11 @@ export default function Navbar() {
                 <div className="relative" ref={notifRef}>
                   <button
                     onClick={() => setShowNotifications(!showNotifications)}
+                    aria-label="Notificaciones"
                     className="relative p-2 text-neutral-400 hover:text-white transition-colors rounded-full hover:bg-white/5"
                   >
                     <Bell className="w-5 h-5" />
-                    {notifications.filter((n) => !n.isRead).length > 0 && (
+                    {feed.unreadCount > 0 && (
                       <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-pink-500 rounded-full animate-pulse" />
                     )}
                   </button>
@@ -152,35 +132,36 @@ export default function Navbar() {
                               Notificaciones
                             </h3>
                             <div className="flex items-center gap-2">
-                              {unreadNotifs.length > 0 && (
-                                <span className="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">
-                                  {unreadNotifs.length} nuevas
-                                </span>
-                              )}
-                              {notifications.length > 0 &&
-                                unreadNotifs.length > 0 && (
+                              {feed.unreadCount > 0 && (
+                                <>
+                                  <span className="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">
+                                    {feed.unreadCount}{' '}
+                                    {feed.unreadCount === 1
+                                      ? 'nueva'
+                                      : 'nuevas'}
+                                  </span>
                                   <button
-                                    onClick={handleMarkAllAsRead}
+                                    onClick={() => void feed.markAllAsRead()}
                                     className="text-neutral-400 hover:text-white transition-colors"
                                     title="Marcar todas como leídas"
+                                    aria-label="Marcar todas como leídas"
                                   >
                                     <CheckCheck className="w-4 h-4" />
                                   </button>
-                                )}
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
                         <div className="max-h-[300px] overflow-y-auto overscroll-contain">
-                          {finalDisplayNotifs.length === 0 ? (
+                          {feed.items.length === 0 ? (
                             <div className="p-6 text-center text-sm text-neutral-500">
                               No tenés notificaciones.
                             </div>
                           ) : (
-                            finalDisplayNotifs.map((n) => {
-                              const isInvite =
-                                n.type === 'STAFF_INVITE' &&
-                                n.metadata?.eventStaffId &&
-                                n.metadata?.status === 'PENDING';
+                            feed.items.map((n) => {
+                              const invitedStaffId =
+                                pendingInvitationStaffId(n);
                               return (
                                 <div
                                   key={n.id}
@@ -192,28 +173,35 @@ export default function Navbar() {
                                   <div
                                     className={`${!n.isRead ? 'pl-3' : 'pl-0'}`}
                                   >
-                                    <h4
-                                      className={`text-sm text-white mb-1 ${!n.isRead ? 'font-bold' : 'font-normal'}`}
+                                    <NoticeLink
+                                      notice={n}
+                                      onOpen={() => void feed.markAsRead(n.id)}
                                     >
-                                      {n.title}
-                                    </h4>
-                                    <p
-                                      className={`text-sm group-hover:text-white transition-colors ${!n.isRead ? 'text-neutral-200' : 'text-neutral-400'}`}
-                                    >
-                                      {n.message}
-                                    </p>
+                                      <h4
+                                        className={`text-sm text-white mb-1 ${!n.isRead ? 'font-bold' : 'font-normal'}`}
+                                      >
+                                        {n.title}
+                                      </h4>
+                                      <p
+                                        className={`text-sm group-hover:text-white transition-colors ${!n.isRead ? 'text-neutral-200' : 'text-neutral-400'}`}
+                                      >
+                                        {n.message}
+                                      </p>
+                                    </NoticeLink>
 
-                                    {isInvite && (
+                                    {invitedStaffId && (
                                       <div className="flex gap-2 mt-3">
                                         <button
                                           onClick={() =>
                                             handleStaffAction(
-                                              n.metadata.eventStaffId,
+                                              invitedStaffId,
                                               'accept',
                                               n.id,
                                             )
                                           }
-                                          disabled={processingIds.has(n.metadata.eventStaffId)}
+                                          disabled={processingIds.has(
+                                            invitedStaffId,
+                                          )}
                                           className="flex-1 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white text-xs font-semibold py-1.5 rounded-md transition-colors"
                                         >
                                           Aceptar
@@ -221,12 +209,14 @@ export default function Navbar() {
                                         <button
                                           onClick={() =>
                                             handleStaffAction(
-                                              n.metadata.eventStaffId,
+                                              invitedStaffId,
                                               'reject',
                                               n.id,
                                             )
                                           }
-                                          disabled={processingIds.has(n.metadata.eventStaffId)}
+                                          disabled={processingIds.has(
+                                            invitedStaffId,
+                                          )}
                                           className="flex-1 bg-white/10 hover:bg-white/20 disabled:opacity-50 text-white text-xs font-semibold py-1.5 rounded-md transition-colors"
                                         >
                                           Rechazar
@@ -236,9 +226,7 @@ export default function Navbar() {
 
                                     <div className="flex items-center justify-between mt-2">
                                       <span className="text-xs text-neutral-500">
-                                        {new Date(
-                                          n.createdAt,
-                                        ).toLocaleDateString()}
+                                        {noticeTime(n).toLocaleDateString()}
                                       </span>
                                     </div>
                                   </div>

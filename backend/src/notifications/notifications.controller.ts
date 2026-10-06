@@ -4,10 +4,13 @@ import {
   Param,
   Put,
   Delete,
+  Query,
   UseGuards,
   Req,
 } from '@nestjs/common';
+import { ListNotificationsQueryDto } from './dto/list-notifications-query.dto';
 import { NotificationsService } from './notifications.service';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ParseIdPipe } from '../common/parse-id.pipe';
 
@@ -19,6 +22,15 @@ export class NotificationsController {
   @Get()
   findAll(@Req() req: any) {
     return this.notificationsService.findAllForUser(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('feed')
+  findFeed(
+    @CurrentUser('userId') userId: string,
+    @Query() query: ListNotificationsQueryDto,
+  ) {
+    return this.notificationsService.findFeed(userId, query);
   }
 
   @UseGuards(JwtAuthGuard)
