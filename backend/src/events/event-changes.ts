@@ -63,6 +63,29 @@ export function changedEventInfo(
   ).map(({ label }) => label);
 }
 
+const DATE_FIELDS: InfoField[] = ['startDate', 'endDate'];
+const PLACE_FIELDS: InfoField[] = [
+  'venueName',
+  'venueAddress',
+  'venueCity',
+  'latitude',
+  'longitude',
+  'venuePlaceId',
+];
+
+// What changes for whoever already has tickets: when or where the event is.
+// Null when the edit changes neither.
+export function ticketHolderChanges(
+  event: StoredEvent,
+  changes: UpdateEventDto,
+): { date: boolean; place: boolean } | null {
+  const changed = (fields: InfoField[]) =>
+    fields.some((field) => differs(changes[field], event[field]));
+  const date = changed(DATE_FIELDS);
+  const place = changed(PLACE_FIELDS);
+  return date || place ? { date, place } : null;
+}
+
 export function statusChange(event: StoredEvent, changes: UpdateEventDto) {
   return changes.status !== undefined && changes.status !== event.status
     ? changes.status

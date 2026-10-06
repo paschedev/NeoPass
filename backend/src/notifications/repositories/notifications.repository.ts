@@ -110,6 +110,64 @@ export class NotificationsRepository {
     });
   }
 
+  // One notice per person holding valid tickets of the event (but not the
+  // person who made the change), in one statement however many they are.
+  // An unread change notice adds up: it keeps every kind of change it has
+  // announced, and all of them are reworded with the event as it is now.
+  notifyEventChange({
+    eventId,
+    actorId,
+    changes,
+    title,
+    messages,
+  }: {
+    eventId: string;
+    actorId: string;
+    changes: { date: boolean; place: boolean };
+    title: string;
+    messages: { date: string; place: string; both: string };
+  }) {
+    const groupKey = `changes:${eventId}`;
+    const now = new Date();
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        INSERT INTO "Notification"
+          ("id", "userId", "type", "title", "message", "eventId", "actionUrl",
+           "metadata", "openGroupKey", "createdAt", "activityAt")
+        SELECT gen_random_uuid()::text, holders."userId",
+          'EVENT_UPDATE'::"NotificationType", ${title}, '', ${eventId},
+          '/panel/tickets',
+          jsonb_build_object('date', ${changes.date}::boolean,
+                             'place', ${changes.place}::boolean),
+          ${groupKey}, ${now}, ${now}
+        FROM (
+          SELECT DISTINCT t."userId"
+          FROM "Ticket" t
+          JOIN "TicketType" tt ON tt."id" = t."ticketTypeId"
+          WHERE tt."eventId" = ${eventId}
+            AND t."status" = 'VALID'
+            AND t."userId" IS NOT NULL
+            AND t."userId" <> ${actorId}
+        ) holders
+        ON CONFLICT ("userId", "openGroupKey") DO UPDATE SET
+          "title" = EXCLUDED."title",
+          "metadata" = jsonb_build_object(
+            'date',
+            ("Notification"."metadata"->>'date')::boolean OR ${changes.date}::boolean,
+            'place',
+            ("Notification"."metadata"->>'place')::boolean OR ${changes.place}::boolean),
+          "activityAt" = EXCLUDED."activityAt"`;
+      await tx.$executeRaw`
+        UPDATE "Notification" SET "message" = CASE
+          WHEN ("metadata"->>'date')::boolean AND ("metadata"->>'place')::boolean
+            THEN ${messages.both}
+          WHEN ("metadata"->>'date')::boolean THEN ${messages.date}
+          ELSE ${messages.place}
+        END
+        WHERE "openGroupKey" = ${groupKey}`;
+    });
+  }
+
   // A paid order with who has to hear about it: the event's owner, its
   // co-organizers who can see sales, its promoter and its buyer.
   findOrderForSaleNotices(orderId: string) {
