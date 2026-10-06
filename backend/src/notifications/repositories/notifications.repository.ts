@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { NotificationType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { SalesTotals } from '../sale-notices';
 
 export type NewNotification = {
   userId: string;
@@ -10,6 +11,19 @@ export type NewNotification = {
   eventId?: string;
   actionUrl?: string;
   metadata?: Prisma.InputJsonObject;
+};
+
+// A notice that adds up while unread: it carries what this sale adds and how
+// to word the new totals.
+export type AddingNotice = {
+  userId: string;
+  openGroupKey: string;
+  type: NotificationType;
+  eventId: string;
+  actionUrl: string;
+  tickets: number;
+  amount: Prisma.Decimal;
+  describe: (totals: SalesTotals) => { title: string; message: string };
 };
 
 const FEED_FIELDS = {
@@ -22,12 +36,16 @@ const FEED_FIELDS = {
   actionUrl: true,
   metadata: true,
   createdAt: true,
+  activityAt: true,
 } satisfies Prisma.NotificationSelect;
 
 const NEWEST_FIRST: Prisma.NotificationOrderByWithRelationInput[] = [
-  { createdAt: 'desc' },
+  { activityAt: 'desc' },
   { id: 'desc' },
 ];
+
+// Reading a notice closes its group: the next sale opens a new one.
+const READ = { isRead: true, openGroupKey: null };
 
 @Injectable()
 export class NotificationsRepository {
@@ -81,14 +99,109 @@ export class NotificationsRepository {
   markAsRead(id: string, userId: string) {
     return this.prisma.notification.updateMany({
       where: { id, userId },
-      data: { isRead: true },
+      data: READ,
     });
   }
 
   markAllAsRead(userId: string) {
     return this.prisma.notification.updateMany({
       where: { userId, isRead: false },
-      data: { isRead: true },
+      data: READ,
+    });
+  }
+
+  // A paid order with who has to hear about it: the event's owner, its
+  // co-organizers who can see sales, its promoter and its buyer.
+  findOrderForSaleNotices(orderId: string) {
+    return this.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        userId: true,
+        ticketAmount: true,
+        promoterCommission: true,
+        promoter: { select: { id: true, userId: true } },
+        orderItems: {
+          select: {
+            quantity: true,
+            ticketType: {
+              select: {
+                event: {
+                  select: {
+                    id: true,
+                    title: true,
+                    organizerId: true,
+                    staff: {
+                      where: {
+                        role: 'MANAGER',
+                        status: 'ACCEPTED',
+                        permissions: { has: 'VIEW_SALES' },
+                      },
+                      select: { userId: true },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  // Each adding notice joins the person's unread one with the same key (or
+  // opens it) atomically, so concurrent sales add up exactly; then its text
+  // is rewritten with the new totals while the row is still locked. Sorted
+  // so concurrent transactions lock rows in the same order.
+  saveSaleNotices(adding: AddingNotice[], single: NewNotification[]) {
+    const sorted = [...adding].sort((a, b) =>
+      `${a.userId}:${a.openGroupKey}`.localeCompare(
+        `${b.userId}:${b.openGroupKey}`,
+      ),
+    );
+    // The app's clock, like Prisma's `now()` defaults: mixing it with the
+    // database's would sort notices wrong if the clocks drift apart.
+    const now = new Date();
+    return this.prisma.$transaction(async (tx) => {
+      for (const notice of sorted) {
+        const amount = notice.amount.toString();
+        const [totals] = await tx.$queryRaw<
+          { id: string; tickets: number; amount: string }[]
+        >`
+          INSERT INTO "Notification"
+            ("id", "userId", "type", "title", "message", "eventId",
+             "actionUrl", "metadata", "openGroupKey", "createdAt",
+             "activityAt")
+          VALUES (
+            gen_random_uuid()::text, ${notice.userId},
+            ${notice.type}::"NotificationType", '', '', ${notice.eventId},
+            ${notice.actionUrl},
+            jsonb_build_object('tickets', ${notice.tickets}::int,
+                               'amount', ${amount}::numeric),
+            ${notice.openGroupKey}, ${now}, ${now})
+          ON CONFLICT ("userId", "openGroupKey") DO UPDATE SET
+            "metadata" = jsonb_build_object(
+              'tickets',
+              ("Notification"."metadata"->>'tickets')::int + ${notice.tickets}::int,
+              'amount',
+              ("Notification"."metadata"->>'amount')::numeric + ${amount}::numeric),
+            "activityAt" = EXCLUDED."activityAt"
+          RETURNING "id",
+            ("metadata"->>'tickets')::int AS "tickets",
+            "metadata"->>'amount' AS "amount"`;
+        await tx.notification.update({
+          where: { id: totals.id },
+          data: notice.describe({
+            tickets: totals.tickets,
+            amount: new Prisma.Decimal(totals.amount),
+          }),
+        });
+      }
+      await tx.notification.createMany({
+        data: single.map(({ metadata, ...data }) => ({
+          ...data,
+          metadata: metadata ?? Prisma.JsonNull,
+        })),
+      });
     });
   }
 

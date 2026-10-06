@@ -34,6 +34,7 @@ describe('Notificaciones', () => {
   ) {
     const start = Date.now() - count * 60_000;
     for (let i = 1; i <= count; i++) {
+      const at = new Date(start + i * 60_000);
       await t.prisma.notification.create({
         data: {
           userId: user.id,
@@ -41,7 +42,8 @@ describe('Notificaciones', () => {
           isRead,
           title: `Aviso ${i}`,
           message: 'Texto del aviso',
-          createdAt: new Date(start + i * 60_000),
+          createdAt: at,
+          activityAt: at,
         },
       });
     }

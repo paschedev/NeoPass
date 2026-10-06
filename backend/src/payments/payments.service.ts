@@ -174,7 +174,8 @@ export class PaymentsService {
           this.logger.log(
             `Order ${orderId} marked as PAID and tickets generated.`,
           );
-          return this.ticketsService.queueOrderTicketsEmail(orderId);
+          await this.ticketsService.queueOrderTicketsEmail(orderId);
+          return this.notifySale(orderId);
         }
       } catch (error) {
         if (!isStockLimitError(error)) throw error;
@@ -184,6 +185,20 @@ export class PaymentsService {
     throw new Error(
       `Order ${orderId} kept changing while processing payment ${paymentId}`,
     );
+  }
+
+  // The sale is already paid and its tickets are on their way: a notice that
+  // cannot be saved is logged, never retried, so it can't hold up or repeat
+  // the sale.
+  private async notifySale(orderId: string) {
+    try {
+      await this.notificationsService.notifyPaidOrder(orderId);
+    } catch (error) {
+      this.logger.error(
+        `Could not notify the sale of order ${orderId}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   // Leaves a trace of every payment that is not approved, and reverses the
