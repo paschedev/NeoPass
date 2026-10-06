@@ -7,6 +7,11 @@ import {
   NotificationsRepository,
 } from './repositories/notifications.repository';
 import {
+  ChangedEvent,
+  eventChangeNotice,
+  EventChanges,
+} from './event-change-notices';
+import {
   eventSalesNotice,
   promoterSalesNotice,
   purchaseNotice,
@@ -75,6 +80,27 @@ export class NotificationsService {
         ...purchaseNotice(event.title, tickets),
       },
     ]);
+  }
+
+  // After a published event changes date or place, whoever holds tickets
+  // hears about it (not the person who changed it).
+  notifyEventChange(
+    event: ChangedEvent & { id: string },
+    actorId: string,
+    changes: EventChanges,
+  ) {
+    const notice = (kinds: EventChanges) => eventChangeNotice(event, kinds);
+    return this.notificationsRepository.notifyEventChange({
+      eventId: event.id,
+      actorId,
+      changes,
+      title: notice(changes).title,
+      messages: {
+        date: notice({ date: true, place: false }).message,
+        place: notice({ date: false, place: true }).message,
+        both: notice({ date: true, place: true }).message,
+      },
+    });
   }
 
   findAllForUser(userId: string) {

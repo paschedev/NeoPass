@@ -6,6 +6,7 @@ import {
   describeBatchChanges,
   eventUpdateSummary,
   statusChange,
+  ticketHolderChanges,
 } from './event-changes';
 
 const START = new Date('2026-12-20T23:00:00.000Z');
@@ -131,6 +132,57 @@ describe('qué cambia al editar un evento', () => {
       ).toBe(
         'Borró la tanda "VIP" y cambió el stock de "General" en "Preventa" de 100 a 150.',
       );
+    });
+  });
+
+  describe('lo que se le avisa a quien tiene entradas', () => {
+    it('las fechas de inicio o fin cuentan como cambio de fecha', () => {
+      expect(
+        ticketHolderChanges(event, {
+          endDate: '2026-12-21T07:00:00.000Z',
+        }),
+      ).toEqual({ date: true, place: false });
+    });
+
+    it('el lugar, la dirección o el punto del mapa cuentan como cambio de lugar', () => {
+      for (const changes of [
+        { venueName: 'Otro club' },
+        { venueAddress: 'Otra calle 123' },
+        { latitude: -34.6 },
+      ]) {
+        expect(ticketHolderChanges(event, changes)).toEqual({
+          date: false,
+          place: true,
+        });
+      }
+    });
+
+    it('fecha y lugar juntos', () => {
+      expect(
+        ticketHolderChanges(event, {
+          startDate: '2026-12-20T22:00:00.000Z',
+          venueName: 'Otro club',
+        }),
+      ).toEqual({ date: true, place: true });
+    });
+
+    it('título, descripción, flyer o video no se avisan', () => {
+      expect(
+        ticketHolderChanges(event, {
+          title: 'Fiesta nueva',
+          description: 'Otra descripción',
+          youtubeLink: 'https://youtu.be/abc',
+        }),
+      ).toBeNull();
+    });
+
+    it('mandar la misma fecha que estaba guardada no es un cambio', () => {
+      expect(
+        ticketHolderChanges(event, {
+          startDate: START.toISOString(),
+          venueName: 'Niceto',
+        }),
+      ).toBeNull();
     });
   });
 
