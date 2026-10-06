@@ -1,7 +1,8 @@
-import { IsEmail, IsString, IsOptional, MinLength } from 'class-validator';
+import { IsString, IsOptional, MinLength } from 'class-validator';
+import { EmailField } from '../../common/email-field.decorator';
 
 export class LoginDto {
-  @IsEmail({}, { message: 'Debe ser un correo electrónico válido' })
+  @EmailField()
   email: string;
 
   @IsString({ message: 'La contraseña debe ser un texto' })
