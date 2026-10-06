@@ -19,14 +19,6 @@
       "count": 1
     }
   },
-  "src/app/panel/notificaciones/page.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
-    "react-hooks/immutability": {
-      "count": 1
-    }
-  },
   "src/app/panel/page.tsx": {
     "react-hooks/set-state-in-effect": {
       "count": 1
@@ -56,12 +48,6 @@
     }
   },
   "src/components/Navbar.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    },
-    "react-hooks/immutability": {
-      "count": 1
-    },
     "react-hooks/set-state-in-effect": {
       "count": 1
     }
