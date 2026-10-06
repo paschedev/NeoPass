@@ -16,7 +16,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNotificationFeed } from '@/hooks/useNotificationFeed';
 import { useStaffInvitation } from '@/hooks/useStaffInvitation';
 import { NoticeLink } from '@/components/notifications/NoticeLink';
-import { pendingInvitationStaffId } from '@/utils/notifications';
+import { noticeTime, pendingInvitationStaffId } from '@/utils/notifications';
 
 const SUPPORT_EMAIL = 'soporte@neopass.ar';
 
@@ -226,9 +226,7 @@ export default function Navbar() {
 
                                     <div className="flex items-center justify-between mt-2">
                                       <span className="text-xs text-neutral-500">
-                                        {new Date(
-                                          n.createdAt,
-                                        ).toLocaleDateString()}
+                                        {noticeTime(n).toLocaleDateString()}
                                       </span>
                                     </div>
                                   </div>

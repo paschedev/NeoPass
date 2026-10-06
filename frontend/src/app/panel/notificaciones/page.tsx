@@ -2,21 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Bell,
-  Check,
-  X,
-  Trash2,
-  CheckCircle2,
-  Lock,
-  DollarSign,
-  CheckCheck,
-} from 'lucide-react';
+import { Bell, Check, X, Trash2, CheckCircle2, CheckCheck } from 'lucide-react';
 import toast from '@/utils/toast';
 import { useNotificationFeed } from '@/hooks/useNotificationFeed';
 import { useStaffInvitation } from '@/hooks/useStaffInvitation';
+import { NoticeIcon } from '@/components/notifications/NoticeIcon';
 import { NoticeLink } from '@/components/notifications/NoticeLink';
-import { pendingInvitationStaffId } from '@/utils/notifications';
+import { noticeTime, pendingInvitationStaffId } from '@/utils/notifications';
 
 const PAGE_SIZE = 20;
 
@@ -149,23 +141,7 @@ export default function NotificacionesPage() {
                 )}
 
                 <div className="flex gap-3 sm:gap-4 relative">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                      n.type === 'STAFF_INVITE'
-                        ? 'bg-purple-500/20 text-purple-400'
-                        : n.type === 'PROMOTER_SALE'
-                          ? 'bg-emerald-500/20 text-emerald-400'
-                          : 'bg-blue-500/20 text-blue-400'
-                    }`}
-                  >
-                    {n.type === 'STAFF_INVITE' ? (
-                      <Lock className="w-5 h-5" />
-                    ) : n.type === 'PROMOTER_SALE' ? (
-                      <DollarSign className="w-5 h-5" />
-                    ) : (
-                      <Bell className="w-5 h-5" />
-                    )}
-                  </div>
+                  <NoticeIcon type={n.type} />
 
                   <div className="flex-1 min-w-0">
                     <NoticeLink
@@ -200,7 +176,7 @@ export default function NotificacionesPage() {
                       )}
 
                     <span className="text-xs text-neutral-500 mt-3 block">
-                      {new Date(n.createdAt).toLocaleString()}
+                      {noticeTime(n).toLocaleString()}
                     </span>
                   </div>
 

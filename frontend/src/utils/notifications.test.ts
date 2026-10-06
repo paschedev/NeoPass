@@ -1,9 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import {
   feedPath,
+  noticeTime,
   notificationHref,
   pendingInvitationStaffId,
 } from './notifications';
+
+describe('noticeTime', () => {
+  it('un aviso que se fue sumando muestra la hora de su última novedad', () => {
+    expect(
+      noticeTime({
+        createdAt: '2026-10-06T10:00:00.000Z',
+        activityAt: '2026-10-06T12:30:00.000Z',
+      }),
+    ).toEqual(new Date('2026-10-06T12:30:00.000Z'));
+  });
+
+  it('sin esa hora, muestra cuándo se creó', () => {
+    expect(noticeTime({ createdAt: '2026-10-06T10:00:00.000Z' })).toEqual(
+      new Date('2026-10-06T10:00:00.000Z'),
+    );
+  });
+});
 
 describe('pendingInvitationStaffId', () => {
   const invite = (status: 'PENDING' | 'ACCEPTED') => ({

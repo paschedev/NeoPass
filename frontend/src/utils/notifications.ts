@@ -8,6 +8,8 @@ export type AppNotification = {
   title: string;
   message: string;
   createdAt: string;
+  // Last news on the notice (sales add up on the same one).
+  activityAt?: string;
   isRead: boolean;
   actionUrl: string | null;
   metadata?: {
@@ -36,6 +38,14 @@ export function feedPath({
   if (cursor) params.set('cursor', cursor);
   if (onlyRequests) params.set('onlyRequests', 'true');
   return `/notifications/feed?${params}`;
+}
+
+// When the notice last had news, which is what the list shows.
+export function noticeTime({
+  createdAt,
+  activityAt,
+}: Pick<AppNotification, 'createdAt' | 'activityAt'>): Date {
+  return new Date(activityAt ?? createdAt);
 }
 
 // The staff membership an unanswered invitation notice lets you accept or
