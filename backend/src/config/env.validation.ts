@@ -70,6 +70,12 @@ export class EnvironmentVariables {
   @IsNotEmpty()
   CLOUDINARY_URL: string;
 
+  // Client ID of the "Sign in with Google" button (Google Cloud → Credentials):
+  // only credentials Google issued for it are accepted.
+  @IsString()
+  @IsNotEmpty()
+  GOOGLE_CLIENT_ID: string;
+
   // Only an explicit "true" disables the captcha (local development).
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
