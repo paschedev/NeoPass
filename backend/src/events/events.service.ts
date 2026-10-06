@@ -3,6 +3,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -18,6 +19,10 @@ import {
   TicketStatus,
 } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
+import {
+  ChangedEvent,
+  EventChanges,
+} from '../notifications/event-change-notices';
 import { buildRevenueChart } from './revenue-chart';
 import { getBatchSaleStatus } from './batch-sale-status';
 import { getEventPhase } from './event-phase';
@@ -59,6 +64,7 @@ import {
   describeBatchChanges,
   eventUpdateSummary,
   statusChange,
+  ticketHolderChanges,
 } from './event-changes';
 import { ActivityEntry } from './event-activity';
 
@@ -319,6 +325,7 @@ function assertOwnBatchIds(
 @Injectable()
 export class EventsService {
   private readonly cloudinaryUrl: string;
+  private readonly logger = new Logger(EventsService.name);
 
   constructor(
     private readonly eventsRepository: EventsRepository,
@@ -448,6 +455,7 @@ export class EventsService {
       ? describeBatchChanges(event.ticketBatches, batches)
       : [];
     const newStatus = statusChange(event, changes);
+    const holderChanges = ticketHolderChanges(event, changes);
     if (infoChanges.length > 0) assertPermission(access, 'EDIT_EVENT');
     if (batchChanges.length > 0) assertPermission(access, 'MANAGE_BATCHES');
     if (newStatus && access.role !== 'OWNER') {
@@ -495,17 +503,43 @@ export class EventsService {
       eventUpdateSummary(infoChanges, newStatus),
       batchChanges,
     );
-    if (!batches) {
-      return this.eventsRepository.update(id, eventData, activity);
+    if (batches) {
+      await this.assertBatchChangesAllowed(event.ticketBatches, batches);
     }
+    const updated = batches
+      ? await this.eventsRepository.updateWithBatches(
+          id,
+          eventData,
+          planBatchChanges(event.ticketBatches, batches),
+          activity,
+        )
+      : await this.eventsRepository.update(id, eventData, activity);
 
-    await this.assertBatchChangesAllowed(event.ticketBatches, batches);
-    return this.eventsRepository.updateWithBatches(
-      id,
-      eventData,
-      planBatchChanges(event.ticketBatches, batches),
-      activity,
-    );
+    if (holderChanges && updated.status === 'PUBLISHED') {
+      await this.notifyTicketHolders(updated, userId, holderChanges);
+    }
+    return updated;
+  }
+
+  // The change is already saved: a notice that cannot be saved is logged,
+  // never retried, so it can't undo or repeat the edit.
+  private async notifyTicketHolders(
+    event: ChangedEvent & { id: string },
+    actorId: string,
+    changes: EventChanges,
+  ) {
+    try {
+      await this.notificationsService.notifyEventChange(
+        event,
+        actorId,
+        changes,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Could not notify the change of event ${event.id}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
   }
 
   // Each event carries what was collected for its tickets (paid orders).

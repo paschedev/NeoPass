@@ -19,9 +19,7 @@ describe('aviso de cambios del evento', () => {
   });
 
   it('un cambio de lugar dice dónde es ahora', () => {
-    expect(
-      eventChangeNotice(event, { date: false, place: true }).message,
-    ).toBe(
+    expect(eventChangeNotice(event, { date: false, place: true }).message).toBe(
       'Cambió el lugar de Fiesta X. Ahora es en Club Y (Av. Siempreviva 742).',
     );
   });
