@@ -1,6 +1,6 @@
-import { IsEmail } from 'class-validator';
+import { EmailField } from '../../common/email-field.decorator';
 
 export class ForgotPasswordDto {
-  @IsEmail({}, { message: 'Debe ser un correo electrónico válido' })
+  @EmailField()
   email: string;
 }
