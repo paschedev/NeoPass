@@ -1,9 +1,16 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { ListNotificationsQueryDto } from './dto/list-notifications-query.dto';
 import {
+  AddingNotice,
   NewNotification,
   NotificationsRepository,
 } from './repositories/notifications.repository';
+import {
+  eventSalesNotice,
+  promoterSalesNotice,
+  purchaseNotice,
+} from './sale-notices';
 
 // What the old full list (`GET /notifications`) still returns, for the tabs
 // opened before the paginated feed existed.
@@ -17,6 +24,57 @@ export class NotificationsService {
 
   create(notification: NewNotification) {
     return this.notificationsRepository.create(notification);
+  }
+
+  // After an order is paid: the event's owner and its co-organizers who can
+  // see sales hear about it, and so does the promoter whose link sold it
+  // (both notices add up while unread); the buyer gets their confirmation.
+  async notifyPaidOrder(orderId: string) {
+    const order =
+      await this.notificationsRepository.findOrderForSaleNotices(orderId);
+    const event = order?.orderItems[0]?.ticketType.event;
+    if (!order || !event) return;
+
+    const tickets = order.orderItems.reduce(
+      (sum, item) => sum + item.quantity,
+      0,
+    );
+    const sellers = new Set([
+      event.organizerId,
+      ...event.staff.map((member) => member.userId),
+    ]);
+    const adding: AddingNotice[] = [...sellers].map((userId) => ({
+      userId,
+      openGroupKey: `sales:${event.id}`,
+      type: 'EVENT_SALES',
+      eventId: event.id,
+      actionUrl: `/panel/eventos/${event.id}`,
+      tickets,
+      amount: order.ticketAmount,
+      describe: (totals) => eventSalesNotice(event.title, totals),
+    }));
+    if (order.promoter) {
+      adding.push({
+        userId: order.promoter.userId,
+        openGroupKey: `promoter-sales:${order.promoter.id}`,
+        type: 'PROMOTER_SALE',
+        eventId: event.id,
+        actionUrl: `/panel/rpp/${event.id}`,
+        tickets,
+        amount: order.promoterCommission ?? new Prisma.Decimal(0),
+        describe: (totals) => promoterSalesNotice(event.title, totals),
+      });
+    }
+
+    await this.notificationsRepository.saveSaleNotices(adding, [
+      {
+        userId: order.userId,
+        type: 'TICKET_PURCHASE',
+        eventId: event.id,
+        actionUrl: '/panel/tickets',
+        ...purchaseNotice(event.title, tickets),
+      },
+    ]);
   }
 
   findAllForUser(userId: string) {
