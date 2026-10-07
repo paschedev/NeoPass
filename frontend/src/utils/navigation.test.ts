@@ -43,38 +43,49 @@ describe('getNavItems', () => {
     ).toEqual(['eventos', 'staff', 'scanner', 'tickets', 'ajustes']);
   });
 
-  it.each(['ORGANIZER', 'ADMIN'])(
-    'un %s que no trabaja como staff tiene el QR en el centro y tickets y ajustes en la barra',
-    (role) => {
-      expect(ids({ role })).toEqual([
-        'eventos',
-        'metricas',
-        'scanner',
-        'tickets',
-        'ajustes',
-      ]);
-    },
-  );
+  it('un organizador que no trabaja como staff tiene el QR en el centro y tickets y ajustes en la barra', () => {
+    expect(ids({ role: 'ORGANIZER' })).toEqual([
+      'eventos',
+      'metricas',
+      'scanner',
+      'tickets',
+      'ajustes',
+    ]);
+  });
 
-  it.each(['ORGANIZER', 'ADMIN'])(
-    'un %s que además es staff de otros eventos tiene Staff y lleva tickets y ajustes a "Más"',
-    (role) => {
-      const items = getNavItems({ role, hasBeenRpp: true });
+  it('un organizador que además es staff de otros eventos tiene Staff y lleva tickets y ajustes a "Más"', () => {
+    const items = getNavItems({ role: 'ORGANIZER', hasBeenRpp: true });
 
-      expect(items.map((item) => item.id)).toEqual([
-        'eventos',
-        'metricas',
-        'scanner',
-        'staff',
-        'mas',
-      ]);
-      const more = items[4];
-      expect(more.kind === 'menu' && more.items.map((i) => i.id)).toEqual([
-        'tickets',
-        'ajustes',
-      ]);
-    },
-  );
+    expect(items.map((item) => item.id)).toEqual([
+      'eventos',
+      'metricas',
+      'scanner',
+      'staff',
+      'mas',
+    ]);
+    const more = items[4];
+    expect(more.kind === 'menu' && more.items.map((i) => i.id)).toEqual([
+      'tickets',
+      'ajustes',
+    ]);
+  });
+
+  it('el ADMIN suma el panel de NeoPass, que va a "Más" junto con ajustes', () => {
+    const items = getNavItems({ role: 'ADMIN' });
+
+    expect(items.map((item) => item.id)).toEqual([
+      'eventos',
+      'metricas',
+      'scanner',
+      'tickets',
+      'mas',
+    ]);
+    const more = items[4];
+    expect(more.kind === 'menu' && more.items).toEqual([
+      expect.objectContaining({ id: 'ajustes' }),
+      expect.objectContaining({ id: 'admin', href: '/panel/admin' }),
+    ]);
+  });
 });
 
 describe('getHomePath', () => {

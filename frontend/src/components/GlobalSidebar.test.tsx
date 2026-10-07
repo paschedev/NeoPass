@@ -63,6 +63,20 @@ describe('GlobalSidebar', () => {
     expect(screen.queryByText('Panel RPP')).toBeNull();
   });
 
+  it.each([
+    [{ role: 'ADMIN' }, true],
+    [{ role: 'ORGANIZER' }, false],
+    [{ role: 'CUSTOMER' }, false],
+  ])('con la sesión %j muestra Administración: %s', (user, shown) => {
+    localStorage.setItem('user', JSON.stringify(user));
+
+    render(<GlobalSidebar />);
+
+    const link = screen.queryByRole('link', { name: 'Administración' });
+    expect(link !== null).toBe(shown);
+    if (link) expect(link).toHaveAttribute('href', '/panel/admin');
+  });
+
   it('al cancelar la sesión sigue abierta', () => {
     render(<GlobalSidebar />);
 

@@ -4,6 +4,7 @@ import {
   Menu,
   ScanLine,
   Settings,
+  ShieldCheck,
   Ticket,
   User,
   Users,
@@ -12,6 +13,7 @@ import {
 import {
   canScan,
   canSeeStaffPanel,
+  isAdmin,
   isOrganizer,
   type RoleFlags,
 } from './roles';
@@ -88,6 +90,13 @@ const SETTINGS: NavLink = {
   icon: Settings,
   label: 'Ajustes',
 };
+// El panel de NeoPass, solo para la cuenta ADMIN.
+export const ADMIN_PANEL: NavLink = {
+  id: 'admin',
+  href: '/panel/admin',
+  icon: ShieldCheck,
+  label: 'Admin',
+};
 const SCANNER: NavItem = {
   kind: 'scanner',
   id: 'scanner',
@@ -106,6 +115,7 @@ export function getNavItems(user: RoleFlags | null): NavItem[] {
   if (isOrganizer(user)) links.push(ORGANIZATION);
   if (canSeeStaffPanel(user)) links.push(STAFF);
   links.push(TICKETS, SETTINGS);
+  if (isAdmin(user)) links.push(ADMIN_PANEL);
 
   const items = links.map(asLink);
   if (!canScan(user)) return items;

@@ -15,8 +15,8 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { STAFF } from '@/utils/navigation';
-import { canSeeStaffPanel, isOrganizer } from '@/utils/roles';
+import { ADMIN_PANEL, STAFF } from '@/utils/navigation';
+import { canSeeStaffPanel, isAdmin, isOrganizer } from '@/utils/roles';
 
 function NavItem({
   href,
@@ -127,6 +127,13 @@ export default function GlobalSidebar() {
                 label="Configuración"
                 {...nav}
                 show={true}
+              />
+              <NavItem
+                href={ADMIN_PANEL.href}
+                icon={ADMIN_PANEL.icon}
+                label="Administración"
+                {...nav}
+                show={isAdmin(user)}
               />
             </>
           ) : (
