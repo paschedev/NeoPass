@@ -10,9 +10,11 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
 
 export const metadata: Metadata = {
-  title: 'NeoPass | Descubrí y comprá entradas para los mejores eventos',
+  // La pestaña muestra solo la marca; la descripción la usan Google y las
+  // vistas previas de los links.
+  title: 'NeoPass',
   description:
-    'NeoPass es la ticketera definitiva para organizar y asistir a eventos con total seguridad.',
+    'Comprá tus entradas de forma rápida y segura, y organizá tus eventos desde un solo lugar.',
 };
 
 export default function RootLayout({
