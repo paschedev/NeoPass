@@ -17,10 +17,6 @@ import {
   purchaseNotice,
 } from './sale-notices';
 
-// What the old full list (`GET /notifications`) still returns, for the tabs
-// opened before the paginated feed existed.
-const LEGACY_LIST_LIMIT = 50;
-
 @Injectable()
 export class NotificationsService {
   constructor(
@@ -101,10 +97,6 @@ export class NotificationsService {
         both: notice({ date: true, place: true }).message,
       },
     });
-  }
-
-  findAllForUser(userId: string) {
-    return this.notificationsRepository.findNewest(userId, LEGACY_LIST_LIMIT);
   }
 
   async findFeed(

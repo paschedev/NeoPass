@@ -19,12 +19,6 @@ export class NotificationsController {
   constructor(private readonly notificationsService: NotificationsService) {}
 
   @UseGuards(JwtAuthGuard)
-  @Get()
-  findAll(@Req() req: any) {
-    return this.notificationsService.findAllForUser(req.user.userId);
-  }
-
-  @UseGuards(JwtAuthGuard)
   @Get('feed')
   findFeed(
     @CurrentUser('userId') userId: string,
