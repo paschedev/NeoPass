@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { EventAccess, EventPermission } from '@/utils/co-organizers';
 import EventDetailHeader from './EventDetailHeader';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock('@/utils/toast', () => ({
+  default: { error: vi.fn(), success: vi.fn() },
+}));
 vi.mock('@/hooks/useCurrentUser', () => ({
   useCurrentUser: () => ({
     user: { name: 'Productora Sur', email: 'org@neopass.test' },
@@ -120,6 +123,43 @@ describe('EventDetailHeader', () => {
     expect(screen.getByText('Evento finalizado')).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Editar evento' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('quien organiza puede copiar el link de la página pública, sin código de RPP', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    renderHeader();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copiar link' }));
+
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith(
+        `${window.location.origin}/eventos/event-1`,
+      ),
+    );
+  });
+
+  it('un co-organizador también puede copiar el link del evento', () => {
+    renderHeader({}, coOrganizer(['VIEW_SALES']));
+
+    expect(
+      screen.getByRole('button', { name: 'Copiar link' }),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['en borrador', { status: 'DRAFT' }],
+    ['finalizado', { status: 'FINISHED', startDate: at(-30), endDate: at(-24) }],
+    ['eliminado', { deletedAt: at(-1) }],
+  ])('un evento %s no tiene link para copiar', (_, overrides) => {
+    renderHeader(overrides);
+
+    expect(
+      screen.queryByRole('button', { name: 'Copiar link' }),
     ).not.toBeInTheDocument();
   });
 
