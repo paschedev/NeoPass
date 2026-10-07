@@ -6,6 +6,7 @@ import { Search, Calendar, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { apiFetch } from '@/utils/api';
 import { optimizeCloudinaryUrl } from '@/utils/cloudinary';
+import { formatEventRange } from '@/utils/format';
 
 const EVENTS_PER_PAGE = 24;
 
@@ -15,6 +16,7 @@ type EventSummary = {
   title: string;
   imageUrl: string | null;
   startDate: string;
+  endDate: string;
   venueName: string | null;
 };
 
@@ -142,11 +144,8 @@ export default function EventosPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-neutral-400 font-medium">
-                      <Calendar className="w-4 h-4 text-pink-400" />{' '}
-                      {new Date(event.startDate).toLocaleTimeString('es-AR', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      <Calendar className="w-4 h-4 shrink-0 text-pink-400" />{' '}
+                      {formatEventRange(event.startDate, event.endDate)}
                     </div>
                   </div>
                 </div>

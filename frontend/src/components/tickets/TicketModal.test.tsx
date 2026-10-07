@@ -18,7 +18,9 @@ const TICKET: MyTicket = {
     name: 'General',
     event: {
       title: 'Fiesta de primavera',
-      startDate: '2026-10-03T23:00:00.000Z',
+      startDate: '2099-10-10T23:00:00.000Z',
+      endDate: '2099-10-11T07:00:00.000Z',
+      status: 'PUBLISHED',
       venueName: 'Club Central',
     },
   },
@@ -67,6 +69,32 @@ describe('TicketModal', () => {
     expect(
       screen.queryByRole('button', { name: /Transferir/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it('una entrada de un evento que ya terminó no se puede transferir', () => {
+    renderModal({
+      ...TICKET,
+      ticketType: {
+        name: 'General',
+        event: {
+          ...TICKET.ticketType.event,
+          startDate: '2026-01-10T23:00:00.000Z',
+          endDate: '2026-01-11T07:00:00.000Z',
+        },
+      },
+    });
+
+    expect(
+      screen.queryByRole('button', { name: /Transferir/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('muestra cuándo empieza y cuándo termina el evento', () => {
+    renderModal();
+
+    expect(
+      screen.getByText('sáb, 10 oct, 20:00 a dom, 11 oct, 04:00'),
+    ).toBeInTheDocument();
   });
 
   it('transfiere al usuario elegido en la búsqueda', () => {

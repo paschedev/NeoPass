@@ -1,7 +1,13 @@
 'use client';
 
 import { User as UserIcon, Mail, ShieldCheck } from 'lucide-react';
-import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useCurrentUser, type SessionUser } from '@/hooks/useCurrentUser';
+
+const ACCOUNT_TYPE_LABELS: Record<SessionUser['role'], string> = {
+  ADMIN: 'Administrador de NeoPass',
+  ORGANIZER: 'Organizador de eventos',
+  CUSTOMER: 'Usuario estándar',
+};
 
 export default function PerfilPage() {
   const { user } = useCurrentUser();
@@ -45,9 +51,7 @@ export default function PerfilPage() {
               <ShieldCheck className="w-3 h-3" /> Tipo de Cuenta
             </label>
             <div className="inline-block px-3 py-1 bg-white/10 text-white text-sm rounded-lg font-medium border border-white/5">
-              {user.role === 'ORGANIZER'
-                ? 'Organizador de eventos'
-                : 'Usuario estándar'}
+              {ACCOUNT_TYPE_LABELS[user.role]}
             </div>
           </div>
         </div>

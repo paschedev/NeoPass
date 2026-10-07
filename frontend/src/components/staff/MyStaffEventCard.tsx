@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { permissionsSummary } from '@/utils/co-organizers';
 import type { EventPhase } from '@/utils/event-edit';
-import { formatCurrency, formatWeekdayDateTime } from '@/utils/format';
+import { formatCurrency, formatEventRange } from '@/utils/format';
 import { getDirectionsUrl, hasMapLocation } from '@/utils/maps';
 import { rppLink } from '@/utils/my-staff';
 import { commissionLabel, eventPhaseLabel } from '@/utils/staff-overview';
@@ -149,7 +149,7 @@ export default function MyStaffEventCard({ event }: { event: MyStaffEvent }) {
           {eventPhaseLabel(event)}
         </span>
         <span className="text-xs text-neutral-400">
-          {formatWeekdayDateTime(event.startDate)}
+          {formatEventRange(event.startDate, event.endDate)}
         </span>
         {event.roles.map((role) => (
           <span

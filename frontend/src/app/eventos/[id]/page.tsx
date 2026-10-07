@@ -19,7 +19,11 @@ import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { optimizeCloudinaryUrl } from '@/utils/cloudinary';
-import { formatCurrency, formatShortDateTime } from '@/utils/format';
+import {
+  formatCurrency,
+  formatShortDateTime,
+  formatWeekdayDateTime,
+} from '@/utils/format';
 import {
   MAX_TICKETS_PER_ORDER,
   calculateCheckoutTotals,
@@ -205,19 +209,12 @@ function EventContent() {
                   <Calendar className="w-5 h-5" /> Fecha y Hora
                 </div>
                 <div className="text-white">
-                  {new Date(event.startDate).toLocaleDateString('es-AR', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
+                  <span className="text-neutral-400">Empieza:</span>{' '}
+                  {formatWeekdayDateTime(event.startDate)} hs
                 </div>
-                <div className="text-neutral-400 text-sm mt-1">
-                  {new Date(event.startDate).toLocaleTimeString('es-AR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}{' '}
-                  hs
+                <div className="text-white mt-1">
+                  <span className="text-neutral-400">Termina:</span>{' '}
+                  {formatWeekdayDateTime(event.endDate)} hs
                 </div>
               </div>
               <div>

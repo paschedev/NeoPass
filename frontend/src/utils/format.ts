@@ -72,6 +72,21 @@ export function formatWeekdayDateTime(value: string): string {
   });
 }
 
+// Cuándo empieza y termina un evento, en la hora local del navegador:
+// "sáb, 10 oct, 22:00 a dom, 11 oct, 06:00", o "sáb, 10 oct, 20:00 a 23:30"
+// si termina el mismo día.
+export function formatEventRange(start: string, end: string): string {
+  const sameDay = new Date(start).toDateString() === new Date(end).toDateString();
+  const until = sameDay
+    ? new Date(end).toLocaleTimeString('es-AR', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      })
+    : formatWeekdayDateTime(end);
+  return `${formatWeekdayDateTime(start)} a ${until}`;
+}
+
 // "23:41:08", en la hora local del navegador.
 export function formatClockTime(value: string): string {
   return new Date(value).toLocaleTimeString('es-AR', {

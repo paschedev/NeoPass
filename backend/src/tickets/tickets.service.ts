@@ -220,7 +220,7 @@ export class TicketsService {
     }
 
     const { event } = ticket.ticketType;
-    if (event.status === 'FINISHED' || event.status === 'CANCELLED') {
+    if (getEventPhase(event, new Date()) === 'CLOSED') {
       throw new ConflictException(
         'No se pueden transferir entradas de un evento finalizado o cancelado.',
       );
