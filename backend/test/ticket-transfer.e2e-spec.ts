@@ -101,6 +101,23 @@ describe('Transferencia de entradas', () => {
     },
   );
 
+  it('no se puede transferir una entrada de un evento que ya terminó aunque el cron todavía no lo haya finalizado', async () => {
+    const { owner, ticket, recipient } = await ownedTicket();
+    const { ticketType } = await t.prisma.ticket.findUniqueOrThrow({
+      where: { id: ticket.id },
+      select: { ticketType: { select: { eventId: true } } },
+    });
+    await t.prisma.event.update({
+      where: { id: ticketType.eventId },
+      data: {
+        startDate: new Date(Date.now() - 8 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() - 60 * 1000),
+      },
+    });
+
+    await transfer(owner, ticket.id, recipient.id).expect(409);
+  });
+
   it('no se puede transferir una entrada ya usada', async () => {
     const { owner, ticket, recipient } = await ownedTicket({
       ticketStatus: 'USED',

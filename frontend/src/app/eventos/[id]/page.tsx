@@ -13,13 +13,18 @@ import {
 import toast from '@/utils/toast';
 import CustomSelect from '@/components/CustomSelect';
 import VenueMap from '@/components/events/VenueMap';
+import DeleteEventModal from '@/components/events/DeleteEventModal';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { TURNSTILE_OPTIONS } from '@/utils/captcha';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { optimizeCloudinaryUrl } from '@/utils/cloudinary';
-import { formatCurrency, formatShortDateTime } from '@/utils/format';
+import {
+  formatCurrency,
+  formatShortDateTime,
+  formatWeekdayDateTime,
+} from '@/utils/format';
 import {
   MAX_TICKETS_PER_ORDER,
   calculateCheckoutTotals,
@@ -51,6 +56,7 @@ function EventContent() {
     [],
   );
   const [captchaToken, setCaptchaToken] = useState<string>('');
+  const [takingDown, setTakingDown] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -155,6 +161,33 @@ function EventContent() {
         <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
         <span className="font-medium text-sm md:text-base">Volver</span>
       </button>
+      {user?.role === 'ADMIN' && (
+        <>
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-red-500/5 border border-red-500/20 rounded-2xl p-4">
+            <p className="text-sm text-neutral-300">
+              Sos ADMIN de NeoPass: podés sacar este evento de la vista
+              pública.
+            </p>
+            <button
+              type="button"
+              onClick={() => setTakingDown(true)}
+              className="shrink-0 bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-colors"
+            >
+              Dar de baja
+            </button>
+          </div>
+          <DeleteEventModal
+            event={event}
+            open={takingDown}
+            onClose={() => setTakingDown(false)}
+            onDeleted={() => {
+              toast.success('Evento dado de baja');
+              router.push('/eventos');
+            }}
+            asOrganizer={null}
+          />
+        </>
+      )}
       <div className="bg-black/40 border border-white/10 rounded-3xl overflow-hidden">
         <div className="h-64 md:h-96 bg-gradient-to-br from-indigo-900/60 to-purple-900/60 relative flex items-end p-8 md:p-12 overflow-hidden">
           {event.imageUrl && (
@@ -205,19 +238,12 @@ function EventContent() {
                   <Calendar className="w-5 h-5" /> Fecha y Hora
                 </div>
                 <div className="text-white">
-                  {new Date(event.startDate).toLocaleDateString('es-AR', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
+                  <span className="text-neutral-400">Empieza:</span>{' '}
+                  {formatWeekdayDateTime(event.startDate)} hs
                 </div>
-                <div className="text-neutral-400 text-sm mt-1">
-                  {new Date(event.startDate).toLocaleTimeString('es-AR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}{' '}
-                  hs
+                <div className="text-white mt-1">
+                  <span className="text-neutral-400">Termina:</span>{' '}
+                  {formatWeekdayDateTime(event.endDate)} hs
                 </div>
               </div>
               <div>

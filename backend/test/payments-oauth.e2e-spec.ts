@@ -72,6 +72,12 @@ describe('Vinculación de Mercado Pago por OAuth', () => {
     return (link.body as { url: string }).url;
   }
 
+  it('una cuenta ADMIN también puede pedir el link para vincular Mercado Pago', async () => {
+    const admin = await createUser(t.prisma, { role: 'ADMIN' });
+
+    expect(await authorizationLink(admin)).toContain('redirect_uri=');
+  });
+
   it('el link de autorización manda el redirect_uri codificado', async () => {
     const organizer = await createUser(t.prisma, { role: 'ORGANIZER' });
 

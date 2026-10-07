@@ -40,13 +40,33 @@ export class TicketsRepository {
     return tx.ticket.createMany({ data: ticketData });
   }
 
+  // Only what "Mis entradas" shows: the QR is the holder's own.
   async findMyTickets(userId: string) {
     return this.prisma.ticket.findMany({
       where: { userId },
-      include: {
+      select: {
+        id: true,
+        status: true,
+        qrCode: true,
         ticketType: {
-          include: {
-            event: true,
+          select: {
+            name: true,
+            event: {
+              select: {
+                title: true,
+                startDate: true,
+                endDate: true,
+                status: true,
+                venueName: true,
+                // For the notice of a deleted event: who deleted it and how
+                // to reach the organizer.
+                deletedAt: true,
+                deletedById: true,
+                deletionContactEmail: true,
+                organizerId: true,
+                organizer: { select: { name: true } },
+              },
+            },
           },
         },
       },
@@ -74,6 +94,7 @@ export class TicketsRepository {
                 title: true,
                 startDate: true,
                 endDate: true,
+                deletedAt: true,
               },
             },
           },
@@ -89,7 +110,15 @@ export class TicketsRepository {
         ticketType: {
           select: {
             name: true,
-            event: { select: { id: true, status: true, ...EVENT_FOR_MAIL } },
+            event: {
+              select: {
+                id: true,
+                status: true,
+                endDate: true,
+                deletedAt: true,
+                ...EVENT_FOR_MAIL,
+              },
+            },
           },
         },
       },

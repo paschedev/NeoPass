@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Ticket as TicketIcon } from 'lucide-react';
+import { ChevronDown, Ticket as TicketIcon } from 'lucide-react';
 import toast from '@/utils/toast';
 import TicketCard from '@/components/tickets/TicketCard';
 import TicketModal from '@/components/tickets/TicketModal';
@@ -9,12 +9,34 @@ import type { MyTicket } from '@/components/tickets/types';
 import type { UserSearchResult } from '@/hooks/useUserSearch';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { splitTickets } from '@/utils/my-tickets';
+
+function TicketGrid({
+  tickets,
+  onOpen,
+}: {
+  tickets: MyTicket[];
+  onOpen: (ticket: MyTicket) => void;
+}) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {tickets.map((ticket) => (
+        <TicketCard
+          key={ticket.id}
+          ticket={ticket}
+          onOpen={() => onOpen(ticket)}
+        />
+      ))}
+    </div>
+  );
+}
 
 export default function MisEntradasPage() {
   const [tickets, setTickets] = useState<MyTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<MyTicket | null>(null);
   const [transferring, setTransferring] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const fetchTickets = async () => {
     try {
@@ -57,6 +79,8 @@ export default function MisEntradasPage() {
     }
   };
 
+  const { current, history } = splitTickets(tickets, new Date());
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-neutral-400">
@@ -87,15 +111,38 @@ export default function MisEntradasPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {tickets.map((ticket) => (
-            <TicketCard
-              key={ticket.id}
-              ticket={ticket}
-              onOpen={() => setSelectedTicket(ticket)}
-            />
-          ))}
-        </div>
+        <>
+          {current.length === 0 ? (
+            <p className="bg-white/5 border border-white/10 rounded-3xl p-8 text-center text-neutral-400">
+              No tenés entradas para próximos eventos.
+            </p>
+          ) : (
+            <TicketGrid tickets={current} onOpen={setSelectedTicket} />
+          )}
+
+          {history.length > 0 && (
+            <section className="mt-12">
+              <button
+                type="button"
+                onClick={() => setShowHistory((open) => !open)}
+                aria-expanded={showHistory}
+                className="w-full flex items-center justify-between gap-3 py-3 border-b border-white/10 text-left text-neutral-300 hover:text-white transition-colors"
+              >
+                <span className="font-outfit text-lg font-semibold">
+                  Historial ({history.length})
+                </span>
+                <ChevronDown
+                  className={`w-5 h-5 transition-transform ${showHistory ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {showHistory && (
+                <div className="mt-6 opacity-80">
+                  <TicketGrid tickets={history} onOpen={setSelectedTicket} />
+                </div>
+              )}
+            </section>
+          )}
+        </>
       )}
 
       <TicketModal

@@ -60,6 +60,7 @@ function event(
     status,
     startDate,
     endDate: new Date(startDate.getTime() + 6 * HOUR_MS),
+    deletedAt: null,
     staff,
   };
 }

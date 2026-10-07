@@ -1,11 +1,18 @@
 export type EventPhase = 'NOT_STARTED' | 'IN_PROGRESS' | 'CLOSED';
 
-type EventForPhase = { status: string; startDate: Date; endDate: Date };
+type EventForPhase = {
+  status: string;
+  startDate: Date;
+  endDate: Date;
+  deletedAt: Date | null;
+};
 
 // Where an event stands for editing. An event whose end already passed is
-// closed even before the cron marks it FINISHED.
+// closed even before the cron marks it FINISHED, and a deleted one is closed
+// for good.
 export function getEventPhase(event: EventForPhase, now: Date): EventPhase {
   if (
+    event.deletedAt !== null ||
     event.status === 'FINISHED' ||
     event.status === 'CANCELLED' ||
     now >= event.endDate

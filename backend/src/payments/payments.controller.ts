@@ -84,7 +84,7 @@ export class PaymentsController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ORGANIZER)
+  @Roles(UserRole.ORGANIZER, UserRole.ADMIN)
   @Get('oauth/link')
   getOauthLink(@CurrentUser('userId') userId: string) {
     const state: OAuthState = { sub: userId, purpose: 'oauth_state' };

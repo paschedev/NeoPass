@@ -18,11 +18,29 @@ const TICKET: MyTicket = {
     name: 'General',
     event: {
       title: 'Fiesta de primavera',
-      startDate: '2026-10-03T23:00:00.000Z',
+      startDate: '2099-10-10T23:00:00.000Z',
+      endDate: '2099-10-11T07:00:00.000Z',
+      status: 'PUBLISHED',
       venueName: 'Club Central',
+      deletion: null,
     },
   },
 };
+
+const deletedEvent = (byNeoPass: boolean) => ({
+  ...TICKET,
+  ticketType: {
+    name: 'General',
+    event: {
+      ...TICKET.ticketType.event,
+      deletion: {
+        byNeoPass,
+        organizerName: 'Productora Sur',
+        contactEmail: 'reclamos@productora.test',
+      },
+    },
+  },
+});
 
 const renderModal = (
   ticket: MyTicket = TICKET,
@@ -67,6 +85,56 @@ describe('TicketModal', () => {
     expect(
       screen.queryByRole('button', { name: /Transferir/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it('una entrada de un evento que ya terminó no se puede transferir', () => {
+    renderModal({
+      ...TICKET,
+      ticketType: {
+        name: 'General',
+        event: {
+          ...TICKET.ticketType.event,
+          startDate: '2026-01-10T23:00:00.000Z',
+          endDate: '2026-01-11T07:00:00.000Z',
+        },
+      },
+    });
+
+    expect(
+      screen.queryByRole('button', { name: /Transferir/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('una entrada de un evento eliminado avisa quién lo eliminó y cómo contactar al organizador, sin QR ni transferencia', () => {
+    renderModal(deletedEvent(false));
+
+    expect(
+      screen.getByText('El organizador eliminó este evento'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'reclamos@productora.test' }),
+    ).toHaveAttribute('href', 'mailto:reclamos@productora.test');
+    expect(screen.getByText(/Productora Sur/)).toBeInTheDocument();
+    expect(screen.queryByText('Tocá para revelar')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Transferir/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('si lo dio de baja NeoPass, el aviso lo dice', () => {
+    renderModal(deletedEvent(true));
+
+    expect(
+      screen.getByText('NeoPass dio de baja este evento'),
+    ).toBeInTheDocument();
+  });
+
+  it('muestra cuándo empieza y cuándo termina el evento', () => {
+    renderModal();
+
+    expect(
+      screen.getByText('sáb, 10 oct, 20:00 a dom, 11 oct, 04:00'),
+    ).toBeInTheDocument();
   });
 
   it('transfiere al usuario elegido en la búsqueda', () => {

@@ -99,6 +99,24 @@ export class NotificationsService {
     });
   }
 
+  // Whoever holds valid tickets of a deleted event: the ticket stays in
+  // "Mis entradas" with the notice and the organizer's contact.
+  notifyEventDeleted(
+    event: { id: string; title: string },
+    actorId: string,
+    byNeoPass: boolean,
+  ) {
+    return this.notificationsRepository.notifyTicketHolders({
+      eventId: event.id,
+      actorId,
+      title: byNeoPass
+        ? `NeoPass dio de baja ${event.title}`
+        : `Se eliminó ${event.title}`,
+      message:
+        'Tu entrada ya no sirve para entrar. En Mis entradas tenés el contacto del organizador para cualquier consulta o devolución.',
+    });
+  }
+
   async findFeed(
     userId: string,
     { cursor, limit, onlyRequests }: ListNotificationsQueryDto,

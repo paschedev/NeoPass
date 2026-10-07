@@ -5,8 +5,11 @@ import { ArrowRightLeft, Eye, EyeOff, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Modal from '@/components/ui/Modal';
 import type { UserSearchResult } from '@/hooks/useUserSearch';
+import DeletionNotice from './DeletionNotice';
 import TransferPanel from './TransferPanel';
-import { formatEventDate, isVoidTicket, type MyTicket } from './types';
+import { formatEventRange } from '@/utils/format';
+import { ticketBadge } from '@/utils/my-tickets';
+import { isVoidTicket, type MyTicket } from './types';
 
 // Entrada abierta: QR oculto hasta tocarlo y transferencia si sigue válida.
 export default function TicketModal({
@@ -76,7 +79,10 @@ function TicketDetail({
             {ticket.ticketType.event.title}
           </h2>
           <p className="text-neutral-400 text-sm">
-            {formatEventDate(ticket.ticketType.event.startDate)}
+            {formatEventRange(
+              ticket.ticketType.event.startDate,
+              ticket.ticketType.event.endDate,
+            )}
           </p>
         </div>
 
@@ -85,6 +91,10 @@ function TicketDetail({
             Entrada anulada: el pago se devolvió y el QR ya no sirve para
             entrar.
           </p>
+        ) : ticket.ticketType.event.deletion ? (
+          <div className="mb-8">
+            <DeletionNotice deletion={ticket.ticketType.event.deletion} />
+          </div>
         ) : (
           <>
             <div className="bg-white rounded-[2rem] p-6 mb-8 mx-auto w-64 relative group">
@@ -130,7 +140,7 @@ function TicketDetail({
           </>
         )}
 
-        {ticket.status === 'VALID' && (
+        {ticketBadge(ticket, new Date()) === 'VALID' && (
           <div className="border-t border-white/10 pt-6">
             {!showTransfer ? (
               <button

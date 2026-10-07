@@ -15,7 +15,11 @@ type StaffGroup = {
 export function eventPhaseLabel({
   phase,
   status,
-}: Pick<StaffGroup, 'phase' | 'status'>): string {
+  deletedAt,
+}: Pick<StaffGroup, 'phase' | 'status'> & {
+  deletedAt?: string | null;
+}): string {
+  if (deletedAt) return 'Eliminado';
   if (phase === 'IN_PROGRESS') return 'En curso';
   if (phase === 'NOT_STARTED') return 'Próximo';
   return status === 'CANCELLED' ? 'Cancelado' : 'Finalizado';

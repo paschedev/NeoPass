@@ -1,5 +1,6 @@
 import {
   Controller,
+  Delete,
   Get,
   Post,
   Put,
@@ -16,6 +17,8 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
+import { DeleteEventDto } from './dto/delete-event.dto';
+import { UserRole } from '@prisma/client';
 import { UpdateBatchesDto } from './dto/update-batches.dto';
 import { BatchSaleActionDto } from './dto/batch-sale-action.dto';
 import { RegisterPromoterPaymentDto } from './dto/register-promoter-payment.dto';
@@ -160,6 +163,17 @@ export class EventsController {
     @CurrentUser('userId') userId: string,
   ) {
     return this.eventsService.update(id, userId, body);
+  }
+
+  // The organizer deletes their event; a NeoPass admin takes down any event.
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id')
+  remove(
+    @Param('id', ParseIdPipe) id: string,
+    @Body() body: DeleteEventDto,
+    @CurrentUser() user: { userId: string; role: UserRole },
+  ) {
+    return this.eventsService.remove(id, user, body.contactEmail);
   }
 
   @UseGuards(JwtAuthGuard)

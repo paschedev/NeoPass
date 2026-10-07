@@ -1,24 +1,31 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Calendar,
   ExternalLink,
   MapPin,
   Pencil,
+  Trash2,
 } from 'lucide-react';
+import DeleteEventModal from '@/components/events/DeleteEventModal';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { canEditEvent, type EventAccess } from '@/utils/co-organizers';
+import toast from '@/utils/toast';
 import { closedEventLabel, getEventPhase } from '@/utils/event-edit';
-import {
-  DEFAULT_STATUS_STYLE,
-  EVENT_STATUS_LABELS,
-  EVENT_STATUS_STYLES,
-} from '@/utils/event-status';
+import { formatEventRange } from '@/utils/format';
+import { eventStatusBadge } from '@/utils/event-status';
 
 // Encabezado del detalle: qué evento es, cuándo y dónde, y lo que puede hacer
-// con él quien está en sesión (el dueño o un co-organizador).
+// con él quien está en sesión (el dueño o un co-organizador). Solo el dueño lo
+// puede eliminar.
 export default function EventDetailHeader({
   event,
   access,
+  ticketsSold,
 }: {
   event: {
     id: string;
@@ -26,13 +33,20 @@ export default function EventDetailHeader({
     status: string;
     startDate: string;
     endDate: string;
+    deletedAt: string | null;
     venueName: string | null;
   };
   access: EventAccess;
+  ticketsSold: number;
 }) {
+  const router = useRouter();
+  const { user } = useCurrentUser();
+  const [deleting, setDeleting] = useState(false);
   const phase = getEventPhase(event, new Date());
   const isPublic = event.status === 'PUBLISHED' && phase !== 'CLOSED';
   const isOwner = access.role === 'OWNER';
+  const canDelete = isOwner && !event.deletedAt && !!user;
+  const badge = eventStatusBadge(event);
 
   return (
     <div className="space-y-8">
@@ -48,9 +62,9 @@ export default function EventDetailHeader({
         <div className="min-w-0">
           <div className="flex flex-wrap gap-2 mb-3">
             <span
-              className={`inline-block px-2.5 py-1 text-[10px] font-semibold rounded-md uppercase ${EVENT_STATUS_STYLES[event.status] ?? DEFAULT_STATUS_STYLE}`}
+              className={`inline-block px-2.5 py-1 text-[10px] font-semibold rounded-md uppercase ${badge.className}`}
             >
-              {EVENT_STATUS_LABELS[event.status] ?? event.status}
+              {badge.label}
             </span>
             {!isOwner && (
               <span className="inline-block px-2.5 py-1 text-[10px] font-semibold rounded-md uppercase bg-sky-500/15 text-sky-300">
@@ -63,14 +77,8 @@ export default function EventDetailHeader({
           </h1>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-neutral-400">
             <span className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4" />
-              {new Date(event.startDate).toLocaleString('es-AR', {
-                weekday: 'short',
-                day: 'numeric',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
+              <Calendar className="w-4 h-4 shrink-0" />
+              {formatEventRange(event.startDate, event.endDate)}
             </span>
             {event.venueName && (
               <span className="flex items-center gap-1.5">
@@ -83,7 +91,7 @@ export default function EventDetailHeader({
         <div className="flex flex-col sm:flex-row gap-3 shrink-0">
           {phase === 'CLOSED' ? (
             <span className="text-center bg-white/5 text-neutral-500 px-5 py-2.5 rounded-xl text-sm font-medium">
-              {closedEventLabel(event.status)}
+              {closedEventLabel(event)}
             </span>
           ) : (
             canEditEvent(access) && (
@@ -104,8 +112,34 @@ export default function EventDetailHeader({
               Ver página pública <ExternalLink className="w-4 h-4" />
             </Link>
           )}
+          {canDelete && (
+            <button
+              type="button"
+              onClick={() => setDeleting(true)}
+              className="inline-flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 px-5 py-2.5 rounded-xl text-sm font-medium transition-colors"
+            >
+              <Trash2 className="w-4 h-4" /> Eliminar evento
+            </button>
+          )}
         </div>
       </header>
+
+      {canDelete && user && (
+        <DeleteEventModal
+          event={event}
+          open={deleting}
+          onClose={() => setDeleting(false)}
+          onDeleted={() => {
+            toast.success('Evento eliminado');
+            router.push('/panel?tab=events');
+          }}
+          asOrganizer={{
+            ticketsSold,
+            name: user.name,
+            accountEmail: user.email,
+          }}
+        />
+      )}
     </div>
   );
 }

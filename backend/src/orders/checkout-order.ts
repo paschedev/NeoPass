@@ -24,6 +24,7 @@ export type CheckoutTicketType = {
     title: string;
     status: EventStatus;
     endDate: Date;
+    deletedAt: Date | null;
     neoPassFeePercentage: Prisma.Decimal;
   };
 };
@@ -65,7 +66,7 @@ export function buildCheckoutOrder<T extends CheckoutTicketType>(
     }
     event = ticketType.event;
 
-    if (event.status !== 'PUBLISHED') {
+    if (event.status !== 'PUBLISHED' || event.deletedAt !== null) {
       throw new ConflictException('El evento no está a la venta.');
     }
     if (event.endDate < now) {

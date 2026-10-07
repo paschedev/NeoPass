@@ -30,6 +30,15 @@ describe('eventPhaseLabel', () => {
       eventPhaseLabel(group({ phase: 'CLOSED', status: 'CANCELLED' })),
     ).toBe('Cancelado');
   });
+
+  it('un evento eliminado dice Eliminado', () => {
+    expect(
+      eventPhaseLabel({
+        ...group({ phase: 'CLOSED' }),
+        deletedAt: '2026-10-07T12:00:00.000Z',
+      }),
+    ).toBe('Eliminado');
+  });
 });
 
 describe('splitSettledClosed', () => {
