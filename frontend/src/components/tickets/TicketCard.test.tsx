@@ -15,6 +15,7 @@ const TICKET: MyTicket = {
       endDate: '2099-10-11T07:00:00.000Z',
       status: 'PUBLISHED',
       venueName: 'Club Central',
+      deletion: null,
     },
   },
 };
@@ -45,6 +46,30 @@ describe('TicketCard', () => {
     );
 
     expect(screen.getByText('VENCIDA')).toBeInTheDocument();
+  });
+
+  it('una entrada de un evento eliminado se muestra como EVENTO ELIMINADO', () => {
+    render(
+      <TicketCard
+        ticket={{
+          ...TICKET,
+          ticketType: {
+            name: 'General',
+            event: {
+              ...TICKET.ticketType.event,
+              deletion: {
+                byNeoPass: false,
+                organizerName: 'Productora Sur',
+                contactEmail: 'reclamos@productora.test',
+              },
+            },
+          },
+        }}
+        onOpen={() => {}}
+      />,
+    );
+
+    expect(screen.getByText('EVENTO ELIMINADO')).toBeInTheDocument();
   });
 
   it('muestra cuándo empieza y cuándo termina el evento', () => {

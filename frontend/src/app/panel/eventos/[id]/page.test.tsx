@@ -4,7 +4,10 @@ import { apiFetch } from '@/utils/api';
 import type { EventAccess, EventPermission } from '@/utils/co-organizers';
 import EventDetailPage from './page';
 
-vi.mock('next/navigation', () => ({ useParams: () => ({ id: 'event-1' }) }));
+vi.mock('next/navigation', () => ({
+  useParams: () => ({ id: 'event-1' }),
+  useRouter: () => ({ push: vi.fn() }),
+}));
 vi.mock('@/utils/api', () => ({ apiFetch: vi.fn() }));
 
 const BASE = '/events/organizer/event-1';

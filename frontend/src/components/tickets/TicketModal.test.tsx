@@ -22,9 +22,25 @@ const TICKET: MyTicket = {
       endDate: '2099-10-11T07:00:00.000Z',
       status: 'PUBLISHED',
       venueName: 'Club Central',
+      deletion: null,
     },
   },
 };
+
+const deletedEvent = (byNeoPass: boolean) => ({
+  ...TICKET,
+  ticketType: {
+    name: 'General',
+    event: {
+      ...TICKET.ticketType.event,
+      deletion: {
+        byNeoPass,
+        organizerName: 'Productora Sur',
+        contactEmail: 'reclamos@productora.test',
+      },
+    },
+  },
+});
 
 const renderModal = (
   ticket: MyTicket = TICKET,
@@ -87,6 +103,30 @@ describe('TicketModal', () => {
     expect(
       screen.queryByRole('button', { name: /Transferir/ }),
     ).not.toBeInTheDocument();
+  });
+
+  it('una entrada de un evento eliminado avisa quién lo eliminó y cómo contactar al organizador, sin QR ni transferencia', () => {
+    renderModal(deletedEvent(false));
+
+    expect(
+      screen.getByText('El organizador eliminó este evento'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'reclamos@productora.test' }),
+    ).toHaveAttribute('href', 'mailto:reclamos@productora.test');
+    expect(screen.getByText(/Productora Sur/)).toBeInTheDocument();
+    expect(screen.queryByText('Tocá para revelar')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Transferir/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('si lo dio de baja NeoPass, el aviso lo dice', () => {
+    renderModal(deletedEvent(true));
+
+    expect(
+      screen.getByText('NeoPass dio de baja este evento'),
+    ).toBeInTheDocument();
   });
 
   it('muestra cuándo empieza y cuándo termina el evento', () => {

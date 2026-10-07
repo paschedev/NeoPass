@@ -24,6 +24,7 @@ type MyAssignment = {
     status: string;
     startDate: Date;
     endDate: Date;
+    deletedAt: Date | null;
     venueName: string | null;
     venueAddress: string | null;
     venueCity: string | null;

@@ -21,6 +21,7 @@ type OverviewEvent = {
   status: string;
   startDate: Date;
   endDate: Date;
+  deletedAt: Date | null;
   staff: OverviewMember[];
 };
 

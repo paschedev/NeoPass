@@ -1,3 +1,5 @@
+import type { EventDeletion } from '@/utils/event-deletion';
+
 // Respuesta de GET /tickets/my-tickets.
 export interface MyTicket {
   id: string;
@@ -11,6 +13,8 @@ export interface MyTicket {
       endDate: string;
       status: string;
       venueName: string | null;
+      // Solo si el evento se eliminó: quién lo hizo y el contacto del organizador.
+      deletion: EventDeletion | null;
     };
   };
 }

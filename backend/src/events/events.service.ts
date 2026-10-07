@@ -17,6 +17,7 @@ import {
   StaffRole,
   Prisma,
   TicketStatus,
+  UserRole,
 } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 import {
@@ -109,6 +110,7 @@ type EventForEdit = {
   status: string;
   startDate: Date;
   endDate: Date;
+  deletedAt: Date | null;
   venueName: string | null;
   venueAddress: string | null;
   venueCity: string | null;
@@ -141,15 +143,17 @@ function assertCompleteLocation({
   }
 }
 
-// Finished and cancelled events are read only; an event whose end already
-// passed counts as finished even before the cron marks it.
+// Finished, cancelled and deleted events are read only; an event whose end
+// already passed counts as finished even before the cron marks it.
 function assertEditable(event: EventForEdit, now: Date) {
   const phase = getEventPhase(event, now);
   if (phase === 'CLOSED') {
     throw new ConflictException(
-      event.status === 'CANCELLED'
-        ? 'Un evento cancelado no se puede editar'
-        : 'Un evento finalizado no se puede editar',
+      event.deletedAt
+        ? 'Un evento eliminado no se puede editar'
+        : event.status === 'CANCELLED'
+          ? 'Un evento cancelado no se puede editar'
+          : 'Un evento finalizado no se puede editar',
     );
   }
   return phase;
@@ -521,6 +525,44 @@ export class EventsService {
     return updated;
   }
 
+  // The event leaves the public site and stays, read only, for its organizer,
+  // its staff and its buyers, sales included. Its owner deletes it and a
+  // NeoPass admin takes it down; a co-organizer can't, and to anyone else it
+  // doesn't exist. Buyers see the contact the owner chose, or their account
+  // email.
+  async remove(
+    id: string,
+    user: { userId: string; role: UserRole },
+    contactEmail?: string,
+  ) {
+    const event = await this.eventsRepository.findForDeletion(id);
+    const isOwner = event?.organizerId === user.userId;
+    if (!isOwner && user.role !== 'ADMIN') {
+      await this.eventAccess.assertOwner(id, user.userId);
+    }
+    if (!event) throw new NotFoundException('Evento no encontrado');
+
+    const deleted = await this.eventsRepository.markDeleted(id, {
+      deletedAt: new Date(),
+      deletedById: user.userId,
+      deletionContactEmail: (isOwner && contactEmail) || event.organizer.email,
+    });
+    if (!deleted) throw new ConflictException('El evento ya fue eliminado');
+
+    try {
+      await this.notificationsService.notifyEventDeleted(
+        event,
+        user.userId,
+        !isOwner,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Could not notify the deletion of event ${id}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+  }
+
   // The change is already saved: a notice that cannot be saved is logged,
   // never retried, so it can't undo or repeat the edit.
   private async notifyTicketHolders(
@@ -722,7 +764,9 @@ export class EventsService {
       totalEvents: events.length,
       totalTicketsSold: totalSold,
       totalRevenue: totalRevenue.toNumber(),
-      activeEvents: events.filter((e) => e.status === 'PUBLISHED').length,
+      activeEvents: events.filter(
+        (e) => e.status === 'PUBLISHED' && e.deletedAt === null,
+      ).length,
       chartData, // Returns last 30 days of real revenue
       recentTransactions,
     };

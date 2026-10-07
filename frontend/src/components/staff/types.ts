@@ -26,6 +26,7 @@ export interface MyStaffEvent {
   status: string;
   startDate: string;
   endDate: string;
+  deletedAt: string | null;
   phase: EventPhase;
   venueName: string | null;
   venueAddress: string | null;

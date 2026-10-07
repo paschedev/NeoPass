@@ -4,11 +4,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { BarChart3, Calendar as CalendarIcon, MapPin, X } from 'lucide-react';
 import { closedEventLabel, getEventPhase } from '@/utils/event-edit';
-import {
-  DEFAULT_STATUS_STYLE,
-  EVENT_STATUS_LABELS,
-  EVENT_STATUS_STYLES,
-} from '@/utils/event-status';
+import { eventStatusBadge } from '@/utils/event-status';
 import { formatCurrency, formatEventRange } from '@/utils/format';
 import type { OrganizerEvent } from './types';
 
@@ -89,9 +85,9 @@ export default function EventsTab({
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <span
-                        className={`px-2.5 py-1 text-[10px] font-semibold rounded-md uppercase ${EVENT_STATUS_STYLES[event.status] ?? DEFAULT_STATUS_STYLE}`}
+                        className={`px-2.5 py-1 text-[10px] font-semibold rounded-md uppercase ${eventStatusBadge(event).className}`}
                       >
-                        {EVENT_STATUS_LABELS[event.status] ?? event.status}
+                        {eventStatusBadge(event).label}
                       </span>
                       <span className="text-xs text-neutral-400">
                         {formatEventRange(event.startDate, event.endDate)}
@@ -129,7 +125,7 @@ export default function EventsTab({
                 <div className="flex items-center gap-3 mt-6 pt-6 border-t border-white/5">
                   {getEventPhase(event, new Date()) === 'CLOSED' ? (
                     <span className="flex-1 text-center bg-white/5 text-neutral-500 py-2.5 rounded-xl text-sm font-medium">
-                      {closedEventLabel(event.status)}
+                      {closedEventLabel(event)}
                     </span>
                   ) : (
                     <Link

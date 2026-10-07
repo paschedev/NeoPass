@@ -3,6 +3,13 @@ import { render, screen } from '@testing-library/react';
 import type { EventAccess, EventPermission } from '@/utils/co-organizers';
 import EventDetailHeader from './EventDetailHeader';
 
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock('@/hooks/useCurrentUser', () => ({
+  useCurrentUser: () => ({
+    user: { name: 'Productora Sur', email: 'org@neopass.test' },
+  }),
+}));
+
 const HOUR_MS = 60 * 60 * 1000;
 const now = new Date('2026-10-01T20:00:00Z');
 const at = (hours: number) =>
@@ -14,6 +21,7 @@ const event = (overrides = {}) => ({
   status: 'PUBLISHED',
   startDate: at(24),
   endDate: at(30),
+  deletedAt: null,
   venueName: 'Club Central',
   ...overrides,
 });
@@ -45,8 +53,40 @@ describe('EventDetailHeader', () => {
     access: EventAccess = OWNER,
   ) => {
     vi.useFakeTimers({ now, toFake: ['Date'] });
-    render(<EventDetailHeader event={event(overrides)} access={access} />);
+    render(
+      <EventDetailHeader
+        event={event(overrides)}
+        access={access}
+        ticketsSold={0}
+      />,
+    );
   };
+
+  it('quien organiza puede eliminar el evento', () => {
+    renderHeader();
+
+    expect(
+      screen.getByRole('button', { name: 'Eliminar evento' }),
+    ).toBeInTheDocument();
+  });
+
+  it('un co-organizador no ve la opción de eliminar', () => {
+    renderHeader({}, coOrganizer(['EDIT_EVENT']));
+
+    expect(
+      screen.queryByRole('button', { name: 'Eliminar evento' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('un evento eliminado se marca ELIMINADO y no se puede volver a eliminar', () => {
+    renderHeader({ deletedAt: at(-1) });
+
+    expect(screen.getByText('ELIMINADO')).toBeInTheDocument();
+    expect(screen.getByText('Evento eliminado')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Eliminar evento' }),
+    ).not.toBeInTheDocument();
+  });
 
   it('a quien organiza le ofrece editar, abrir la página pública y volver a sus eventos', () => {
     renderHeader();

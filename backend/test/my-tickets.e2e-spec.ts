@@ -53,6 +53,7 @@ describe('Mis entradas', () => {
       endDate: event.endDate.toISOString(),
       status: 'PUBLISHED',
       venueName: null,
+      deletion: null,
     });
   });
 

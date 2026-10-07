@@ -34,6 +34,7 @@ export class OrdersRepository {
             title: true,
             status: true,
             endDate: true,
+            deletedAt: true,
             neoPassFeePercentage: true,
             organizer: {
               select: {

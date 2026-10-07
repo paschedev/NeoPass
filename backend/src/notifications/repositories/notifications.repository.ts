@@ -103,6 +103,37 @@ export class NotificationsRepository {
   }
 
   // One notice per person holding valid tickets of the event (but not the
+  // person who caused it), in one statement however many they are.
+  notifyTicketHolders({
+    eventId,
+    actorId,
+    title,
+    message,
+  }: {
+    eventId: string;
+    actorId: string;
+    title: string;
+    message: string;
+  }) {
+    return this.prisma.$executeRaw`
+      INSERT INTO "Notification"
+        ("id", "userId", "type", "title", "message", "eventId", "actionUrl",
+         "createdAt", "activityAt")
+      SELECT gen_random_uuid()::text, holders."userId",
+        'EVENT_UPDATE'::"NotificationType", ${title}, ${message}, ${eventId},
+        '/panel/tickets', now(), now()
+      FROM (
+        SELECT DISTINCT t."userId"
+        FROM "Ticket" t
+        JOIN "TicketType" tt ON tt."id" = t."ticketTypeId"
+        WHERE tt."eventId" = ${eventId}
+          AND t."status" = 'VALID'
+          AND t."userId" IS NOT NULL
+          AND t."userId" <> ${actorId}
+      ) holders`;
+  }
+
+  // One notice per person holding valid tickets of the event (but not the
   // person who made the change), in one statement however many they are.
   // An unread change notice adds up: it keeps every kind of change it has
   // announced, and all of them are reworded with the event as it is now.

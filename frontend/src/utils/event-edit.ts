@@ -1,12 +1,19 @@
 export type EventPhase = 'NOT_STARTED' | 'IN_PROGRESS' | 'CLOSED';
 
-type EventForPhase = { status: string; startDate: string; endDate: string };
+type EventForPhase = {
+  status: string;
+  startDate: string;
+  endDate: string;
+  deletedAt?: string | null;
+};
 
 // Espejo de backend/src/events/event-phase.ts: qué se puede editar según el
 // momento del evento. Un evento cuyo fin ya pasó queda cerrado aunque el
-// backend todavía no lo haya marcado como finalizado.
+// backend todavía no lo haya marcado como finalizado, y uno eliminado queda
+// cerrado para siempre.
 export function getEventPhase(event: EventForPhase, now: Date): EventPhase {
   if (
+    event.deletedAt ||
     event.status === 'FINISHED' ||
     event.status === 'CANCELLED' ||
     now >= new Date(event.endDate)
@@ -16,7 +23,14 @@ export function getEventPhase(event: EventForPhase, now: Date): EventPhase {
   return now < new Date(event.startDate) ? 'NOT_STARTED' : 'IN_PROGRESS';
 }
 
-export function closedEventLabel(status: string): string {
+export function closedEventLabel({
+  status,
+  deletedAt,
+}: {
+  status: string;
+  deletedAt?: string | null;
+}): string {
+  if (deletedAt) return 'Evento eliminado';
   return status === 'CANCELLED' ? 'Evento cancelado' : 'Evento finalizado';
 }
 

@@ -10,6 +10,7 @@ export interface TeamEvent {
   status: string;
   startDate: string;
   endDate: string;
+  deletedAt: string | null;
   venueName: string | null;
   venueAddress: string | null;
   ticketBatches: {
