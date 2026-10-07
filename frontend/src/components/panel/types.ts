@@ -26,6 +26,9 @@ export interface OrganizerEvent {
   status: string;
   startDate: string;
   endDate: string;
+  // Eliminado por su organizador o dado de baja por NeoPass: queda en el
+  // historial con sus ventas, de solo lectura.
+  deletedAt: string | null;
   venueName: string | null;
   ticketTypes: { sold: number; price: number | string }[];
   // Lo cobrado por las entradas (órdenes pagadas), no vendidas × precio actual.
@@ -59,6 +62,7 @@ export interface StaffEventGroup {
   status: string;
   startDate: string;
   endDate: string;
+  deletedAt: string | null;
   phase: EventPhase;
   owed: number;
   promoters: StaffPromoter[];

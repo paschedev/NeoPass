@@ -14,7 +14,14 @@ function ticket(
     eventStatus = 'PUBLISHED',
     start = 24,
     end = 30,
-  }: { status?: string; eventStatus?: string; start?: number; end?: number } = {},
+    deleted = false,
+  }: {
+    status?: string;
+    eventStatus?: string;
+    start?: number;
+    end?: number;
+    deleted?: boolean;
+  } = {},
 ): MyTicket {
   return {
     id,
@@ -28,6 +35,13 @@ function ticket(
         endDate: at(end),
         status: eventStatus,
         venueName: null,
+        deletion: deleted
+          ? {
+              byNeoPass: false,
+              organizerName: 'Productora',
+              contactEmail: 'org@neopass.test',
+            }
+          : null,
       },
     },
   };
@@ -80,6 +94,19 @@ describe('splitTickets', () => {
     },
   );
 
+  it('la entrada de un evento eliminado sigue entre las vigentes hasta su fecha, para que se vea el aviso', () => {
+    const { current, history } = splitTickets(
+      [
+        ticket('futuro', { deleted: true }),
+        ticket('pasado', { deleted: true, start: -8, end: -1 }),
+      ],
+      NOW,
+    );
+
+    expect(ids(current)).toEqual(['futuro']);
+    expect(ids(history)).toEqual(['pasado']);
+  });
+
   it('las vigentes van de la más próxima a la más lejana y el historial de la más reciente a la más vieja', () => {
     const { current, history } = splitTickets(
       [
@@ -111,7 +138,13 @@ describe('ticketBadge', () => {
       'USED',
     ],
     ['devuelta', ticket('a', { status: 'REFUNDED' }), 'VOID'],
-  ])('una entrada %s se marca %s', (_, myTicket, badge) => {
+    ['de un evento eliminado', ticket('a', { deleted: true }), 'DELETED'],
+    [
+      'devuelta de un evento eliminado',
+      ticket('a', { status: 'REFUNDED', deleted: true }),
+      'VOID',
+    ],
+  ])('una entrada %s se marca con su etiqueta', (_, myTicket, badge) => {
     expect(ticketBadge(myTicket, NOW)).toBe(badge);
   });
 });

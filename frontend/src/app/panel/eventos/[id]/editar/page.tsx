@@ -54,7 +54,7 @@ export default function EditarEventoPage() {
         const phase = getEventPhase(data, new Date());
         if (phase === 'CLOSED') {
           toast.error(
-            `${closedEventLabel(data.status)}: ya no se puede editar`,
+            `${closedEventLabel(data)}: ya no se puede editar`,
           );
           router.replace(afterEditPath(data.access, String(id)));
           return;

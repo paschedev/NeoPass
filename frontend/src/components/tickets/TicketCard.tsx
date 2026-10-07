@@ -16,6 +16,10 @@ const BADGES: Record<TicketBadge, { label: string; className: string }> = {
     className: 'bg-red-500/10 text-red-400 border-red-500/20',
   },
   VOID: { label: 'ANULADA', className: MUTED_BADGE },
+  DELETED: {
+    label: 'EVENTO ELIMINADO',
+    className: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  },
 };
 
 export default function TicketCard({

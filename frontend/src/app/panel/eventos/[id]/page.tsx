@@ -128,7 +128,11 @@ function EventSections({
 
   return (
     <div className="space-y-10">
-      <EventDetailHeader event={event} access={access} />
+      <EventDetailHeader
+        event={event}
+        access={access}
+        ticketsSold={sales?.totals.sold ?? 0}
+      />
       {sales ? (
         <EventSalesView sales={sales} />
       ) : (

@@ -27,9 +27,9 @@ const PAYMENT_HISTORY = {
   select: { amount: true, note: true, createdAt: true },
 } satisfies Prisma.EventStaff$paymentsArgs;
 
-// Public = published and not over yet.
+// Public = published, not deleted and not over yet.
 function publicEventWhere(now: Date): Prisma.EventWhereInput {
-  return { status: 'PUBLISHED', endDate: { gt: now } };
+  return { status: 'PUBLISHED', deletedAt: null, endDate: { gt: now } };
 }
 
 @Injectable()
@@ -116,6 +116,35 @@ export class EventsRepository {
       where: { status: 'PUBLISHED', endDate: { lte: now } },
       data: { status: 'FINISHED' },
     });
+  }
+
+  async findForDeletion(id: string) {
+    return this.prisma.event.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        title: true,
+        organizerId: true,
+        organizer: { select: { email: true } },
+      },
+    });
+  }
+
+  // Conditional on not being deleted yet: of two deletions at the same time
+  // only one counts.
+  async markDeleted(
+    id: string,
+    data: {
+      deletedAt: Date;
+      deletedById: string;
+      deletionContactEmail: string;
+    },
+  ) {
+    const { count } = await this.prisma.event.updateMany({
+      where: { id, deletedAt: null },
+      data,
+    });
+    return count > 0;
   }
 
   async findOne(id: string) {
@@ -382,6 +411,7 @@ export class EventsRepository {
           {
             endDate: { gt: now },
             status: { notIn: ['FINISHED', 'CANCELLED'] },
+            deletedAt: null,
           },
         ],
       },
@@ -391,6 +421,7 @@ export class EventsRepository {
         status: true,
         startDate: true,
         endDate: true,
+        deletedAt: true,
         staff: {
           select: {
             id: true,
@@ -453,6 +484,7 @@ export class EventsRepository {
             status: true,
             startDate: true,
             endDate: true,
+            deletedAt: true,
             venueName: true,
             venueAddress: true,
             venueCity: true,

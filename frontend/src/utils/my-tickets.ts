@@ -1,10 +1,11 @@
 import { isVoidTicket, type MyTicket } from '@/components/tickets/types';
 import { getEventPhase } from './event-edit';
 
-export type TicketBadge = 'VALID' | 'EXPIRED' | 'USED' | 'VOID';
+export type TicketBadge = 'VALID' | 'EXPIRED' | 'USED' | 'VOID' | 'DELETED';
 
 // Vigente: no está anulada y su evento todavía no terminó (por fecha o por
-// estado). Una entrada usada sigue vigente mientras el evento está en curso.
+// estado). Una entrada usada sigue vigente mientras el evento está en curso, y
+// la de un evento eliminado, hasta su fecha, para que se vea el aviso.
 function isCurrent(ticket: MyTicket, now: Date) {
   return (
     !isVoidTicket(ticket.status) &&
@@ -31,6 +32,7 @@ export function splitTickets(tickets: MyTicket[], now: Date) {
 // Una entrada sin usar de un evento que ya terminó deja de ser válida.
 export function ticketBadge(ticket: MyTicket, now: Date): TicketBadge {
   if (isVoidTicket(ticket.status)) return 'VOID';
+  if (ticket.ticketType.event.deletion) return 'DELETED';
   if (ticket.status === 'USED') return 'USED';
   return getEventPhase(ticket.ticketType.event, now) === 'CLOSED'
     ? 'EXPIRED'

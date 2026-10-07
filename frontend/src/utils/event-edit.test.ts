@@ -44,11 +44,27 @@ describe('getEventPhase', () => {
   );
 });
 
+describe('un evento eliminado', () => {
+  it('queda cerrado aunque su fecha no haya llegado', () => {
+    expect(
+      getEventPhase({ ...event({}), deletedAt: now.toISOString() }, now),
+    ).toBe('CLOSED');
+  });
+});
+
 describe('closedEventLabel', () => {
   it('distingue un evento cancelado de uno finalizado', () => {
-    expect(closedEventLabel('CANCELLED')).toBe('Evento cancelado');
-    expect(closedEventLabel('FINISHED')).toBe('Evento finalizado');
-    expect(closedEventLabel('PUBLISHED')).toBe('Evento finalizado');
+    expect(closedEventLabel({ status: 'CANCELLED' })).toBe('Evento cancelado');
+    expect(closedEventLabel({ status: 'FINISHED' })).toBe('Evento finalizado');
+    expect(closedEventLabel({ status: 'PUBLISHED' })).toBe(
+      'Evento finalizado',
+    );
+  });
+
+  it('un evento eliminado dice que fue eliminado', () => {
+    expect(
+      closedEventLabel({ status: 'PUBLISHED', deletedAt: now.toISOString() }),
+    ).toBe('Evento eliminado');
   });
 });
 

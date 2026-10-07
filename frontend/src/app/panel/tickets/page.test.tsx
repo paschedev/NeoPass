@@ -17,6 +17,7 @@ const ticket = (id: string, title: string, start: string, end: string) => ({
       endDate: end,
       status: 'PUBLISHED',
       venueName: null,
+      deletion: null,
     },
   },
 });

@@ -5,6 +5,7 @@ import { ArrowRightLeft, Eye, EyeOff, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Modal from '@/components/ui/Modal';
 import type { UserSearchResult } from '@/hooks/useUserSearch';
+import DeletionNotice from './DeletionNotice';
 import TransferPanel from './TransferPanel';
 import { formatEventRange } from '@/utils/format';
 import { ticketBadge } from '@/utils/my-tickets';
@@ -90,6 +91,10 @@ function TicketDetail({
             Entrada anulada: el pago se devolvió y el QR ya no sirve para
             entrar.
           </p>
+        ) : ticket.ticketType.event.deletion ? (
+          <div className="mb-8">
+            <DeletionNotice deletion={ticket.ticketType.event.deletion} />
+          </div>
         ) : (
           <>
             <div className="bg-white rounded-[2rem] p-6 mb-8 mx-auto w-64 relative group">

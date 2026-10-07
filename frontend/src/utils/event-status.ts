@@ -12,3 +12,18 @@ export const EVENT_STATUS_LABELS: Record<string, string> = {
 };
 
 export const DEFAULT_STATUS_STYLE = 'bg-white/10 text-neutral-400';
+
+// La etiqueta del evento en el panel: un evento eliminado lo dice, sea cual
+// sea su estado guardado.
+export function eventStatusBadge(event: {
+  status: string;
+  deletedAt?: string | null;
+}): { label: string; className: string } {
+  if (event.deletedAt) {
+    return { label: 'ELIMINADO', className: 'bg-red-500/10 text-red-400' };
+  }
+  return {
+    label: EVENT_STATUS_LABELS[event.status] ?? event.status,
+    className: EVENT_STATUS_STYLES[event.status] ?? DEFAULT_STATUS_STYLE,
+  };
+}

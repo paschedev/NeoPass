@@ -15,6 +15,7 @@ function organizerEvent(overrides: Partial<OrganizerEvent>): OrganizerEvent {
     status: 'PUBLISHED',
     startDate: at(24),
     endDate: at(30),
+    deletedAt: null,
     venueName: 'Club',
     ticketTypes: [],
     revenue: 0,

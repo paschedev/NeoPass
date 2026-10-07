@@ -36,6 +36,37 @@ function usedResult(checkIn: DoorCheckIn | null, scannerId: string) {
   };
 }
 
+type EventForBuyer = {
+  deletedAt: Date | null;
+  deletedById: string | null;
+  deletionContactEmail: string | null;
+  organizerId: string;
+  organizer: { name: string };
+};
+
+// A deleted event tells its buyers who deleted it (the organizer, or NeoPass
+// taking it down) and how to reach the organizer. The contact only leaves the
+// database for deleted events.
+function withDeletionNotice<T extends EventForBuyer>({
+  deletedAt,
+  deletedById,
+  deletionContactEmail,
+  organizerId,
+  organizer,
+  ...event
+}: T) {
+  return {
+    ...event,
+    deletion: deletedAt
+      ? {
+          byNeoPass: deletedById !== organizerId,
+          organizerName: organizer.name,
+          contactEmail: deletionContactEmail,
+        }
+      : null,
+  };
+}
+
 @Injectable()
 export class TicketsService {
   private readonly logger = new Logger(TicketsService.name);
@@ -90,7 +121,13 @@ export class TicketsService {
   }
 
   async findMyTickets(userId: string) {
-    return this.ticketsRepository.findMyTickets(userId);
+    const tickets = await this.ticketsRepository.findMyTickets(userId);
+    return tickets.map(
+      ({ ticketType: { event, ...ticketType }, ...ticket }) => ({
+        ...ticket,
+        ticketType: { ...ticketType, event: withDeletionNotice(event) },
+      }),
+    );
   }
 
   async processCheckIn(

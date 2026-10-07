@@ -98,6 +98,7 @@ export class UserRepository {
         status: 'ACCEPTED',
         event: {
           status: { notIn: ['FINISHED', 'CANCELLED'] },
+          deletedAt: null,
         },
       },
     });

@@ -137,6 +137,7 @@ model User {
   tickets                    Ticket[] // Tickets currently owned by the user
   checkIns                   CheckIn[] // Scans performed by this user
   organizedEvents            Event[]           @relation("EventOrganizer")
+  deletedEvents              Event[]           @relation("EventDeletedBy")
   organizerProfile           OrganizerProfile?
   eventStaff                 EventStaff[]
   promoterPaymentsRegistered PromoterPayment[]
@@ -179,6 +180,15 @@ model Event {
 
   organizerId   String
   organizer     User              @relation("EventOrganizer", fields: [organizerId], references: [id])
+
+  // A deleted event leaves the public site but stays for its organizer, its
+  // staff and whoever bought tickets. Deleted by its organizer or, to take it
+  // down, by a NeoPass admin; buyers get in touch through the contact email.
+  deletedAt            DateTime?
+  deletedById          String?
+  deletedBy            User?     @relation("EventDeletedBy", fields: [deletedById], references: [id])
+  deletionContactEmail String?
+
   ticketBatches TicketBatch[]
   ticketTypes   TicketType[]
   discountCodes DiscountCode[]

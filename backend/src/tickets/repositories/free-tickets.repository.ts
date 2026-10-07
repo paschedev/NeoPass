@@ -39,6 +39,7 @@ export class FreeTicketsRepository {
         status: true,
         startDate: true,
         endDate: true,
+        deletedAt: true,
         venueName: true,
         venueAddress: true,
         venueCity: true,
