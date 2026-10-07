@@ -17,6 +17,7 @@ import { apiFetch } from '@/utils/api';
 import { toCsvCell } from '@/utils/csv';
 import { formatCurrency, formatRelativeDate } from '@/utils/format';
 import { rppLink } from '@/utils/my-staff';
+import { copyLink } from '@/utils/share';
 import PromoterPaymentsSummary from '@/components/rpp/PromoterPaymentsSummary';
 
 export default function RppEventDetailsPage() {
@@ -64,13 +65,13 @@ export default function RppEventDetailsPage() {
       });
   }, [eventId]);
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     if (!stats.staffId) return;
-    navigator.clipboard.writeText(
+    const copied = await copyLink(
       rppLink(window.location.origin, String(eventId), stats.staffId),
     );
+    if (!copied) return;
     setCopiedLink(true);
-    toast.success('¡Link copiado!');
     setTimeout(() => setCopiedLink(false), 2000);
   };
 

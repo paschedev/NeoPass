@@ -16,9 +16,9 @@ import type { EventPhase } from '@/utils/event-edit';
 import { formatCurrency, formatEventRange } from '@/utils/format';
 import { getDirectionsUrl, hasMapLocation } from '@/utils/maps';
 import { rppLink } from '@/utils/my-staff';
+import { copyLink } from '@/utils/share';
 import { commissionLabel, eventPhaseLabel } from '@/utils/staff-overview';
 import { ownRoleLabel } from '@/utils/staff-roles';
-import toast from '@/utils/toast';
 import type { MyPromoterRole, MyStaffEvent } from './types';
 
 const PHASE_STYLES: Record<EventPhase, string> = {
@@ -79,17 +79,6 @@ function PromoterRole({
     promoter.commissionValue,
   );
 
-  const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(
-        rppLink(window.location.origin, event.id, promoter.staffId),
-      );
-      toast.success('Link copiado');
-    } catch {
-      toast.error('No se pudo copiar el link');
-    }
-  };
-
   return (
     <div className="mt-4 bg-black/30 rounded-2xl p-4">
       <div className="flex items-center justify-between gap-2">
@@ -117,7 +106,11 @@ function PromoterRole({
           {event.phase !== 'CLOSED' && (
             <button
               type="button"
-              onClick={copyLink}
+              onClick={() =>
+                copyLink(
+                  rppLink(window.location.origin, event.id, promoter.staffId),
+                )
+              }
               className={`${ACTION} bg-indigo-600 hover:bg-indigo-500 text-white`}
             >
               <Link2 className="w-4 h-4" /> Copiar link
