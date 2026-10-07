@@ -85,6 +85,11 @@ const renderEdit = (batches: FormBatch[], onSubmit = vi.fn()) => {
 
 describe('EventForm', () => {
   beforeEach(() => {
+    // Al empezar y no al terminar: la limpieza de Testing Library corre
+    // después del afterEach de este archivo y, al desmontar el test anterior,
+    // React todavía corre sus efectos pendientes (como el mapa que aparece al
+    // elegir un lugar). Esas llamadas no tienen que contar en este test.
+    vi.clearAllMocks();
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(NOW);
     // TandasManager carga los presets al montarse.
@@ -93,7 +98,6 @@ describe('EventForm', () => {
 
   afterEach(() => {
     vi.useRealTimers();
-    vi.clearAllMocks();
   });
 
   it('avisa apenas se elige un inicio posterior al fin, sin esperar a guardar', async () => {
