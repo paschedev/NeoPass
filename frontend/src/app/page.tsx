@@ -7,8 +7,6 @@ import {
   ShieldCheck,
   ArrowRight,
   Star,
-  LayoutDashboard,
-  Users,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
@@ -36,9 +34,9 @@ export default function Home() {
             </h1>
 
             <p className="text-lg md:text-xl text-neutral-400 max-w-2xl mb-10 leading-relaxed">
-              Descubrí los mejores eventos, comprá tus entradas de forma segura
-              en segundos y preparate para disfrutar. Sin complicaciones, solo
-              diversión.
+              Comprá tus entradas de forma rápida y segura. Organizá tus eventos
+              desde un solo lugar, con control total y cobros directos en tu
+              cuenta.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto min-h-[60px] items-center justify-center">
@@ -95,33 +93,35 @@ export default function Home() {
                 ¿Por qué elegir NeoPass?
               </h2>
               <p className="text-neutral-400 max-w-xl mx-auto">
-                Diseñamos la plataforma perfecta tanto para asistentes como para
-                organizadores de eventos.
+                Pensada para quienes compran entradas y para quienes organizan
+                eventos.
               </p>
             </div>
 
             <div className="grid md:grid-cols-3 gap-8">
               {/* Feature 1 */}
               <div className="group bg-black/40 border border-white/10 rounded-3xl p-8 hover:bg-black/60 transition-colors">
-                <div className="w-14 h-14 bg-indigo-500/20 text-indigo-400 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Ticket className="w-7 h-7" />
+                <div className="w-14 h-14 bg-purple-500/20 text-purple-400 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <ShieldCheck className="w-7 h-7" />
                 </div>
-                <h3 className="text-xl font-bold mb-3">Comprá en segundos</h3>
+                <h3 className="text-xl font-bold mb-3">Tus datos, seguros</h3>
                 <p className="text-neutral-400 leading-relaxed">
-                  Olvidate de las filas virtuales interminables. Nuestro sistema
-                  soporta alta demanda sin caídas.
+                  Navegás con conexión cifrada, tu contraseña nunca se guarda en
+                  texto plano y los datos de tu tarjeta no pasan por NeoPass.
                 </p>
               </div>
 
               {/* Feature 2 */}
               <div className="group bg-black/40 border border-white/10 rounded-3xl p-8 hover:bg-black/60 transition-colors">
-                <div className="w-14 h-14 bg-purple-500/20 text-purple-400 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <ShieldCheck className="w-7 h-7" />
+                <div className="w-14 h-14 bg-indigo-500/20 text-indigo-400 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <Ticket className="w-7 h-7" />
                 </div>
-                <h3 className="text-xl font-bold mb-3">100% Seguro</h3>
+                <h3 className="text-xl font-bold mb-3">
+                  Registrarte y comprar es fácil
+                </h3>
                 <p className="text-neutral-400 leading-relaxed">
-                  Entradas con QR dinámico y cifrado avanzado. Eliminamos la
-                  reventa falsa de raíz.
+                  Creás tu cuenta en un minuto, elegís tus entradas y pagás. Te
+                  llegan por mail en PDF, para entrar aunque no haya señal.
                 </p>
               </div>
 
@@ -131,11 +131,12 @@ export default function Home() {
                   <Calendar className="w-7 h-7" />
                 </div>
                 <h3 className="text-xl font-bold mb-3">
-                  Panel de organización
+                  Control total para organizadores
                 </h3>
                 <p className="text-neutral-400 leading-relaxed">
-                  Control total para creadores: ventas en tiempo real, escaneo
-                  de accesos y métricas detalladas.
+                  Tandas con fechas y cupos, RPPs con comisión, co-organizadores
+                  con permisos y escaneo en la puerta. Cobrás cada venta directo
+                  en tu cuenta.
                 </p>
               </div>
             </div>
