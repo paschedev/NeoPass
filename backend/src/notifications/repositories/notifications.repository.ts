@@ -57,14 +57,6 @@ export class NotificationsRepository {
     });
   }
 
-  findNewest(userId: string, take: number) {
-    return this.prisma.notification.findMany({
-      where: { userId },
-      orderBy: NEWEST_FIRST,
-      take,
-    });
-  }
-
   async belongsTo(id: string, userId: string) {
     const found = await this.prisma.notification.findFirst({
       where: { id, userId },

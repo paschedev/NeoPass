@@ -10,7 +10,15 @@ import {
 import { createTestApp, TestApp } from './utils/test-app';
 import { resetDb } from './utils/test-database';
 
-type CheckInResponse = { success: boolean; status: string; opensAt?: string };
+type CheckInResponse = {
+  success: boolean;
+  status: string;
+  message: string;
+  opensAt?: string;
+  usedAt?: string;
+  usedBy?: string;
+  usedByYou?: boolean;
+};
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -78,7 +86,7 @@ describe('Check-in en la puerta', () => {
     ).toBe(1);
   });
 
-  it('dos escaneos a la vez de la misma entrada: uno válido y otro usado', async () => {
+  it('dos escaneos a la vez de la misma entrada: uno válido y otro usado, que dice quién la escaneó', async () => {
     const { organizer, ticket } = await soldTicket();
 
     const responses = await Promise.all([
@@ -87,12 +95,74 @@ describe('Check-in en la puerta', () => {
     ]);
 
     expect(responses.map((r) => r.status)).toEqual([201, 201]);
-    expect(
-      responses.map((r) => (r.body as CheckInResponse).status).sort(),
-    ).toEqual(['USED', 'VALID']);
+    const bodies = responses.map((r) => r.body as CheckInResponse);
+    expect(bodies.map((body) => body.status).sort()).toEqual(['USED', 'VALID']);
+    expect(bodies.find((body) => body.status === 'USED')).toMatchObject({
+      usedBy: organizer.name,
+      usedByYou: true,
+    });
     expect(
       await t.prisma.checkIn.count({ where: { ticketId: ticket.id } }),
     ).toBe(1);
+  });
+
+  describe('entrada ya usada', () => {
+    async function acceptedScanner(eventId: string, name: string) {
+      const scanner = await createUser(t.prisma, { name });
+      await t.prisma.eventStaff.create({
+        data: {
+          eventId,
+          userId: scanner.id,
+          role: 'SCANNER',
+          status: 'ACCEPTED',
+        },
+      });
+      return scanner;
+    }
+
+    it('dice "YA INGRESÓ", cuándo y quién la escaneó', async () => {
+      const { event, ticket } = await soldTicket();
+      const juan = await acceptedScanner(event.id, 'Juan Pérez');
+      const ana = await acceptedScanner(event.id, 'Ana Gómez');
+      await checkIn(juan, ticket.qrCode).expect(201);
+
+      const res = await checkIn(ana, ticket.qrCode).expect(201);
+
+      const { checkedAt } = await t.prisma.checkIn.findUniqueOrThrow({
+        where: { ticketId: ticket.id },
+      });
+      expect(res.body).toEqual({
+        success: false,
+        status: 'USED',
+        message: 'YA INGRESÓ',
+        usedAt: checkedAt.toISOString(),
+        usedBy: 'Juan Pérez',
+        usedByYou: false,
+      });
+    });
+
+    it('si la escaneó el mismo scanner, lo dice', async () => {
+      const { event, ticket } = await soldTicket();
+      const juan = await acceptedScanner(event.id, 'Juan Pérez');
+      await checkIn(juan, ticket.qrCode).expect(201);
+
+      const res = await checkIn(juan, ticket.qrCode).expect(201);
+
+      expect(res.body).toMatchObject({ status: 'USED', usedByYou: true });
+    });
+
+    it('alguien de otro evento no ve quién la escaneó', async () => {
+      const { organizer, ticket } = await soldTicket();
+      await checkIn(organizer, ticket.qrCode).expect(201);
+      const stranger = await createUser(t.prisma);
+
+      const res = await checkIn(stranger, ticket.qrCode).expect(201);
+
+      const body = res.body as CheckInResponse;
+      expect(body.status).toBe('WRONG_EVENT');
+      expect(body.usedBy).toBeUndefined();
+      expect(body.usedAt).toBeUndefined();
+    });
   });
 
   it.each(['CANCELLED', 'FINISHED'] as const)(

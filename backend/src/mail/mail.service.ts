@@ -2,16 +2,16 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
 import { JobsOptions, Queue } from 'bullmq';
-import * as qrcode from 'qrcode';
 import { Resend } from 'resend';
 import { SUPPORT_EMAIL, TICKETS_EMAIL } from './mail-addresses';
 import { freeTicketsEmail } from './templates/free-tickets-email';
 import { passwordResetEmail } from './templates/password-reset-email';
+import { TicketForMail, ticketsEmail } from './templates/tickets-email';
 import {
-  qrContentId,
-  TicketForMail,
-  ticketsEmail,
-} from './templates/tickets-email';
+  renderTicketsPdf,
+  ticketPdfPages,
+  ticketsPdfFilename,
+} from './tickets-pdf';
 
 const TICKETS_SENDER = `NeoPass <${TICKETS_EMAIL}>`;
 const SUPPORT_SENDER = `NeoPass <${SUPPORT_EMAIL}>`;
@@ -84,7 +84,7 @@ export class MailService {
       from: TICKETS_SENDER,
       to,
       ...ticketsEmail({ name, tickets, ticketsUrl: this.ticketsUrl }),
-      attachments: await qrAttachments(tickets),
+      attachments: await ticketsPdfAttachments(tickets, null),
     });
   }
 
@@ -107,7 +107,7 @@ export class MailService {
         tickets,
         eventUrl: eventUrl.toString(),
       }),
-      attachments: await qrAttachments(tickets),
+      attachments: await ticketsPdfAttachments(tickets, validUntil),
     });
   }
 
@@ -129,14 +129,19 @@ export class MailService {
   }
 }
 
-// The QR goes as an inline image (CID): Gmail blocks `data:` images.
-function qrAttachments(tickets: TicketForMail[]) {
-  return Promise.all(
-    tickets.map(async (ticket) => ({
-      filename: `entrada-${ticket.id}.png`,
-      content: await qrcode.toBuffer(ticket.qrCode, { width: 440 }),
-      contentType: 'image/png',
-      contentId: qrContentId(ticket.id),
-    })),
-  );
+// All the tickets of the mail in one PDF, one page each. The body carries no QR
+// images: Gmail files mails with several of them under Promotions.
+async function ticketsPdfAttachments(
+  tickets: TicketForMail[],
+  validUntil: string | null,
+) {
+  if (tickets.length === 0) return [];
+
+  return [
+    {
+      filename: ticketsPdfFilename(tickets[0].eventName, tickets.length),
+      content: await renderTicketsPdf(ticketPdfPages({ tickets, validUntil })),
+      contentType: 'application/pdf',
+    },
+  ];
 }

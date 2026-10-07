@@ -1,6 +1,5 @@
 import {
   IsString,
-  IsEmail,
   MinLength,
   MaxLength,
   ValidateIf,
@@ -8,6 +7,7 @@ import {
   IsIn,
   Matches,
 } from 'class-validator';
+import { EmailField } from '../../common/email-field.decorator';
 
 export class RegisterUserDto {
   @IsString({ message: 'El nombre debe ser un texto' })
@@ -16,7 +16,7 @@ export class RegisterUserDto {
   @IsString({ message: 'El apellido debe ser un texto' })
   lastName: string;
 
-  @IsEmail({}, { message: 'Debe ser un correo electrónico válido' })
+  @EmailField()
   email: string;
 
   @IsString({ message: 'La contraseña debe ser un texto' })

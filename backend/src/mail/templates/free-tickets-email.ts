@@ -4,12 +4,13 @@ import {
   argentinaDateParts,
   eventDetailLines,
   eventHeaderHtml,
-  ticketCardsHtml,
   TicketForMail,
+  ticketSummaryHtml,
+  ticketSummaryLines,
 } from './tickets-email';
 
 // "el domingo 11 de octubre a las 01:00 h", in Argentina's time zone.
-function formatEntryDeadline(isoDate: string): string {
+export function formatEntryDeadline(isoDate: string): string {
   const parts = argentinaDateParts(new Date(isoDate));
   return `el ${parts.weekday} ${parts.day} de ${parts.month} a las ${parts.hour}:${parts.minute} h`;
 }
@@ -35,8 +36,8 @@ export function freeTicketsEmail({
   const greeting = name ? `¡Hola, ${name}!` : '¡Hola!';
   const intro = `${organizerName} te mandó ${what} para ${event.eventName}. ${
     single
-      ? 'Mostrá el QR en la puerta: sirve para una sola persona.'
-      : 'Mostrá cada QR en la puerta: cada uno sirve para una sola persona.'
+      ? 'Está en el PDF adjunto. Mostrá el QR en la puerta, desde el celular o impreso: sirve para una sola persona.'
+      : 'Están en el PDF adjunto, una por página. Mostrá cada QR en la puerta, desde el celular o impreso: cada uno sirve para una sola persona.'
   }`;
   const deadline = validUntil
     ? `${single ? 'Válida' : 'Válidas'} para entrar hasta ${formatEntryDeadline(validUntil)}.`
@@ -51,7 +52,7 @@ export function freeTicketsEmail({
       <p style="${STYLES.paragraph}">${escapeHtml(intro)}</p>
       ${deadline ? `<p style="${STYLES.paragraph}"><strong>${escapeHtml(deadline)}</strong></p>` : ''}
       ${eventHeaderHtml(event)}
-      ${ticketCardsHtml(tickets)}
+      ${ticketSummaryHtml(tickets)}
       ${button('Ver el evento', eventUrl)}
       <p style="${STYLES.note}">${escapeHtml(warning)}</p>`,
   });
@@ -63,9 +64,9 @@ export function freeTicketsEmail({
     [
       event.eventName,
       ...eventDetailLines(event),
-      ...tickets.map((ticket) => `- ${ticket.ticketTypeName}`),
+      ...ticketSummaryLines(tickets),
     ].join('\n'),
-    `Los códigos QR están en la versión con imágenes de este mail. El evento:\n${eventUrl}`,
+    `El evento:\n${eventUrl}`,
     warning,
     TEXT_FOOTER,
   ].join('\n\n');

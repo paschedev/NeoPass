@@ -174,17 +174,13 @@ describe('Notificaciones', () => {
     });
   });
 
-  it('la lista completa de antes trae como mucho los 50 avisos más recientes', async () => {
+  it('la lista completa de antes, sin paginar, ya no existe', async () => {
     const user = await createUser(t.prisma);
-    await notify(user, 55);
+    await notify(user, 1);
 
-    const res = await request(t.app.getHttpServer())
+    await request(t.app.getHttpServer())
       .get('/notifications')
       .set('Authorization', authHeader(t.app, user))
-      .expect(200);
-    const items = res.body as FeedItem[];
-
-    expect(items).toHaveLength(50);
-    expect(items[0].title).toBe('Aviso 55');
+      .expect(404);
   });
 });

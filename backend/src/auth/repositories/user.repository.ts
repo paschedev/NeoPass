@@ -6,8 +6,12 @@ import { Prisma, User } from '@prisma/client';
 export class UserRepository {
   constructor(private prisma: PrismaService) {}
 
+  // The account the email reaches however it is typed: the database applies
+  // the rule (see `emailKey` in the schema).
   async findByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findUnique({ where: { email } });
+    const [{ key }] = await this.prisma.$queryRaw<{ key: string }[]>`
+      SELECT email_key(${email}) AS key`;
+    return this.prisma.user.findUnique({ where: { emailKey: key } });
   }
 
   async findById(id: string): Promise<User | null> {

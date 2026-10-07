@@ -72,6 +72,16 @@ export function formatWeekdayDateTime(value: string): string {
   });
 }
 
+// "23:41:08", en la hora local del navegador.
+export function formatClockTime(value: string): string {
+  return new Date(value).toLocaleTimeString('es-AR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
+}
+
 // Para los ejes de los gráficos: 1.500 → "1,5k", 2.000.000 → "2M".
 export function formatCompactNumber(value: number): string {
   const compact = (n: number, suffix: string) =>

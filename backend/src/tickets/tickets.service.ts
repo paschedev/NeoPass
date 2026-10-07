@@ -15,6 +15,27 @@ import { checkInOpensAt } from './check-in-window';
 import { Prisma } from '@prisma/client';
 import { eventForMail } from './event-for-mail';
 
+interface DoorCheckIn {
+  checkedAt: Date;
+  scannerId: string;
+  scanner: { name: string };
+}
+
+// Saying when and by whom tells the door its own re-scan apart from a
+// shared screenshot. Only the event's staff gets this far.
+function usedResult(checkIn: DoorCheckIn | null, scannerId: string) {
+  return {
+    success: false,
+    status: 'USED',
+    message: 'YA INGRESÓ',
+    ...(checkIn && {
+      usedAt: checkIn.checkedAt.toISOString(),
+      usedBy: checkIn.scanner.name,
+      usedByYou: checkIn.scannerId === scannerId,
+    }),
+  };
+}
+
 @Injectable()
 export class TicketsService {
   private readonly logger = new Logger(TicketsService.name);
@@ -109,8 +130,7 @@ export class TicketsService {
       };
     }
 
-    const used = { success: false, status: 'USED', message: 'USADO' };
-    if (ticket.status === 'USED') return used;
+    if (ticket.status === 'USED') return usedResult(ticket.checkIn, scannerId);
 
     if (ticket.status !== 'VALID') {
       return { success: false, status: 'INVALID', message: 'INVÁLIDO' };
@@ -138,18 +158,25 @@ export class TicketsService {
       };
     }
 
+    let checkedIn: boolean;
     try {
-      const checkedIn = await this.ticketsRepository.processCheckInTransaction(
+      checkedIn = await this.ticketsRepository.processCheckInTransaction(
         ticket.id,
         scannerId,
         userAgent,
       );
-      if (!checkedIn) return used;
     } catch (error) {
       // A simultaneous scan that got past the status check hits the unique
       // CheckIn.ticketId: for the door it is simply "already used".
-      if (isUniqueViolation(error)) return used;
-      throw error;
+      if (!isUniqueViolation(error)) throw error;
+      checkedIn = false;
+    }
+    // Another scan won the race: it already committed its check-in.
+    if (!checkedIn) {
+      return usedResult(
+        await this.ticketsRepository.findCheckIn(ticket.id),
+        scannerId,
+      );
     }
 
     return {

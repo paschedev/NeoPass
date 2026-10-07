@@ -11,8 +11,11 @@ import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
 import { hasUsableMercadoPagoToken } from '../payments/mercadopago-token';
 import * as crypto from 'crypto';
-import { Prisma } from '@prisma/client';
+import { Prisma, User } from '@prisma/client';
 import { RegisterUserDto } from './dto/register-user.dto';
+import { isUniqueViolation } from '../prisma/prisma-errors';
+
+const EMAIL_TAKEN = 'El correo electrónico ya existe';
 
 function hashResetToken(token: string) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -84,7 +87,7 @@ export class AuthService {
   async register(data: RegisterUserDto) {
     const existingUser = await this.userRepository.findByEmail(data.email);
     if (existingUser) {
-      throw new ConflictException('El correo electrónico ya existe');
+      throw new ConflictException(EMAIL_TAKEN);
     }
 
     const salt = await bcrypt.genSalt();
@@ -113,7 +116,14 @@ export class AuthService {
       };
     }
 
-    const user = await this.userRepository.create(userCreateInput);
+    let user: User;
+    try {
+      user = await this.userRepository.create(userCreateInput);
+    } catch (error) {
+      // Another registration for the same mailbox was saved in between.
+      if (isUniqueViolation(error)) throw new ConflictException(EMAIL_TAKEN);
+      throw error;
+    }
 
     const { passwordHash, ...result } = user;
     return {

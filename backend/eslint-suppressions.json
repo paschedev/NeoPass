@@ -41,7 +41,7 @@
   },
   "src/notifications/notifications.controller.ts": {
     "@typescript-eslint/no-unsafe-member-access": {
-      "count": 4
+      "count": 3
     }
   },
   "src/presets/presets.controller.ts": {

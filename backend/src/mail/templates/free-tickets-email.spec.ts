@@ -64,16 +64,41 @@ describe('Mail de QR free', () => {
     expect(text.startsWith('¡Hola!')).toBe(true);
   });
 
-  it('muestra la fecha, el lugar del evento y cada QR como imagen inline', () => {
-    const { html } = build({
+  it('muestra la fecha, el lugar y cuántas entradas hay de cada tipo, sin imágenes', () => {
+    const { html, text } = build({
       tickets: [ticket(), ticket({ id: 'ticket-2', ticketTypeName: 'VIP' })],
     });
 
     expect(html).toContain('Sábado 10 de octubre · 23:00 h');
     expect(html).toContain('Niceto Club');
-    expect(html).toContain('src="cid:qr-ticket-1"');
-    expect(html).toContain('src="cid:qr-ticket-2"');
-    expect(html).toContain('VIP');
+    expect(html).not.toContain('<img');
+    expect(html).not.toContain('cid:');
+    for (const body of [html, text]) {
+      expect(body).toContain('1 × General');
+      expect(body).toContain('1 × VIP');
+    }
+  });
+
+  it('avisa que las entradas están en el PDF adjunto, una por página', () => {
+    const { html, text } = build({
+      tickets: [ticket(), ticket({ id: 'ticket-2' })],
+    });
+
+    for (const body of [html, text]) {
+      expect(body).toContain(
+        'Martina te mandó 2 entradas para Fiesta Bresh. Están en el PDF adjunto, una por página.',
+      );
+    }
+  });
+
+  it('con una sola entrada avisa que está en el PDF adjunto', () => {
+    const { html, text } = build();
+
+    for (const body of [html, text]) {
+      expect(body).toContain(
+        'Martina te mandó una entrada para Fiesta Bresh. Está en el PDF adjunto.',
+      );
+    }
   });
 
   it('con hora límite avisa hasta cuándo se puede entrar, en hora de Argentina', () => {
