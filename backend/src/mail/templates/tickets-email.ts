@@ -24,11 +24,6 @@ const eventDateFormat = new Intl.DateTimeFormat('es-AR', {
   hourCycle: 'h23',
 });
 
-// The QR goes as an inline image (CID): Gmail blocks `data:` images.
-export function qrContentId(ticketId: string): string {
-  return `qr-${ticketId}`;
-}
-
 // Weekday, day, month, hour and minute of a date in Argentina's time zone.
 export function argentinaDateParts(date: Date): Record<string, string> {
   const parts: Record<string, string> = {};
@@ -73,20 +68,31 @@ export function eventHeaderHtml(event: TicketForMail): string {
         .join('')}`;
 }
 
-export function ticketCardsHtml(tickets: TicketForMail[]): string {
-  return tickets
-    .map(
-      (ticket) => `
+// "2 × General", one line per ticket type, in the order they come.
+export function ticketSummaryLines(tickets: TicketForMail[]): string[] {
+  const counts = new Map<string, number>();
+  for (const { ticketTypeName } of tickets) {
+    counts.set(ticketTypeName, (counts.get(ticketTypeName) ?? 0) + 1);
+  }
+  return [...counts].map(([name, count]) => `${count} × ${name}`);
+}
+
+// The QRs travel in the PDF attachment: a body with several QR images lands in
+// Gmail's Promotions tab, so the mail only lists the tickets.
+export function ticketSummaryHtml(tickets: TicketForMail[]): string {
+  return `
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 16px 0 0; border: 1px solid #e4e4e7; border-radius: 12px;">
         <tr>
-          <td align="center" style="padding: 20px;">
-            <p style="margin: 0 0 12px; font-size: 13px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: #52525b;">${escapeHtml(ticket.ticketTypeName)}</p>
-            <img src="cid:${qrContentId(ticket.id)}" alt="Código QR de tu entrada" width="220" height="220" style="display: block; margin: 0 auto;">
+          <td style="padding: 16px 20px;">
+            ${ticketSummaryLines(tickets)
+              .map(
+                (line) =>
+                  `<p style="margin: 0; font-size: 15px; line-height: 24px; font-weight: 600; color: #18181b;">${escapeHtml(line)}</p>`,
+              )
+              .join('')}
           </td>
         </tr>
-      </table>`,
-    )
-    .join('');
+      </table>`;
 }
 
 // One order has tickets of a single event, so the event comes from the first.
@@ -103,13 +109,13 @@ export function ticketsEmail({
   const event = tickets.length > 0 ? tickets[0] : undefined;
   const eventDetails = event ? eventDetailLines(event) : [];
   const intro = single
-    ? 'Acá está tu entrada. Mostrá el QR en la puerta: sirve para una sola persona.'
-    : 'Acá están tus entradas. Mostrá cada QR en la puerta: cada uno sirve para una sola persona.';
+    ? 'Tu entrada está en el PDF adjunto. Mostrá el QR en la puerta, desde el celular o impreso: sirve para una sola persona.'
+    : 'Tus entradas están en el PDF adjunto, una por página. Mostrá cada QR en la puerta, desde el celular o impreso: cada uno sirve para una sola persona.';
   const warning =
     'No compartas los códigos: quien tenga el QR entra con tu entrada. Para pasarle una entrada a alguien, usá "Transferir" en Mis entradas.';
 
   const eventHtml = event ? eventHeaderHtml(event) : '';
-  const ticketsHtml = ticketCardsHtml(tickets);
+  const ticketsHtml = tickets.length > 0 ? ticketSummaryHtml(tickets) : '';
 
   const subject = event
     ? `${single ? 'Tu entrada' : 'Tus entradas'} para ${event.eventName}`
@@ -134,11 +140,11 @@ export function ticketsEmail({
           [
             event.eventName,
             ...eventDetails,
-            ...tickets.map((ticket) => `- ${ticket.ticketTypeName}`),
+            ...ticketSummaryLines(tickets),
           ].join('\n'),
         ]
       : []),
-    `Los códigos QR están en la versión con imágenes de este mail y en Mis entradas:\n${ticketsUrl}`,
+    `También las tenés en Mis entradas:\n${ticketsUrl}`,
     warning,
     TEXT_FOOTER,
   ].join('\n\n');
