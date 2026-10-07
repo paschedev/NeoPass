@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  formatClockTime,
   formatCompactNumber,
   formatCurrency,
   formatDayMonthTime,
@@ -101,6 +102,14 @@ describe('formatDayMonthTime', () => {
 
 describe('formatWeekdayDateTime', () => {
   it('muestra el día de la semana, el día, el mes y la hora de 24 h en la hora de Argentina', () => {
-    expect(formatWeekdayDateTime('2026-10-11T02:59:00Z')).toBe('sáb, 10 oct, 23:59');
+    expect(formatWeekdayDateTime('2026-10-11T02:59:00Z')).toBe(
+      'sáb, 10 oct, 23:59',
+    );
+  });
+});
+
+describe('formatClockTime', () => {
+  it('muestra la hora con segundos, de 24 h, en la hora de Argentina', () => {
+    expect(formatClockTime('2026-10-11T02:41:08Z')).toBe('23:41:08');
   });
 });
