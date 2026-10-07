@@ -23,6 +23,12 @@ export function getEventPhase(event: EventForPhase, now: Date): EventPhase {
   return now < new Date(event.startDate) ? 'NOT_STARTED' : 'IN_PROGRESS';
 }
 
+// Tiene página pública: publicado y sin cerrar. Fuera de eso, su link abre
+// "Evento no encontrado".
+export function isEventPublic(event: EventForPhase, now: Date): boolean {
+  return event.status === 'PUBLISHED' && getEventPhase(event, now) !== 'CLOSED';
+}
+
 export function closedEventLabel({
   status,
   deletedAt,
