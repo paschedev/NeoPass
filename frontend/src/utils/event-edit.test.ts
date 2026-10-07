@@ -3,6 +3,7 @@ import {
   buildEventUpdate,
   closedEventLabel,
   getEventPhase,
+  isEventPublic,
 } from './event-edit';
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -49,6 +50,34 @@ describe('un evento eliminado', () => {
     expect(
       getEventPhase({ ...event({}), deletedAt: now.toISOString() }, now),
     ).toBe('CLOSED');
+  });
+});
+
+describe('isEventPublic', () => {
+  it('un evento publicado que no terminó tiene página pública, empezado o no', () => {
+    expect(isEventPublic(event({}), now)).toBe(true);
+    expect(
+      isEventPublic(event({ startDate: at(-1), endDate: at(3) }), now),
+    ).toBe(true);
+  });
+
+  it.each(['DRAFT', 'PAUSED', 'FINISHED', 'CANCELLED'])(
+    'un evento %s no tiene página pública',
+    (status) => {
+      expect(isEventPublic(event({ status }), now)).toBe(false);
+    },
+  );
+
+  it('un evento publicado cuyo fin ya pasó no tiene página pública', () => {
+    expect(
+      isEventPublic(event({ startDate: at(-6), endDate: at(-1) }), now),
+    ).toBe(false);
+  });
+
+  it('un evento eliminado no tiene página pública', () => {
+    expect(
+      isEventPublic({ ...event({}), deletedAt: now.toISOString() }, now),
+    ).toBe(false);
   });
 });
 

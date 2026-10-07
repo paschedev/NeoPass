@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import EventsTab from './EventsTab';
 import type { OrganizerEvent } from './types';
+
+vi.mock('@/utils/toast', () => ({
+  default: { error: vi.fn(), success: vi.fn() },
+}));
 
 const HOUR_MS = 60 * 60 * 1000;
 const now = new Date('2026-10-01T20:00:00Z');
@@ -104,4 +108,44 @@ describe('EventsTab', () => {
     expect(screen.getByText('Evento cancelado')).toBeInTheDocument();
     expect(screen.getByText('CANCELADO')).toBeInTheDocument();
   });
+
+  it('"Copiar link" copia la página pública del evento, sin código de RPP', async () => {
+    vi.useFakeTimers({ now, toFake: ['Date'] });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    renderTab(organizerEvent({}));
+
+    fireEvent.click(
+      screen.getByRole('button', {
+        name: 'Copiar link de Fiesta de primavera',
+      }),
+    );
+
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith(
+        `${window.location.origin}/eventos/event-1`,
+      ),
+    );
+  });
+
+  it.each<[string, Partial<OrganizerEvent>]>([
+    ['en borrador', { status: 'DRAFT' }],
+    ['finalizado', { status: 'FINISHED' }],
+    ['cancelado', { status: 'CANCELLED' }],
+    ['eliminado', { deletedAt: at(-1) }],
+    ['con el fin ya pasado', { startDate: at(-6), endDate: at(-1) }],
+  ])(
+    'un evento %s no ofrece copiar el link: abriría "Evento no encontrado"',
+    (_, overrides) => {
+      vi.useFakeTimers({ now, toFake: ['Date'] });
+      renderTab(organizerEvent(overrides));
+
+      expect(
+        screen.queryByRole('button', { name: /copiar link/i }),
+      ).not.toBeInTheDocument();
+    },
+  );
 });
