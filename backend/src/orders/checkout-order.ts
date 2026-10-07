@@ -109,13 +109,16 @@ export function buildCheckoutOrder<T extends CheckoutTicketType>(
     .mul(event.neoPassFeePercentage)
     .div(100)
     .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
-  mpItems.push({
-    id: 'service_fee',
-    title: 'Cargo por servicio',
-    quantity: 1,
-    unit_price: serviceFee.toNumber(),
-    currency_id: CURRENCY_ID,
-  });
+  // Without a fee (an event at 0 %) Mercado Pago gets no $0 line.
+  if (serviceFee.gt(0)) {
+    mpItems.push({
+      id: 'service_fee',
+      title: 'Cargo por servicio',
+      quantity: 1,
+      unit_price: serviceFee.toNumber(),
+      currency_id: CURRENCY_ID,
+    });
+  }
 
   return {
     event,
