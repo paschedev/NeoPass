@@ -8,14 +8,53 @@ import {
   CalendarRange,
   Globe,
   Users,
+  type LucideIcon,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import Modal from '@/components/ui/Modal';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
-import { STAFF } from '@/utils/navigation';
-import { canSeeStaffPanel, isOrganizer } from '@/utils/roles';
+import { ADMIN_PANEL, STAFF } from '@/utils/navigation';
+import { canSeeStaffPanel, isAdmin, isOrganizer } from '@/utils/roles';
+
+function NavItem({
+  href,
+  icon: Icon,
+  label,
+  show,
+  pathname,
+  expanded,
+}: {
+  href: string;
+  icon: LucideIcon;
+  label: string;
+  show: boolean;
+  pathname: string;
+  // Con la barra cerrada solo se ve el ícono: el nombre va como título.
+  expanded: boolean;
+}) {
+  if (!show) return null;
+  const isActive = pathname === href;
+  return (
+    <Link
+      href={href}
+      title={!expanded ? label : undefined}
+      className={`flex items-center gap-3 px-3 py-3 rounded-xl font-medium transition-colors overflow-hidden whitespace-nowrap ${
+        isActive
+          ? 'bg-indigo-500/10 text-indigo-400'
+          : 'text-neutral-400 hover:text-white hover:bg-white/5'
+      }`}
+    >
+      <Icon className="w-6 h-6 shrink-0" />
+      <span
+        className={`transition-opacity duration-300 ${expanded ? 'opacity-100' : 'opacity-0 hidden'}`}
+      >
+        {label}
+      </span>
+    </Link>
+  );
+}
 
 export default function GlobalSidebar() {
   const pathname = usePathname();
@@ -26,39 +65,7 @@ export default function GlobalSidebar() {
   if (!ready) return null;
 
   const isLoggedIn = !!user;
-
-  const NavItem = ({
-    href,
-    icon: Icon,
-    label,
-    show,
-  }: {
-    href: string;
-    icon: any;
-    label: string;
-    show: boolean;
-  }) => {
-    if (!show) return null;
-    const isActive = pathname === href;
-    return (
-      <Link
-        href={href}
-        title={!isSidebarOpen ? label : undefined}
-        className={`flex items-center gap-3 px-3 py-3 rounded-xl font-medium transition-colors overflow-hidden whitespace-nowrap ${
-          isActive
-            ? 'bg-indigo-500/10 text-indigo-400'
-            : 'text-neutral-400 hover:text-white hover:bg-white/5'
-        }`}
-      >
-        <Icon className="w-6 h-6 shrink-0" />
-        <span
-          className={`transition-opacity duration-300 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 hidden'}`}
-        >
-          {label}
-        </span>
-      </Link>
-    );
-  };
+  const nav = { pathname, expanded: isSidebarOpen };
 
   return (
     <>
@@ -87,6 +94,7 @@ export default function GlobalSidebar() {
             href="/eventos"
             icon={Globe}
             label="Eventos públicos"
+            {...nav}
             show={true}
           />
 
@@ -96,25 +104,36 @@ export default function GlobalSidebar() {
                 href="/panel"
                 icon={CalendarRange}
                 label="Organización"
+                {...nav}
                 show={isOrganizer(user)}
               />
               <NavItem
                 href={STAFF.href}
                 icon={STAFF.icon}
                 label={STAFF.label}
+                {...nav}
                 show={canSeeStaffPanel(user)}
               />
               <NavItem
                 href="/panel/tickets"
                 icon={Ticket}
                 label="Entradas"
+                {...nav}
                 show={true}
               />
               <NavItem
                 href="/panel/configuracion"
                 icon={Settings}
                 label="Configuración"
+                {...nav}
                 show={true}
+              />
+              <NavItem
+                href={ADMIN_PANEL.href}
+                icon={ADMIN_PANEL.icon}
+                label="Administración"
+                {...nav}
+                show={isAdmin(user)}
               />
             </>
           ) : (
@@ -130,12 +149,14 @@ export default function GlobalSidebar() {
                 href="/login"
                 icon={LogOut}
                 label="Iniciar sesión"
+                {...nav}
                 show={true}
               />
               <NavItem
                 href="/registro"
                 icon={Users}
                 label="Registrarse"
+                {...nav}
                 show={true}
               />
             </>

@@ -10,6 +10,11 @@ export function isOrganizer(user: RoleFlags | null): boolean {
   return user?.role === 'ORGANIZER' || user?.role === 'ADMIN';
 }
 
+// La cuenta de NeoPass: entra al panel de administración.
+export function isAdmin(user: RoleFlags | null): boolean {
+  return user?.role === 'ADMIN';
+}
+
 // Organizadores, o quien tiene una invitación de scanner o co-organizador aceptada
 // en un evento vigente.
 export function canScan(user: RoleFlags | null): boolean {
