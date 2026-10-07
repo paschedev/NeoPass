@@ -21,7 +21,12 @@ type SentEmail = {
   subject: string;
   html: string;
   text: string;
-  attachments?: { content: Buffer; contentId?: string }[];
+  attachments?: {
+    content: Buffer;
+    filename: string;
+    contentType?: string;
+    contentId?: string;
+  }[];
 };
 type MailJob = [
   string,
@@ -38,12 +43,25 @@ type MailJob = [
   { jobId?: string; attempts?: number },
 ];
 
-const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 const VENUE = {
   venueName: 'Niceto Club',
   venueAddress: 'Av. Niceto Vega 5510',
   venueCity: 'CABA',
 };
+
+// The tickets go in one PDF attachment, one page per ticket, and the body has
+// no images: Gmail files mails with several QR images under Promotions.
+function expectTicketsPdf(email: SentEmail, filename: string, pages: number) {
+  expect(email.html).not.toContain('<img');
+  expect(email.attachments).toHaveLength(1);
+  const [pdf] = email.attachments ?? [];
+  expect(pdf.filename).toBe(filename);
+  expect(pdf.contentType).toBe('application/pdf');
+  expect(pdf.content.subarray(0, 5).toString()).toBe('%PDF-');
+  expect(pdf.content.toString('latin1').match(/\/Type \/Page\b/g)).toHaveLength(
+    pages,
+  );
+}
 
 describe('Mails', () => {
   let t: TestApp;
@@ -57,13 +75,19 @@ describe('Mails', () => {
   afterAll(() => t.close());
 
   describe('envío', () => {
-    it('el mail de entradas lleva cada QR como imagen inline y escapa los textos', async () => {
+    it('el mail de entradas lleva un PDF con una página por entrada, sin imágenes en el cuerpo, y escapa los textos', async () => {
       await t.app
         .get(MailService)
         .sendTicketsEmail('ana@neopass.test', 'Ana <b>', [
           {
             id: 'ticket-1',
-            qrCode: 'qr-secreto',
+            qrCode: 'qr-secreto-1',
+            eventName: '<script>alert(1)</script>',
+            ticketTypeName: 'VIP & Co',
+          },
+          {
+            id: 'ticket-2',
+            qrCode: 'qr-secreto-2',
             eventName: '<script>alert(1)</script>',
             ticketTypeName: 'VIP & Co',
           },
@@ -73,11 +97,7 @@ describe('Mails', () => {
       expect(email.html).not.toContain('<script>');
       expect(email.html).toContain('&lt;script&gt;');
       expect(email.html).toContain('Ana &lt;b&gt;');
-      expect(email.html).not.toContain('data:image');
-      const [attachment] = email.attachments ?? [];
-      expect(attachment.contentId).toBeTruthy();
-      expect(email.html).toContain(`cid:${attachment.contentId}`);
-      expect(attachment.content.subarray(0, 4)).toEqual(PNG_SIGNATURE);
+      expectTicketsPdf(email, 'entradas-script-alert-1-script.pdf', 2);
     });
 
     it('el mail de entradas sale desde entradas@ con el evento en el asunto, el botón a Mis entradas del sitio y versión en texto', async () => {
@@ -100,7 +120,7 @@ describe('Mails', () => {
       expect(email.text).toContain('https://app.neopass.test/panel/tickets');
     });
 
-    it('el mail de QR free sale desde entradas@ con cada QR inline y el botón a la página del evento', async () => {
+    it('el mail de QR free sale desde entradas@ con las entradas en un PDF adjunto y el botón a la página del evento', async () => {
       await new MailProcessor(t.app.get(MailService)).process({
         id: 'job-1',
         name: 'send-free-tickets',
@@ -129,9 +149,7 @@ describe('Mails', () => {
       expect(email.html).toContain(
         'href="https://app.neopass.test/eventos/evento-1"',
       );
-      const [attachment] = email.attachments ?? [];
-      expect(email.html).toContain(`cid:${attachment.contentId}`);
-      expect(attachment.content.subarray(0, 4)).toEqual(PNG_SIGNATURE);
+      expectTicketsPdf(email, 'entrada-fiesta-bresh.pdf', 1);
     });
 
     it('el mail de recuperación de contraseña sale desde soporte@ con el enlace y versión en texto', async () => {

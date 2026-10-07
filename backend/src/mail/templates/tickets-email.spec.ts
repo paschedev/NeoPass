@@ -1,4 +1,4 @@
-import { qrContentId, TicketForMail, ticketsEmail } from './tickets-email';
+import { TicketForMail, ticketsEmail } from './tickets-email';
 
 const TICKETS_URL = 'https://neopass.test/panel/tickets';
 
@@ -52,17 +52,40 @@ describe('Mail de entradas', () => {
     expect(html).not.toContain('null');
   });
 
-  it('cada entrada muestra su tanda y su QR como imagen inline', () => {
-    const { html } = build([
-      ticket({ id: 'ticket-1', ticketTypeName: 'General' }),
-      ticket({ id: 'ticket-2', ticketTypeName: 'VIP' }),
+  it('no lleva imágenes: avisa que las entradas están en el PDF adjunto, una por página', () => {
+    const { html, text } = build([
+      ticket({ id: 'ticket-1' }),
+      ticket({ id: 'ticket-2' }),
     ]);
 
-    expect(html).toContain('General');
-    expect(html).toContain('VIP');
-    expect(html).toContain(`cid:${qrContentId('ticket-1')}`);
-    expect(html).toContain(`cid:${qrContentId('ticket-2')}`);
-    expect(html).not.toContain('data:image');
+    expect(html).not.toContain('<img');
+    expect(html).not.toContain('cid:');
+    for (const body of [html, text]) {
+      expect(body).toContain(
+        'Tus entradas están en el PDF adjunto, una por página.',
+      );
+    }
+  });
+
+  it('con una sola entrada avisa que está en el PDF adjunto', () => {
+    const { html, text } = build([ticket()]);
+
+    for (const body of [html, text]) {
+      expect(body).toContain('Tu entrada está en el PDF adjunto.');
+    }
+  });
+
+  it('lista cuántas entradas hay de cada tipo', () => {
+    const { html, text } = build([
+      ticket({ id: 'ticket-1', ticketTypeName: 'General' }),
+      ticket({ id: 'ticket-2', ticketTypeName: 'VIP' }),
+      ticket({ id: 'ticket-3', ticketTypeName: 'General' }),
+    ]);
+
+    for (const body of [html, text]) {
+      expect(body).toContain('2 × General');
+      expect(body).toContain('1 × VIP');
+    }
   });
 
   it('el botón lleva a Mis entradas', () => {
