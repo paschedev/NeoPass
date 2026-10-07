@@ -14,11 +14,6 @@
       "count": 1
     }
   },
-  "src/app/panel/escanear/page.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 1
-    }
-  },
   "src/app/panel/page.tsx": {
     "react-hooks/set-state-in-effect": {
       "count": 1

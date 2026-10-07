@@ -11,6 +11,13 @@ const EVENT_FOR_MAIL = {
   venueCity: true,
 } satisfies Prisma.EventSelect;
 
+// When and by whom a ticket was scanned, for "YA INGRESÓ" at the door.
+const CHECK_IN_FOR_DOOR = {
+  checkedAt: true,
+  scannerId: true,
+  scanner: { select: { name: true } },
+} satisfies Prisma.CheckInSelect;
+
 @Injectable()
 export class TicketsRepository {
   constructor(private prisma: PrismaService) {}
@@ -55,6 +62,7 @@ export class TicketsRepository {
         status: true,
         isGuestList: true,
         freeTicketGrant: { select: { validUntil: true } },
+        checkIn: { select: CHECK_IN_FOR_DOOR },
         ticketType: {
           select: {
             name: true,
@@ -128,6 +136,13 @@ export class TicketsRepository {
         },
       });
       return true;
+    });
+  }
+
+  findCheckIn(ticketId: string) {
+    return this.prisma.checkIn.findUnique({
+      where: { ticketId },
+      select: CHECK_IN_FOR_DOOR,
     });
   }
 
