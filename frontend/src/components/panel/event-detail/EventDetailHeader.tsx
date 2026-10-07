@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { canEditEvent, type EventAccess } from '@/utils/co-organizers';
 import { closedEventLabel, getEventPhase } from '@/utils/event-edit';
+import { formatEventRange } from '@/utils/format';
 import {
   DEFAULT_STATUS_STYLE,
   EVENT_STATUS_LABELS,
@@ -63,14 +64,8 @@ export default function EventDetailHeader({
           </h1>
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-sm text-neutral-400">
             <span className="flex items-center gap-1.5">
-              <Calendar className="w-4 h-4" />
-              {new Date(event.startDate).toLocaleString('es-AR', {
-                weekday: 'short',
-                day: 'numeric',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
+              <Calendar className="w-4 h-4 shrink-0" />
+              {formatEventRange(event.startDate, event.endDate)}
             </span>
             {event.venueName && (
               <span className="flex items-center gap-1.5">

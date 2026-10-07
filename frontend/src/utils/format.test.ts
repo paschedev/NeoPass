@@ -4,6 +4,7 @@ import {
   formatCompactNumber,
   formatCurrency,
   formatDayMonthTime,
+  formatEventRange,
   formatRelativeDate,
   formatShortDateTime,
   formatWeekdayDateTime,
@@ -105,6 +106,20 @@ describe('formatWeekdayDateTime', () => {
     expect(formatWeekdayDateTime('2026-10-11T02:59:00Z')).toBe(
       'sáb, 10 oct, 23:59',
     );
+  });
+});
+
+describe('formatEventRange', () => {
+  it('si termina otro día muestra el día y la hora del inicio y del fin', () => {
+    expect(
+      formatEventRange('2026-10-11T01:00:00Z', '2026-10-11T09:00:00Z'),
+    ).toBe('sáb, 10 oct, 22:00 a dom, 11 oct, 06:00');
+  });
+
+  it('si termina el mismo día muestra solo la hora del fin', () => {
+    expect(
+      formatEventRange('2026-10-10T23:00:00Z', '2026-10-11T02:30:00Z'),
+    ).toBe('sáb, 10 oct, 20:00 a 23:30');
   });
 });
 

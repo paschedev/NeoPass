@@ -9,7 +9,7 @@ import {
   EVENT_STATUS_LABELS,
   EVENT_STATUS_STYLES,
 } from '@/utils/event-status';
-import { formatCurrency } from '@/utils/format';
+import { formatCurrency, formatEventRange } from '@/utils/format';
 import type { OrganizerEvent } from './types';
 
 const ticketsSold = (event: OrganizerEvent) =>
@@ -94,13 +94,7 @@ export default function EventsTab({
                         {EVENT_STATUS_LABELS[event.status] ?? event.status}
                       </span>
                       <span className="text-xs text-neutral-400">
-                        {new Date(event.startDate).toLocaleDateString('es-AR', {
-                          weekday: 'short',
-                          day: 'numeric',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
+                        {formatEventRange(event.startDate, event.endDate)}
                       </span>
                     </div>
                     <h3 className="font-outfit text-xl font-bold text-white mb-2">

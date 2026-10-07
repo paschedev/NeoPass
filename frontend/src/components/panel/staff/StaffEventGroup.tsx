@@ -11,7 +11,7 @@ import {
   UserPlus,
 } from 'lucide-react';
 import type { EventPhase } from '@/utils/event-edit';
-import { formatCurrency, formatWeekdayDateTime } from '@/utils/format';
+import { formatCurrency, formatEventRange } from '@/utils/format';
 import type { InviteRole } from '@/utils/staff-invitation';
 import {
   eventPhaseLabel,
@@ -132,7 +132,7 @@ export default function StaffEventGroup({
               {eventPhaseLabel(event)}
             </span>
             <span className="text-xs text-neutral-400">
-              {formatWeekdayDateTime(event.startDate)}
+              {formatEventRange(event.startDate, event.endDate)}
             </span>
             {lacksDoorStaff(event) && (
               <button
