@@ -17,3 +17,8 @@ export const promoterFreeTicketsLabel = ({
   limit,
   sent,
 }: PromoterFreeTickets) => `QR free: ${sent} de ${limit}`;
+
+// Lo que ve el RPP. Si el dueño le bajó el tope por debajo de lo que ya mandó,
+// le quedan 0.
+export const ownFreeTicketsLabel = ({ limit, sent }: PromoterFreeTickets) =>
+  `QR free: te quedan ${Math.max(0, limit - sent)} de ${limit}`;

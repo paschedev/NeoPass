@@ -17,6 +17,12 @@ export function promoterFreeTicketTerms(freeTicketLimit: number | null) {
       };
 }
 
+// A co-organizer allowed to send free tickets sends them under that rule, even
+// if they also promote the event: their promoter quota doesn't apply.
+export const coOrganizerSendsFreeTickets = (
+  coOrganizer: { permissions: EventPermission[] } | null | undefined,
+) => coOrganizer?.permissions.includes('SEND_FREE_TICKETS') ?? false;
+
 // Their quota and how much of it they used, or null if they can't send.
 export function promoterFreeTickets(
   promoter: PromoterTerms,

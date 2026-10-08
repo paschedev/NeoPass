@@ -1,7 +1,11 @@
 import { EventPermission, User } from '@prisma/client';
 import request from 'supertest';
 import { authHeader } from './utils/auth';
-import { createOrganizerWithEvent, createUser } from './utils/factories';
+import {
+  createBatch,
+  createOrganizerWithEvent,
+  createUser,
+} from './utils/factories';
 import { createTestApp, TestApp } from './utils/test-app';
 import { resetDb } from './utils/test-database';
 
@@ -12,6 +16,21 @@ type OverviewBody = {
 type MyStaffBody = {
   invitations: { id: string; freeTicketLimit: number | null }[];
   events: { id: string; promoter: { freeTickets: Quota } | null }[];
+};
+type PromoterStatsBody = {
+  freeTickets: {
+    limit: number;
+    event: {
+      status: string;
+      startDate: string;
+      endDate: string;
+      deletedAt: string | null;
+    };
+    ticketBatches: {
+      name: string;
+      ticketTypes: { id: string; name: string }[];
+    }[];
+  } | null;
 };
 
 const NO_PERMISSION = 'No tenés permiso para mandar QR free';
@@ -67,6 +86,12 @@ describe('QR free de los RPPs', () => {
       .post(`/events/organizer/${eventId}/free-tickets`)
       .set('Authorization', auth(user))
       .send({ ticketTypeId, quantity, email: 'invitado@neopass.test' });
+  }
+
+  function promoterStats(user: User, eventId: string) {
+    return http()
+      .get(`/events/promoter/me/${eventId}/stats`)
+      .set('Authorization', auth(user));
   }
 
   function grants(user: User, eventId: string) {
@@ -443,6 +468,73 @@ describe('QR free de los RPPs', () => {
         limit: 5,
         sent: 3,
       });
+    });
+
+    it('en sus métricas, el RPP con QR free ve su tope, las fechas del evento y los tipos de entrada de todas las tandas', async () => {
+      const s = await promoterScenario(5);
+      const hidden = await createBatch(t.prisma, {
+        eventId: s.event.id,
+        name: 'Invitados',
+        isVisible: false,
+      });
+
+      const stats = (await promoterStats(s.rpp, s.event.id).expect(200))
+        .body as PromoterStatsBody;
+
+      expect(stats.freeTickets).toEqual({
+        limit: 5,
+        event: {
+          status: 'PUBLISHED',
+          startDate: s.event.startDate.toISOString(),
+          endDate: s.event.endDate.toISOString(),
+          deletedAt: null,
+        },
+        ticketBatches: [
+          {
+            name: 'Preventa',
+            ticketTypes: [{ id: s.ticketType.id, name: 'General' }],
+          },
+          {
+            name: 'Invitados',
+            ticketTypes: [{ id: hidden.ticketType.id, name: 'General' }],
+          },
+        ],
+      });
+    });
+
+    it('un RPP sin QR free no ve los tipos de entrada en sus métricas', async () => {
+      const s = await promoterScenario();
+
+      const stats = (await promoterStats(s.rpp, s.event.id).expect(200))
+        .body as PromoterStatsBody;
+
+      expect(stats.freeTickets).toBeNull();
+    });
+
+    it('si además es co-organizador con QR free, como RPP no tiene un segundo cupo', async () => {
+      const s = await promoterScenario(2);
+      await coOrganizer(s.organizer, s.event.id, ['SEND_FREE_TICKETS'], s.rpp);
+
+      const stats = (await promoterStats(s.rpp, s.event.id).expect(200))
+        .body as PromoterStatsBody;
+      expect(stats.freeTickets).toBeNull();
+
+      const mine = (
+        await http()
+          .get('/events/staff/me')
+          .set('Authorization', auth(s.rpp))
+          .expect(200)
+      ).body as MyStaffBody;
+      expect(mine.events[0].promoter?.freeTickets).toBeNull();
+    });
+
+    it('si es co-organizador sin QR free, como RPP sigue con su cupo', async () => {
+      const s = await promoterScenario(2);
+      await coOrganizer(s.organizer, s.event.id, ['VIEW_SALES'], s.rpp);
+
+      const stats = (await promoterStats(s.rpp, s.event.id).expect(200))
+        .body as PromoterStatsBody;
+      expect(stats.freeTickets?.limit).toBe(2);
     });
   });
 });
