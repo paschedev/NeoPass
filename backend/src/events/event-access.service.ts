@@ -17,6 +17,13 @@ export type EventAccess = {
   coOrganizerId: string | null;
 };
 
+export type FreeTicketsAccess = {
+  // The owner sees and handles every grant; the rest, only their own.
+  role: 'OWNER' | 'CO_ORGANIZER' | 'PROMOTER';
+  // The staff row whose sent tickets count for the limit; null = no limit.
+  quota: { staffId: string; limit: number } | null;
+};
+
 export const canDo = (access: EventAccess, permission: EventPermission) =>
   access.permissions.includes(permission);
 
@@ -68,6 +75,46 @@ export class EventAccessService {
     const access = await this.getAccess(eventId, userId);
     assertPermission(access, permission);
     return access;
+  }
+
+  // Who sends free tickets: the owner, a co-organizer allowed to (their rule
+  // wins when they also promote the event) or a promoter the owner allowed,
+  // always with a limit.
+  async assertCanSendFreeTickets(
+    eventId: string,
+    userId: string,
+  ): Promise<FreeTicketsAccess> {
+    const found = await this.eventAccessRepository.findEventAccess(
+      eventId,
+      userId,
+    );
+    if (found?.organizerId === userId) return { role: 'OWNER', quota: null };
+    const coOrganizer = found?.coOrganizer;
+    const promoter = found?.promoter;
+    if (coOrganizer?.permissions.includes('SEND_FREE_TICKETS')) {
+      return {
+        role: 'CO_ORGANIZER',
+        quota:
+          coOrganizer.freeTicketLimit === null
+            ? null
+            : { staffId: coOrganizer.id, limit: coOrganizer.freeTicketLimit },
+      };
+    }
+    if (
+      promoter?.permissions.includes('SEND_FREE_TICKETS') &&
+      promoter.freeTicketLimit !== null
+    ) {
+      return {
+        role: 'PROMOTER',
+        quota: { staffId: promoter.id, limit: promoter.freeTicketLimit },
+      };
+    }
+    if (coOrganizer || promoter) {
+      throw new ForbiddenException(
+        permissionDeniedMessage('SEND_FREE_TICKETS'),
+      );
+    }
+    throw new NotFoundException('Evento no encontrado');
   }
 
   // Only the owner: co-organizers, managing, money and history included.

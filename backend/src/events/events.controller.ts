@@ -22,6 +22,7 @@ import { UserRole } from '@prisma/client';
 import { UpdateBatchesDto } from './dto/update-batches.dto';
 import { BatchSaleActionDto } from './dto/batch-sale-action.dto';
 import { RegisterPromoterPaymentDto } from './dto/register-promoter-payment.dto';
+import { UpdatePromoterFreeTicketsDto } from './dto/update-promoter-free-tickets.dto';
 import { ListAttendeesQueryDto } from './dto/list-attendees-query.dto';
 import { AddStaffDto } from './dto/add-staff.dto';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -121,6 +122,22 @@ export class EventsController {
       userId,
       staffId,
       body,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('organizer/:id/promoters/:staffId/free-tickets')
+  updatePromoterFreeTickets(
+    @Param('id', ParseIdPipe) id: string,
+    @Param('staffId', ParseIdPipe) staffId: string,
+    @Body() body: UpdatePromoterFreeTicketsDto,
+    @CurrentUser('userId') userId: string,
+  ) {
+    return this.eventsService.updatePromoterFreeTickets(
+      id,
+      userId,
+      staffId,
+      body.freeTicketLimit,
     );
   }
 
