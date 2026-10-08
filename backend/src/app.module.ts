@@ -12,6 +12,7 @@ import { AuthModule } from './auth/auth.module';
 import { PresetsModule } from './presets/presets.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { MediaModule } from './media/media.module';
+import { AdminModule } from './admin/admin.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
@@ -57,6 +58,7 @@ function redisConnection(redisUrl: string) {
     PresetsModule,
     NotificationsModule,
     MediaModule,
+    AdminModule,
     ScheduleModule.forRoot(),
   ],
   controllers: [AppController],

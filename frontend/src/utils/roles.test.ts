@@ -1,7 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { canScan, canSeeStaffPanel, isOrganizer } from './roles';
+import { canScan, canSeeStaffPanel, isAdmin, isOrganizer } from './roles';
 
 describe('roles', () => {
+  it.each([
+    ['ADMIN', true],
+    ['ORGANIZER', false],
+    ['CUSTOMER', false],
+  ])('%s entra al panel de NeoPass: %s', (role, expected) => {
+    expect(isAdmin({ role })).toBe(expected);
+  });
+
+  it('sin sesión no entra al panel de NeoPass', () => {
+    expect(isAdmin(null)).toBe(false);
+  });
+
   it.each([
     ['ORGANIZER', true],
     ['ADMIN', true],
