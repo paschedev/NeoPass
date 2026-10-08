@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
   BarChart3,
   Check,
+  Gift,
   Link2,
   MapPin,
   Navigation,
@@ -16,6 +17,7 @@ import type { EventPhase } from '@/utils/event-edit';
 import { formatCurrency, formatEventRange } from '@/utils/format';
 import { getDirectionsUrl, hasMapLocation } from '@/utils/maps';
 import { rppLink } from '@/utils/my-staff';
+import { ownFreeTicketsLabel } from '@/utils/promoter-free-tickets';
 import { copyLink } from '@/utils/share';
 import { commissionLabel, eventPhaseLabel } from '@/utils/staff-overview';
 import { ownRoleLabel } from '@/utils/staff-roles';
@@ -94,6 +96,21 @@ function PromoterRole({
         <Stat label="Ganaste" value={formatCurrency(promoter.totalEarned)} />
         <Stat label="Te pagaron" value={formatCurrency(promoter.totalPaid)} />
       </dl>
+      {promoter.freeTickets && (
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <p className="text-xs text-neutral-300">
+            {ownFreeTicketsLabel(promoter.freeTickets)}
+          </p>
+          {event.phase !== 'CLOSED' && (
+            <Link
+              href={`/panel/rpp/${event.id}#qr-free`}
+              className="inline-flex items-center gap-1 text-xs font-medium text-indigo-300 hover:text-indigo-200"
+            >
+              <Gift className="w-3.5 h-3.5" /> Mandar QR free
+            </Link>
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <Owed balance={promoter.balance} />
         <div className="flex flex-wrap gap-2">

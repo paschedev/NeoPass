@@ -18,23 +18,16 @@ import type {
 import { apiFetch } from '@/utils/api';
 import { can } from '@/utils/co-organizers';
 import { getEventPhase } from '@/utils/event-edit';
-import { freeTicketsBlockedReason } from '@/utils/free-tickets';
+import {
+  freeTicketsBlockedReason,
+  freeTicketTypeOptions,
+} from '@/utils/free-tickets';
 
 type Loaded =
   | { state: 'loading' }
   | { state: 'ready'; event: TeamEvent; sales: EventSales | null }
   | { state: 'missing' }
   | { state: 'failed' };
-
-// Los tipos de entrada que se pueden mandar como QR free: "General · Preventa".
-function ticketTypeOptions(event: TeamEvent) {
-  return event.ticketBatches.flatMap((batch) =>
-    batch.ticketTypes.map((type) => ({
-      id: type.id,
-      label: `${type.name} · ${batch.name}`,
-    })),
-  );
-}
 
 // Primero el evento con lo que puede hacer quien lo abre; las ventas, solo si
 // las puede ver.
@@ -124,7 +117,7 @@ function EventSections({
   const { access } = event;
   const phase = getEventPhase(event, new Date());
   const open = phase !== 'CLOSED';
-  const ticketTypes = ticketTypeOptions(event);
+  const ticketTypes = freeTicketTypeOptions(event.ticketBatches);
 
   return (
     <div className="space-y-10">
@@ -143,6 +136,7 @@ function EventSections({
         <PromoterPayouts
           eventId={event.id}
           inviteEvent={open ? { id: event.id, title: event.title } : undefined}
+          canGrantFreeTickets={access.role === 'OWNER'}
         />
       ) : (
         <LockedSection title="RPPs" permission="MANAGE_STAFF" />

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Check } from 'lucide-react';
 import { formatCurrency, formatDayMonthTime } from '@/utils/format';
+import { promoterFreeTicketsLabel } from '@/utils/promoter-free-tickets';
 import {
   commissionLabel,
   otherEventsDebt,
@@ -54,22 +55,52 @@ function Debt({ promoter }: { promoter: StaffPromoter }) {
   );
 }
 
-// Tarjeta de un RPP dentro de un evento: lo que vendió, ganó y cobró, y lo que
-// se le debe. Los pagos pasan por fuera de NeoPass; acá se anotan.
+// "Cambiar" o "Dar QR free": solo para el dueño, con el evento sin terminar.
+function FreeTicketsButton({
+  promoter,
+  onEdit,
+}: {
+  promoter: StaffPromoter;
+  onEdit: (promoter: StaffPromoter) => void;
+}) {
+  const has = promoter.freeTickets !== null;
+  return (
+    <button
+      type="button"
+      aria-label={
+        has
+          ? `Cambiar QR free de ${promoter.name}`
+          : `Dar QR free a ${promoter.name}`
+      }
+      onClick={() => onEdit(promoter)}
+      className={`${SMALL_BUTTON} text-indigo-300 hover:bg-indigo-500/10`}
+    >
+      {has ? 'Cambiar' : 'Dar QR free'}
+    </button>
+  );
+}
+
+// Tarjeta de un RPP dentro de un evento: lo que vendió, ganó y cobró, lo que
+// se le debe y sus QR free. Los pagos pasan por fuera de NeoPass; acá se
+// anotan. Sin onEditFreeTickets (evento terminado) los QR free solo se ven.
 export default function PromoterCard({
   promoter,
   onPay,
+  onEditFreeTickets,
 }: {
   promoter: StaffPromoter;
   onPay: (promoter: StaffPromoter) => void;
+  onEditFreeTickets?: (promoter: StaffPromoter) => void;
 }) {
   const [showPayments, setShowPayments] = useState(false);
   const commission = commissionLabel(
     promoter.commissionType,
     promoter.commissionValue,
   );
+  const { freeTickets } = promoter;
 
   if (promoter.status !== 'ACCEPTED') {
+    const pending = promoter.status === 'PENDING';
     return (
       <article
         aria-label={promoter.name}
@@ -80,11 +111,22 @@ export default function PromoterCard({
           email={promoter.email}
           aside={<InvitationChip status={promoter.status} />}
         />
-        <p className="text-xs text-neutral-500 mt-3">
-          {promoter.status === 'PENDING'
-            ? `Todavía no aceptó${commission ? ` · ${commission}` : ''}`
-            : 'Rechazó la invitación'}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-2 mt-3">
+          <p className="text-xs text-neutral-500">
+            {pending
+              ? [
+                  'Todavía no aceptó',
+                  commission,
+                  freeTickets && `hasta ${freeTickets.limit} QR free`,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')
+              : 'Rechazó la invitación'}
+          </p>
+          {pending && onEditFreeTickets && (
+            <FreeTicketsButton promoter={promoter} onEdit={onEditFreeTickets} />
+          )}
+        </div>
       </article>
     );
   }
@@ -113,6 +155,20 @@ export default function PromoterCard({
         <Stat label="Ganó" value={formatCurrency(promoter.totalEarned)} />
         <Stat label="Pagado" value={formatCurrency(promoter.totalPaid)} />
       </dl>
+      {(freeTickets || onEditFreeTickets) && (
+        <div className="flex items-center justify-between gap-3 -mt-2 mb-4">
+          <p
+            className={`text-xs ${freeTickets ? 'text-neutral-300' : 'text-neutral-500'}`}
+          >
+            {freeTickets
+              ? promoterFreeTicketsLabel(freeTickets)
+              : 'Sin QR free'}
+          </p>
+          {onEditFreeTickets && (
+            <FreeTicketsButton promoter={promoter} onEdit={onEditFreeTickets} />
+          )}
+        </div>
+      )}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <Debt promoter={promoter} />
         <div className="flex gap-2">

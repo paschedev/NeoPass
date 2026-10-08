@@ -1,5 +1,12 @@
-import { CommissionType, Prisma, StaffRole, StaffStatus } from '@prisma/client';
+import {
+  CommissionType,
+  EventPermission,
+  Prisma,
+  StaffRole,
+  StaffStatus,
+} from '@prisma/client';
 import { compareByPhase, getEventPhase } from './event-phase';
+import { promoterFreeTickets } from './promoter-free-tickets';
 import { toPaymentRecord } from './promoter-payment-record';
 
 type OverviewMember = {
@@ -11,6 +18,8 @@ type OverviewMember = {
   commissionValue: Prisma.Decimal | null;
   totalEarned: Prisma.Decimal;
   totalPaid: Prisma.Decimal;
+  permissions: EventPermission[];
+  freeTicketLimit: number | null;
   user: { name: string; email: string };
   payments: { amount: Prisma.Decimal; note: string | null; createdAt: Date }[];
 };
@@ -86,6 +95,7 @@ export function buildStaffOverview(
   events: OverviewEvent[],
   soldByPromoter: Map<string, number>,
   now: Date,
+  freeTicketsSent = new Map<string, number>(),
 ) {
   const members = events.flatMap((event) => event.staff);
   const debts = debtByPerson(members);
@@ -114,6 +124,7 @@ export function buildStaffOverview(
                 events: debt?.events ?? 0,
               },
               payments: member.payments.map(toPaymentRecord),
+              freeTickets: promoterFreeTickets(member, freeTicketsSent),
             };
           }),
           (a, b) => b.ticketsSold - a.ticketsSold,

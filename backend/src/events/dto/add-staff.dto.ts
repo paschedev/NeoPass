@@ -47,7 +47,15 @@ export class AddStaffDto {
   @PermissionList()
   permissions?: EventPermission[];
 
-  @ValidateIf((o: AddStaffDto) => o.role === 'MANAGER')
+  // A co-organizer's limit (none = no limit), or how many free tickets a
+  // promoter can send (none = they can't). Ignored for scanners.
+  @ValidateIf(
+    (o: AddStaffDto) =>
+      o.role === 'MANAGER' ||
+      (o.role === 'PROMOTER' &&
+        o.freeTicketLimit !== undefined &&
+        o.freeTicketLimit !== null),
+  )
   @FreeTicketLimit()
   freeTicketLimit?: number | null;
 }

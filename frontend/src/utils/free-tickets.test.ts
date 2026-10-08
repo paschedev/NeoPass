@@ -3,7 +3,29 @@ import {
   entryDeadlineOptions,
   freeTicketsBlockedReason,
   freeTicketsSchema,
+  freeTicketTypeOptions,
 } from './free-tickets';
+
+describe('freeTicketTypeOptions', () => {
+  it('ofrece cada tipo de entrada de todas las tandas como "Tipo · Tanda"', () => {
+    expect(
+      freeTicketTypeOptions([
+        {
+          name: 'Preventa',
+          ticketTypes: [
+            { id: 't1', name: 'General' },
+            { id: 't2', name: 'VIP' },
+          ],
+        },
+        { name: 'Invitados', ticketTypes: [{ id: 't3', name: 'General' }] },
+      ]),
+    ).toEqual([
+      { id: 't1', label: 'General · Preventa' },
+      { id: 't2', label: 'VIP · Preventa' },
+      { id: 't3', label: 'General · Invitados' },
+    ]);
+  });
+});
 
 const at = (local: string) => new Date(`${local}-03:00`);
 

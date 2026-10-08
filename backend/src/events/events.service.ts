@@ -68,6 +68,10 @@ import {
   ticketHolderChanges,
 } from './event-changes';
 import { ActivityEntry } from './event-activity';
+import {
+  promoterFreeTicketTerms,
+  promoterFreeTicketsNotice,
+} from './promoter-free-tickets';
 
 // Role names as the organizer reads them (errors and notices in their panel).
 const STAFF_ROLE_LABEL: Record<StaffRole, string> = {
@@ -777,20 +781,27 @@ export class EventsService {
   // even without staff (they may need it) and closed ones that had staff.
   async getStaffOverview(organizerId: string) {
     const now = new Date();
-    const [events, soldByPromoter] = await Promise.all([
+    const [events, soldByPromoter, freeTicketsSent] = await Promise.all([
       this.eventsRepository.findStaffOverviewEvents(organizerId, now),
       this.eventsRepository.sumTicketsSoldByPromoter({ organizerId }),
+      this.eventsRepository.countFreeTicketsSentByPromoter({ organizerId }),
     ]);
-    return buildStaffOverview(events, soldByPromoter, now);
+    return buildStaffOverview(events, soldByPromoter, now, freeTicketsSent);
   }
 
   // Where the person in session works as staff, from their own roles only.
   async getMyStaff(userId: string) {
-    const [assignments, soldByPromoter] = await Promise.all([
+    const [assignments, soldByPromoter, freeTicketsSent] = await Promise.all([
       this.eventsRepository.findMyStaffAssignments(userId),
       this.eventsRepository.sumTicketsSoldByPromoter({ userId }),
+      this.eventsRepository.countFreeTicketsSentByPromoter({ userId }),
     ]);
-    return buildMyStaff(assignments, soldByPromoter, new Date());
+    return buildMyStaff(
+      assignments,
+      soldByPromoter,
+      new Date(),
+      freeTicketsSent,
+    );
   }
 
   async addStaff(
@@ -813,6 +824,15 @@ export class EventsService {
     if (role === 'MANAGER' && access.role !== 'OWNER') {
       throw new ForbiddenException(
         'Solo quien organiza el evento puede invitar co-organizadores',
+      );
+    }
+    // Only the owner: a co-organizer with a limit could skip it by inviting a
+    // promoter with more.
+    const promoterLimit =
+      role === 'PROMOTER' ? (freeTicketLimit ?? null) : null;
+    if (promoterLimit !== null && access.role !== 'OWNER') {
+      throw new ForbiddenException(
+        'Solo quien organiza el evento puede habilitar QR free a un RPP',
       );
     }
     // Nobody can work an event that is over: a promoter couldn't sell anymore.
@@ -876,6 +896,12 @@ export class EventsService {
           ? `, con ${commissionValue}% de comisión por entrada`
           : `, con $${commissionValue} de comisión por entrada`;
     }
+    if (promoterLimit !== null) {
+      terms += `${terms ? ' y' : ', con'} hasta ${promoterLimit} QR free`;
+    }
+    // A promoter invited again starts from these terms, not the rejected ones.
+    const freeTicketTerms =
+      role === 'PROMOTER' ? promoterFreeTicketTerms(promoterLimit) : {};
     const willDo =
       coOrganizer &&
       describePermissions(coOrganizer.permissions, coOrganizer.freeTicketLimit);
@@ -888,6 +914,7 @@ export class EventsService {
         role,
         ...commissionTerms,
         ...coOrganizer,
+        ...freeTicketTerms,
       },
       coOrganizer
         ? {
@@ -919,6 +946,7 @@ export class EventsService {
         role,
         ...commissionTerms,
         ...coOrganizer,
+        ...freeTicketTerms,
         status: 'PENDING',
       },
     });
@@ -997,6 +1025,57 @@ export class EventsService {
         payments: payments.map(toPaymentRecord),
       }),
     );
+  }
+
+  // Only the owner gives, changes or takes away a promoter's free tickets.
+  // Lowering the limit under what they already sent cancels nothing: it stops
+  // the next ones.
+  async updatePromoterFreeTickets(
+    eventId: string,
+    userId: string,
+    staffId: string,
+    freeTicketLimit: number | null,
+  ) {
+    const { access, event } = await this.findForTeam(
+      eventId,
+      userId,
+      'MANAGE_STAFF',
+    );
+    if (access.role !== 'OWNER') {
+      throw new ForbiddenException(
+        'Solo quien organiza el evento puede habilitar QR free a un RPP',
+      );
+    }
+    if (getEventPhase(event, new Date()) === 'CLOSED') {
+      throw new ConflictException(
+        'El evento ya terminó: no se pueden cambiar los QR free',
+      );
+    }
+    const staff = await this.eventsRepository.findEventStaffById(staffId);
+    if (!staff || staff.event.id !== eventId || staff.role !== 'PROMOTER') {
+      throw new NotFoundException('RPP no encontrado');
+    }
+    if (staff.status === 'REJECTED') {
+      throw new ConflictException(
+        'Rechazó la invitación: invitalo de nuevo para darle QR free',
+      );
+    }
+
+    const updated = await this.eventsRepository.updateStaffTerms(
+      staffId,
+      promoterFreeTicketTerms(freeTicketLimit),
+    );
+    if (staff.status === 'ACCEPTED') {
+      await this.notificationsService.create({
+        userId: staff.userId,
+        type: 'SYSTEM',
+        title: 'QR free',
+        message: promoterFreeTicketsNotice(event.title, freeTicketLimit),
+        eventId,
+        actionUrl: `/panel/rpp/${eventId}`,
+      });
+    }
+    return { id: updated.id, freeTicketLimit: updated.freeTicketLimit };
   }
 
   async registerPromoterPayment(
@@ -1082,6 +1161,20 @@ export class EventsService {
       0,
     );
 
+    // What they need to send their free tickets, only if the owner let them
+    // as a promoter (a co-organizer sends them from the event detail).
+    const access = await this.eventAccess.getFreeTicketsAccess(eventId, userId);
+    const { status, startDate, endDate, deletedAt } = staff.event;
+    const freeTickets =
+      access?.role === 'PROMOTER' && access.quota
+        ? {
+            limit: access.quota.limit,
+            event: { status, startDate, endDate, deletedAt },
+            ticketBatches:
+              await this.eventsRepository.findFreeTicketBatches(eventId),
+          }
+        : null;
+
     return {
       staffId: staff.id,
       eventName: staff.event.title,
@@ -1092,6 +1185,7 @@ export class EventsService {
       totalTicketsSold,
       clicks: staff.clicks,
       recentSales,
+      freeTickets,
     };
   }
 

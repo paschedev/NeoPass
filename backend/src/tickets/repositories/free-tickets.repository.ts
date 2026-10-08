@@ -63,9 +63,9 @@ export class FreeTicketsRepository {
 
   // The grant, its tickets and its line in the event history, all or nothing.
   // Free tickets do not touch the stock and belong to no account. With a quota
-  // (a co-organizer's limit), their staff row stays locked while their tickets
-  // are counted, so two sends at the same time can't both fit; over the limit
-  // nothing is created.
+  // (the limit of a co-organizer or a promoter), their staff row stays locked
+  // while their tickets are counted, so two sends at the same time can't both
+  // fit; over the limit nothing is created.
   async createGrant(
     {
       quantity,
@@ -79,13 +79,13 @@ export class FreeTicketsRepository {
       validUntil: Date | null;
       quantity: number;
     },
-    quota: { coOrganizerId: string; limit: number } | null,
+    quota: { staffId: string; limit: number } | null,
     activity: ActivityEntry,
   ) {
     return this.prisma.$transaction(async (tx) => {
       if (quota) {
         await tx.$queryRaw`
-          SELECT id FROM "EventStaff" WHERE id = ${quota.coOrganizerId} FOR UPDATE`;
+          SELECT id FROM "EventStaff" WHERE id = ${quota.staffId} FOR UPDATE`;
         const sent = await tx.ticket.count({
           where: {
             status: { not: 'CANCELLED' },

@@ -1,5 +1,6 @@
 import type { EventPhase } from '@/utils/event-edit';
 import type { EventPermission } from '@/utils/co-organizers';
+import type { PromoterFreeTickets } from '@/utils/promoter-free-tickets';
 
 // Lo que puede hacer un co-organizador (además de escanear).
 export interface CoOrganizerTerms {
@@ -18,6 +19,8 @@ export interface MyPromoterRole {
   totalPaid: number;
   // Negativo si le pagaron de más (una devolución bajó lo que ganó).
   balance: number;
+  // Null si no puede mandar QR free como RPP.
+  freeTickets: PromoterFreeTickets | null;
 }
 
 export interface MyStaffEvent {

@@ -18,9 +18,12 @@ const HEADER_CELL = 'px-3 py-2 text-right font-medium';
 export default function PromoterPayouts({
   eventId,
   inviteEvent,
+  canGrantFreeTickets = false,
 }: {
   eventId: string;
   inviteEvent?: { id: string; title: string };
+  // Solo el dueño le da QR free a un RPP al invitarlo.
+  canGrantFreeTickets?: boolean;
 }) {
   const [promoters, setPromoters] = useState<EventPromoter[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -204,6 +207,7 @@ export default function PromoterPayouts({
           events={[inviteEvent]}
           initialEventId={inviteEvent.id}
           allowCoOrganizer={false}
+          canGrantFreeTickets={canGrantFreeTickets}
           onInvited={() => setVersion((count) => count + 1)}
         />
       )}

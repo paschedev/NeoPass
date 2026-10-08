@@ -71,6 +71,12 @@ export default function StaffInvitations({
                     )}
                   </p>
                 )}
+                {invitation.role === 'PROMOTER' &&
+                  invitation.freeTicketLimit !== null && (
+                    <p className="text-xs text-neutral-300 mt-1">
+                      {`Vas a poder mandar hasta ${invitation.freeTicketLimit} QR free`}
+                    </p>
+                  )}
               </div>
               <div className="flex gap-2 shrink-0">
                 <button

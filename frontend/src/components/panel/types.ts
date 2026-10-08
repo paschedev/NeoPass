@@ -1,4 +1,5 @@
 import type { EventPhase } from '@/utils/event-edit';
+import type { PromoterFreeTickets } from '@/utils/promoter-free-tickets';
 import type { RevenuePoint } from '@/utils/sales-chart';
 
 export interface Transaction {
@@ -54,6 +55,8 @@ export interface StaffPromoter extends StaffPerson {
   // Lo que se le debe sumando todos los eventos del organizador.
   owedAcrossEvents: { amount: number; events: number };
   payments: { amount: number; note: string | null; createdAt: string }[];
+  // Null si el dueño no le dio QR free en este evento.
+  freeTickets: PromoterFreeTickets | null;
 }
 
 export interface StaffEventGroup {

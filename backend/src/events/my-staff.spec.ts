@@ -143,6 +143,7 @@ describe('buildMyStaff', () => {
           totalEarned: 300,
           totalPaid: 100,
           balance: 200,
+          freeTickets: null,
         },
       },
     ]);

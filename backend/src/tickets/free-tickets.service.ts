@@ -8,8 +8,8 @@ import {
 } from '@nestjs/common';
 import { getEventPhase } from '../events/event-phase';
 import {
-  EventAccess,
   EventAccessService,
+  FreeTicketsAccess,
 } from '../events/event-access.service';
 import { MailService } from '../mail/mail.service';
 import { SendFreeTicketsDto } from './dto/send-free-tickets.dto';
@@ -29,8 +29,9 @@ type FreeTicketsEvent = NonNullable<
   Awaited<ReturnType<FreeTicketsRepository['findEvent']>>
 >;
 
-// The owner sees and handles every grant; a co-organizer, only theirs.
-const ownGrantsOf = (access: EventAccess, userId: string) =>
+// The owner sees and handles every grant; a co-organizer or a promoter, only
+// theirs.
+const ownGrantsOf = (access: FreeTicketsAccess, userId: string) =>
   access.role === 'OWNER' ? undefined : userId;
 
 @Injectable()
@@ -78,7 +79,7 @@ export class FreeTicketsService {
       );
     }
 
-    const { coOrganizerId, freeTicketLimit } = access;
+    const { quota } = access;
     const created = await this.freeTicketsRepository.createGrant(
       {
         eventId,
@@ -89,9 +90,7 @@ export class FreeTicketsService {
         validUntil,
         quantity: dto.quantity,
       },
-      coOrganizerId && freeTicketLimit !== null
-        ? { coOrganizerId, limit: freeTicketLimit }
-        : null,
+      quota,
       {
         eventId,
         actorId: userId,
@@ -101,7 +100,7 @@ export class FreeTicketsService {
     );
     if (created.overLimit) {
       throw new ConflictException(
-        freeTicketLimitMessage(freeTicketLimit ?? 0, created.sent),
+        freeTicketLimitMessage(quota?.limit ?? 0, created.sent),
       );
     }
     await this.queueMail(
@@ -194,7 +193,7 @@ export class FreeTicketsService {
   }
 
   private assertCanSend(eventId: string, userId: string) {
-    return this.eventAccess.assertCan(eventId, userId, 'SEND_FREE_TICKETS');
+    return this.eventAccess.assertCanSendFreeTickets(eventId, userId);
   }
 
   private async findEvent(eventId: string) {

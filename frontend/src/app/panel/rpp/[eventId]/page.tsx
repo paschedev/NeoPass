@@ -16,9 +16,30 @@ import toast from '@/utils/toast';
 import { apiFetch } from '@/utils/api';
 import { toCsvCell } from '@/utils/csv';
 import { formatCurrency, formatRelativeDate } from '@/utils/format';
+import {
+  freeTicketsBlockedReason,
+  freeTicketTypeOptions,
+} from '@/utils/free-tickets';
 import { rppLink } from '@/utils/my-staff';
 import { copyLink } from '@/utils/share';
 import PromoterPaymentsSummary from '@/components/rpp/PromoterPaymentsSummary';
+import FreeTickets from '@/components/panel/event-detail/FreeTickets';
+
+// Lo que necesita el RPP para mandar sus QR free; null si el dueño no se los
+// dio.
+interface PromoterFreeTicketsAccess {
+  limit: number;
+  event: {
+    status: string;
+    startDate: string;
+    endDate: string;
+    deletedAt: string | null;
+  };
+  ticketBatches: {
+    name: string;
+    ticketTypes: { id: string; name: string }[];
+  }[];
+}
 
 export default function RppEventDetailsPage() {
   const { eventId } = useParams();
@@ -38,6 +59,7 @@ export default function RppEventDetailsPage() {
     }[],
     staffId: '',
     recentSales: [] as any[],
+    freeTickets: null as PromoterFreeTicketsAccess | null,
   });
 
   const [copiedLink, setCopiedLink] = useState(false);
@@ -47,6 +69,18 @@ export default function RppEventDetailsPage() {
   const filteredSales = stats.recentSales.filter((sale) =>
     sale.buyer.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+  const { freeTickets } = stats;
+  const freeTicketTypes = freeTickets
+    ? freeTicketTypeOptions(freeTickets.ticketBatches)
+    : [];
+
+  // "Mandar QR free" (desde Staff) llega con #qr-free: la sección aparece
+  // recién cuando cargan las métricas.
+  useEffect(() => {
+    if (!loading && window.location.hash === '#qr-free') {
+      document.getElementById('qr-free')?.scrollIntoView();
+    }
+  }, [loading]);
 
   useEffect(() => {
     apiFetch(`/events/promoter/me/${eventId}/stats`)
@@ -200,6 +234,25 @@ export default function RppEventDetailsPage() {
         balance={stats.balance}
         payments={stats.payments}
       />
+
+      {freeTickets && (
+        <div
+          id="qr-free"
+          className="shrink-0 mb-10 scroll-mt-24 bg-white/5 border border-white/10 rounded-2xl p-6"
+        >
+          <FreeTickets
+            eventId={String(eventId)}
+            event={freeTickets.event}
+            ticketTypes={freeTicketTypes}
+            sendBlockedReason={freeTicketsBlockedReason(
+              freeTickets.event,
+              freeTicketTypes.length,
+              new Date(),
+            )}
+            limit={freeTickets.limit}
+          />
+        </div>
+      )}
 
       {/* Sales Log */}
       <div className="flex-1 bg-white/5 border border-white/10 rounded-2xl overflow-hidden flex flex-col">

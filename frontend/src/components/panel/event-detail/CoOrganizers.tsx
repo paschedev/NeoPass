@@ -304,6 +304,7 @@ export default function CoOrganizers({
           events={[event]}
           initialEventId={event.id}
           initialRole="CO_ORGANIZER"
+          canGrantFreeTickets
           onInvited={reload}
         />
       )}

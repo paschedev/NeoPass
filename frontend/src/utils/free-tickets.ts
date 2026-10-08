@@ -68,6 +68,19 @@ export function entryDeadlineOptions(
   return options;
 }
 
+// Los tipos de entrada que se pueden mandar como QR free, de todas las tandas
+// (también las ocultas): "General · Preventa".
+export function freeTicketTypeOptions(
+  batches: { name: string; ticketTypes: { id: string; name: string }[] }[],
+): { id: string; label: string }[] {
+  return batches.flatMap((batch) =>
+    batch.ticketTypes.map((type) => ({
+      id: type.id,
+      label: `${type.name} · ${batch.name}`,
+    })),
+  );
+}
+
 // Por qué no se pueden mandar QR free de este evento, o null si se puede. El
 // servidor aplica las mismas reglas.
 export function freeTicketsBlockedReason(
