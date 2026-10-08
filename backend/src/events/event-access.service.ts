@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { EventPermission } from '@prisma/client';
 import { EVENT_PERMISSIONS, permissionDeniedMessage } from './co-organizers';
+import { coOrganizerSendsFreeTickets } from './promoter-free-tickets';
 import { EventAccessRepository } from './repositories/event-access.repository';
 
 export type EventAccess = {
@@ -23,6 +24,41 @@ export type FreeTicketsAccess = {
   // The staff row whose sent tickets count for the limit; null = no limit.
   quota: { staffId: string; limit: number } | null;
 };
+
+type FoundAccess = Awaited<
+  ReturnType<EventAccessRepository['findEventAccess']>
+>;
+
+// Who sends free tickets: the owner, a co-organizer allowed to (their rule
+// wins when they also promote the event) or a promoter the owner allowed,
+// always with a limit. Null if the user can't.
+function freeTicketsAccessOf(
+  found: FoundAccess,
+  userId: string,
+): FreeTicketsAccess | null {
+  if (!found) return null;
+  if (found.organizerId === userId) return { role: 'OWNER', quota: null };
+  const { coOrganizer, promoter } = found;
+  if (coOrganizer && coOrganizerSendsFreeTickets(coOrganizer)) {
+    return {
+      role: 'CO_ORGANIZER',
+      quota:
+        coOrganizer.freeTicketLimit === null
+          ? null
+          : { staffId: coOrganizer.id, limit: coOrganizer.freeTicketLimit },
+    };
+  }
+  if (
+    promoter?.permissions.includes('SEND_FREE_TICKETS') &&
+    promoter.freeTicketLimit !== null
+  ) {
+    return {
+      role: 'PROMOTER',
+      quota: { staffId: promoter.id, limit: promoter.freeTicketLimit },
+    };
+  }
+  return null;
+}
 
 export const canDo = (access: EventAccess, permission: EventPermission) =>
   access.permissions.includes(permission);
@@ -77,9 +113,14 @@ export class EventAccessService {
     return access;
   }
 
-  // Who sends free tickets: the owner, a co-organizer allowed to (their rule
-  // wins when they also promote the event) or a promoter the owner allowed,
-  // always with a limit.
+  // How the user sends free tickets on the event, or null if they can't.
+  async getFreeTicketsAccess(eventId: string, userId: string) {
+    return freeTicketsAccessOf(
+      await this.eventAccessRepository.findEventAccess(eventId, userId),
+      userId,
+    );
+  }
+
   async assertCanSendFreeTickets(
     eventId: string,
     userId: string,
@@ -88,28 +129,9 @@ export class EventAccessService {
       eventId,
       userId,
     );
-    if (found?.organizerId === userId) return { role: 'OWNER', quota: null };
-    const coOrganizer = found?.coOrganizer;
-    const promoter = found?.promoter;
-    if (coOrganizer?.permissions.includes('SEND_FREE_TICKETS')) {
-      return {
-        role: 'CO_ORGANIZER',
-        quota:
-          coOrganizer.freeTicketLimit === null
-            ? null
-            : { staffId: coOrganizer.id, limit: coOrganizer.freeTicketLimit },
-      };
-    }
-    if (
-      promoter?.permissions.includes('SEND_FREE_TICKETS') &&
-      promoter.freeTicketLimit !== null
-    ) {
-      return {
-        role: 'PROMOTER',
-        quota: { staffId: promoter.id, limit: promoter.freeTicketLimit },
-      };
-    }
-    if (coOrganizer || promoter) {
+    const access = freeTicketsAccessOf(found, userId);
+    if (access) return access;
+    if (found?.coOrganizer || found?.promoter) {
       throw new ForbiddenException(
         permissionDeniedMessage('SEND_FREE_TICKETS'),
       );

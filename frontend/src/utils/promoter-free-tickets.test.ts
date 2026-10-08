@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ownFreeTicketsLabel,
   promoterFreeTicketLimitError,
   promoterFreeTicketsLabel,
 } from './promoter-free-tickets';
@@ -25,6 +26,17 @@ describe('promoterFreeTicketLimitError', () => {
 
   it('un entero mayor a 0 es válido', () => {
     expect(promoterFreeTicketLimitError('10')).toBeNull();
+  });
+});
+
+describe('ownFreeTicketsLabel', () => {
+  it('le dice al RPP cuántos le quedan, nunca menos de 0', () => {
+    expect(ownFreeTicketsLabel({ limit: 10, sent: 3 })).toBe(
+      'QR free: te quedan 7 de 10',
+    );
+    expect(ownFreeTicketsLabel({ limit: 2, sent: 3 })).toBe(
+      'QR free: te quedan 0 de 2',
+    );
   });
 });
 

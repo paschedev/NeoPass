@@ -6,7 +6,10 @@ import {
   StaffStatus,
 } from '@prisma/client';
 import { compareByPhase, getEventPhase } from './event-phase';
-import { promoterFreeTickets } from './promoter-free-tickets';
+import {
+  coOrganizerSendsFreeTickets,
+  promoterFreeTickets,
+} from './promoter-free-tickets';
 
 type MyAssignment = {
   id: string;
@@ -98,7 +101,10 @@ export function buildMyStaff(
               balance: promoter.totalEarned
                 .minus(promoter.totalPaid)
                 .toNumber(),
-              freeTickets: promoterFreeTickets(promoter, freeTicketsSent),
+              // As a co-organizer with free tickets, that rule applies instead.
+              freeTickets: coOrganizerSendsFreeTickets(coOrganizer)
+                ? null
+                : promoterFreeTickets(promoter, freeTicketsSent),
             }
           : null,
       };

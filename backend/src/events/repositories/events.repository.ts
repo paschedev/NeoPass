@@ -595,11 +595,32 @@ export class EventsRepository {
     return count > 0;
   }
 
+  // Every batch of the event with its ticket types, hidden ones included: a
+  // free ticket can be of any type.
+  async findFreeTicketBatches(eventId: string) {
+    return this.prisma.ticketBatch.findMany({
+      where: { eventId },
+      orderBy: { createdAt: 'asc' },
+      select: {
+        name: true,
+        ticketTypes: { select: { id: true, name: true } },
+      },
+    });
+  }
+
   async getPromoterStatsForEvent(userId: string, eventId: string) {
     const staff = await this.prisma.eventStaff.findFirst({
       where: { userId, eventId, role: 'PROMOTER', status: 'ACCEPTED' },
       include: {
-        event: { select: { title: true } },
+        event: {
+          select: {
+            title: true,
+            status: true,
+            startDate: true,
+            endDate: true,
+            deletedAt: true,
+          },
+        },
         orders: {
           where: { status: 'PAID' },
           include: {

@@ -1161,6 +1161,20 @@ export class EventsService {
       0,
     );
 
+    // What they need to send their free tickets, only if the owner let them
+    // as a promoter (a co-organizer sends them from the event detail).
+    const access = await this.eventAccess.getFreeTicketsAccess(eventId, userId);
+    const { status, startDate, endDate, deletedAt } = staff.event;
+    const freeTickets =
+      access?.role === 'PROMOTER' && access.quota
+        ? {
+            limit: access.quota.limit,
+            event: { status, startDate, endDate, deletedAt },
+            ticketBatches:
+              await this.eventsRepository.findFreeTicketBatches(eventId),
+          }
+        : null;
+
     return {
       staffId: staff.id,
       eventName: staff.event.title,
@@ -1171,6 +1185,7 @@ export class EventsService {
       totalTicketsSold,
       clicks: staff.clicks,
       recentSales,
+      freeTickets,
     };
   }
 

@@ -25,6 +25,7 @@ const promoter = (overrides = {}) => ({
   totalEarned: 41800,
   totalPaid: 20000,
   balance: 21800,
+  freeTickets: null,
   ...overrides,
 });
 
@@ -123,6 +124,71 @@ describe('MyStaffEvents', () => {
     expect(
       within(fiesta).getByRole('link', { name: 'Ver mis ventas' }),
     ).toHaveAttribute('href', '/panel/rpp/e1');
+  });
+
+  it('como RPP con QR free muestra cuántos le quedan y lleva a mandarlos mientras el evento no terminó', async () => {
+    server([
+      myStaff({
+        events: [
+          event({
+            promoter: promoter({ freeTickets: { limit: 10, sent: 3 } }),
+          }),
+          event({
+            id: 'e2',
+            title: 'Halloween',
+            phase: 'CLOSED',
+            promoter: promoter({
+              staffId: 's2',
+              freeTickets: { limit: 4, sent: 4 },
+            }),
+          }),
+          event({ id: 'e3', title: 'Sunset' }),
+        ],
+      }),
+    ]);
+
+    render(<MyStaffEvents />);
+
+    const fiesta = await card('Fiesta Bresh');
+    expect(fiesta).toHaveTextContent('QR free: te quedan 7 de 10');
+    expect(
+      within(fiesta).getByRole('link', { name: 'Mandar QR free' }),
+    ).toHaveAttribute('href', '/panel/rpp/e1#qr-free');
+    const halloween = await card('Halloween');
+    expect(halloween).toHaveTextContent('QR free: te quedan 0 de 4');
+    expect(
+      within(halloween).queryByRole('link', { name: 'Mandar QR free' }),
+    ).toBeNull();
+    expect(await card('Sunset')).not.toHaveTextContent('QR free');
+  });
+
+  it('la invitación de RPP dice cuántos QR free vas a poder mandar', async () => {
+    server([
+      myStaff({
+        invitations: [
+          {
+            id: 'i1',
+            role: 'PROMOTER',
+            commissionType: 'PERCENTAGE',
+            commissionValue: 10,
+            permissions: ['SEND_FREE_TICKETS'],
+            freeTicketLimit: 10,
+            event: {
+              id: 'e9',
+              title: 'Sunset',
+              startDate: '2026-10-11T02:59:00Z',
+              organizerName: 'Organizadora',
+            },
+          },
+        ],
+      }),
+    ]);
+
+    render(<MyStaffEvents />);
+
+    expect(
+      await screen.findByRole('region', { name: 'Invitaciones pendientes' }),
+    ).toHaveTextContent('Vas a poder mandar hasta 10 QR free');
   });
 
   it('"Copiar link" copia el link de venta y no aparece en eventos terminados', async () => {
