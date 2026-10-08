@@ -432,6 +432,8 @@ export class EventsRepository {
             commissionValue: true,
             totalEarned: true,
             totalPaid: true,
+            permissions: true,
+            freeTicketLimit: true,
             user: { select: { name: true, email: true } },
             payments: PAYMENT_HISTORY,
           },
@@ -460,6 +462,30 @@ export class EventsRepository {
       WHERE o.status = 'PAID' AND ${owner}
       GROUP BY o."promoterId"`;
     return new Map(rows.map((row) => [row.promoterId, row.sold]));
+  }
+
+  // Free tickets each promoter sent in their event and not cancelled, what
+  // counts for their limit: the promoters of an organizer's events, or the
+  // promoter roles of one person.
+  async countFreeTicketsSentByPromoter(
+    scope: { organizerId: string } | { userId: string },
+  ) {
+    const owner =
+      'organizerId' in scope
+        ? Prisma.sql`e."organizerId" = ${scope.organizerId}`
+        : Prisma.sql`es."userId" = ${scope.userId}`;
+    const rows = await this.prisma.$queryRaw<
+      { promoterId: string; sent: number }[]
+    >`
+      SELECT es.id AS "promoterId", COUNT(t.id)::int AS sent
+      FROM "EventStaff" es
+      JOIN "Event" e ON e.id = es."eventId"
+      JOIN "FreeTicketGrant" g
+        ON g."eventId" = es."eventId" AND g."issuedById" = es."userId"
+      JOIN "Ticket" t ON t."freeTicketGrantId" = g.id
+      WHERE es.role = 'PROMOTER' AND t.status <> 'CANCELLED' AND ${owner}
+      GROUP BY es.id`;
+    return new Map(rows.map((row) => [row.promoterId, row.sent]));
   }
 
   // A person's accepted and pending staff roles with the event they belong
@@ -512,6 +538,16 @@ export class EventsRepository {
         user: { select: { name: true } },
       },
     });
+  }
+
+  async updateStaffTerms(
+    id: string,
+    terms: Pick<
+      Prisma.EventStaffUncheckedUpdateInput,
+      'permissions' | 'freeTicketLimit'
+    >,
+  ) {
+    return this.prisma.eventStaff.update({ where: { id }, data: terms });
   }
 
   // Returns whether this call answered it: only a pending invitation can be.

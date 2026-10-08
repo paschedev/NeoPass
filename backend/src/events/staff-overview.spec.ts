@@ -1,4 +1,9 @@
-import { Prisma, StaffRole, StaffStatus } from '@prisma/client';
+import {
+  EventPermission,
+  Prisma,
+  StaffRole,
+  StaffStatus,
+} from '@prisma/client';
 import { buildStaffOverview } from './staff-overview';
 
 const now = new Date('2026-10-10T20:00:00.000Z');
@@ -34,6 +39,8 @@ function member(
     commissionValue: role === 'PROMOTER' ? new Prisma.Decimal(10) : null,
     totalEarned: new Prisma.Decimal(earned),
     totalPaid: new Prisma.Decimal(paid),
+    permissions: [] as EventPermission[],
+    freeTicketLimit: null,
     user: { name, email: `${userId}@neopass.test` },
     payments: [] as Payment[],
   };
