@@ -1,5 +1,6 @@
 import { freeTicketLimitError, type EventPermission } from './co-organizers';
 import { getEventPhase } from './event-edit';
+import { promoterFreeTicketLimitError } from './promoter-free-tickets';
 
 export type InviteRole = 'SCANNER' | 'RPP' | 'CO_ORGANIZER';
 export type CommissionType = 'PERCENTAGE' | 'FIXED';
@@ -36,6 +37,8 @@ export function validateInvitation(invite: {
   commissionType: CommissionType;
   commissionValue: string;
   freeTicketLimit?: string;
+  // La cantidad máxima de QR free de un RPP; null si no puede mandar.
+  promoterFreeTicketLimit?: string | null;
 }): string | null {
   if (!invite.eventId) return 'Seleccioná un evento';
   if (invite.userCount === 0) return 'Seleccioná al menos un usuario';
@@ -51,29 +54,33 @@ export function validateInvitation(invite: {
   if (invite.commissionType === 'PERCENTAGE' && commission > 100) {
     return 'El porcentaje debe estar entre 0 y 100';
   }
-  return null;
+  return invite.promoterFreeTicketLimit == null
+    ? null
+    : promoterFreeTicketLimitError(invite.promoterFreeTicketLimit);
 }
 
 // Body de POST /events/:id/staff. En el backend el RPP es el rol PROMOTER y
-// el co-organizador, MANAGER.
+// el co-organizador, MANAGER. Los permisos son solo del co-organizador; el
+// tope de QR free, del co-organizador o del RPP al que el dueño se los dio.
 export function buildInvitationPayload(
   userId: string,
   role: InviteRole,
   commissionType: CommissionType,
   commissionValue: string,
-  coOrganizer?: {
-    permissions: EventPermission[];
+  terms?: {
+    permissions?: EventPermission[];
     freeTicketLimit: number | null;
   },
 ) {
   if (role === 'SCANNER') return { userId, role: 'SCANNER' };
-  if (role === 'CO_ORGANIZER')
-    return { userId, role: 'MANAGER', ...coOrganizer };
+  if (role === 'CO_ORGANIZER') return { userId, role: 'MANAGER', ...terms };
+  const freeTicketLimit = terms?.freeTicketLimit ?? null;
   return {
     userId,
     role: 'PROMOTER',
     commissionType,
     commissionValue: Number(commissionValue),
+    ...(freeTicketLimit !== null && { freeTicketLimit }),
   };
 }
 

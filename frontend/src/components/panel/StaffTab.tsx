@@ -8,6 +8,9 @@ import { splitSettledClosed } from '@/utils/staff-overview';
 import PromoterPaymentModal, {
   type PaymentTarget,
 } from './event-detail/PromoterPaymentModal';
+import PromoterFreeTicketsModal, {
+  type FreeTicketsTarget,
+} from './staff/PromoterFreeTicketsModal';
 import StaffEventGroup, { type InvitePreset } from './staff/StaffEventGroup';
 import StaffSummary from './staff/StaffSummary';
 import type { StaffOverview } from './types';
@@ -33,6 +36,8 @@ export default function StaffTab({
   const [filter, setFilter] = useState<Filter>('all');
   const [showSettled, setShowSettled] = useState(false);
   const [paying, setPaying] = useState<PaymentTarget | null>(null);
+  const [editingFreeTickets, setEditingFreeTickets] =
+    useState<FreeTicketsTarget | null>(null);
 
   useEffect(() => {
     let current = true;
@@ -143,6 +148,7 @@ export default function StaffTab({
             event={event}
             onInvite={onInvite}
             onPay={setPaying}
+            onEditFreeTickets={setEditingFreeTickets}
           />
         ))}
 
@@ -168,6 +174,7 @@ export default function StaffTab({
                   event={event}
                   onInvite={onInvite}
                   onPay={setPaying}
+                  onEditFreeTickets={setEditingFreeTickets}
                 />
               ))}
           </>
@@ -208,6 +215,14 @@ export default function StaffTab({
         onClose={() => setPaying(null)}
         onPaid={() => {
           setPaying(null);
+          reload();
+        }}
+      />
+      <PromoterFreeTicketsModal
+        target={editingFreeTickets}
+        onClose={() => setEditingFreeTickets(null)}
+        onSaved={() => {
+          setEditingFreeTickets(null);
           reload();
         }}
       />

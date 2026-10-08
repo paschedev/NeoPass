@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import toast from '@/utils/toast';
 import { Check, Search, UserPlus, X } from 'lucide-react';
 import CustomSelect from '@/components/CustomSelect';
@@ -32,7 +32,8 @@ const ROLE_OPTIONS: { value: InviteRole; label: string }[] = [
 
 // Invita a varios usuarios a un evento como scanner, RPP o co-organizador.
 // Abierto desde un evento, llega con ese evento (y a veces el rol) ya
-// elegidos. Un co-organizador no puede invitar a otros co-organizadores.
+// elegidos. Un co-organizador no puede invitar a otros co-organizadores ni
+// darle QR free a un RPP: eso es solo del dueño (canGrantFreeTickets).
 export default function InviteStaffModal({
   open,
   onClose,
@@ -40,6 +41,7 @@ export default function InviteStaffModal({
   initialEventId = '',
   initialRole = 'SCANNER',
   allowCoOrganizer = true,
+  canGrantFreeTickets = false,
   onInvited,
 }: {
   open: boolean;
@@ -48,8 +50,10 @@ export default function InviteStaffModal({
   initialEventId?: string;
   initialRole?: InviteRole;
   allowCoOrganizer?: boolean;
+  canGrantFreeTickets?: boolean;
   onInvited: () => void;
 }) {
+  const promoterLimitId = useId();
   const [eventId, setEventId] = useState(initialEventId);
   const [role, setRole] = useState<InviteRole>(initialRole);
   const [commissionType, setCommissionType] =
@@ -57,6 +61,8 @@ export default function InviteStaffModal({
   const [commissionValue, setCommissionValue] = useState('');
   const [permissions, setPermissions] = useState<EventPermission[]>([]);
   const [freeTicketLimit, setFreeTicketLimit] = useState('');
+  const [promoterSendsFree, setPromoterSendsFree] = useState(false);
+  const [promoterFreeLimit, setPromoterFreeLimit] = useState('');
   const roleOptions = allowCoOrganizer
     ? ROLE_OPTIONS
     : ROLE_OPTIONS.filter((option) => option.value !== 'CO_ORGANIZER');
@@ -64,6 +70,8 @@ export default function InviteStaffModal({
   const [selectedUsers, setSelectedUsers] = useState<UserSearchResult[]>([]);
   const [sending, setSending] = useState(false);
   const searchResults = useUserSearch(searchTerm);
+  const promoterFreeTicketLimit =
+    canGrantFreeTickets && promoterSendsFree ? promoterFreeLimit : null;
 
   const handleSend = async () => {
     const error = validateInvitation({
@@ -73,8 +81,18 @@ export default function InviteStaffModal({
       commissionType,
       commissionValue,
       freeTicketLimit,
+      promoterFreeTicketLimit,
     });
     if (error) return toast.error(error);
+    const terms =
+      role === 'CO_ORGANIZER'
+        ? buildCoOrganizerTerms(permissions, freeTicketLimit)
+        : {
+            freeTicketLimit:
+              promoterFreeTicketLimit === null
+                ? null
+                : Number(promoterFreeTicketLimit),
+          };
 
     setSending(true);
     let sent = 0;
@@ -88,7 +106,7 @@ export default function InviteStaffModal({
               role,
               commissionType,
               commissionValue,
-              buildCoOrganizerTerms(permissions, freeTicketLimit),
+              terms,
             ),
           ),
         });
@@ -117,6 +135,8 @@ export default function InviteStaffModal({
     setCommissionValue('');
     setPermissions([]);
     setFreeTicketLimit('');
+    setPromoterSendsFree(false);
+    setPromoterFreeLimit('');
     setSearchTerm('');
     onClose();
   };
@@ -220,6 +240,47 @@ export default function InviteStaffModal({
                   className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-indigo-500 transition-colors"
                 />
               </div>
+            </div>
+          )}
+
+          {role === 'RPP' && canGrantFreeTickets && (
+            <div className="space-y-3">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={promoterSendsFree}
+                  onChange={(e) => setPromoterSendsFree(e.target.checked)}
+                  className="mt-1 w-4 h-4 accent-indigo-500"
+                />
+                <span>
+                  <span className="block text-sm font-medium text-white">
+                    Puede mandar QR free
+                  </span>
+                  <span className="block text-xs text-neutral-500">
+                    Entradas gratis hasta la cantidad que pongas. Ve solo las
+                    suyas y no le dan comisión.
+                  </span>
+                </span>
+              </label>
+              {promoterSendsFree && (
+                <div className="pl-7">
+                  <label
+                    htmlFor={promoterLimitId}
+                    className="block text-xs font-medium text-neutral-400 mb-1"
+                  >
+                    Cantidad máxima
+                  </label>
+                  <input
+                    id={promoterLimitId}
+                    type="text"
+                    inputMode="numeric"
+                    value={promoterFreeLimit}
+                    onChange={(e) => setPromoterFreeLimit(e.target.value)}
+                    placeholder="Ej: 10"
+                    className="w-32 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+              )}
             </div>
           )}
 

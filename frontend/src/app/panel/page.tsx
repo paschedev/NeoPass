@@ -247,6 +247,7 @@ function OrganizerDashboardContent() {
         events={invitableEvents(myEvents, new Date())}
         initialEventId={invite?.eventId}
         initialRole={invite?.role}
+        canGrantFreeTickets
         onInvited={() => setStaffVersion((count) => count + 1)}
       />
     </div>

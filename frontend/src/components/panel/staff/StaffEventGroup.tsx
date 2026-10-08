@@ -24,6 +24,7 @@ import type {
   StaffPerson,
 } from '../types';
 import PromoterCard from './PromoterCard';
+import type { FreeTicketsTarget } from './PromoterFreeTicketsModal';
 import StaffIdentity, { InvitationChip } from './StaffIdentity';
 
 export interface InvitePreset {
@@ -100,16 +101,18 @@ function PeopleBlock({
   );
 }
 
-// Un evento con su staff: RPPs (con lo que se les debe), scanners y
-// co-organizadores.
+// Un evento con su staff: RPPs (con lo que se les debe y sus QR free),
+// scanners y co-organizadores.
 export default function StaffEventGroup({
   event,
   onInvite,
   onPay,
+  onEditFreeTickets,
 }: {
   event: StaffEventGroupData;
   onInvite: (preset: InvitePreset) => void;
   onPay: (target: PaymentTarget) => void;
+  onEditFreeTickets: (target: FreeTicketsTarget) => void;
 }) {
   const titleId = useId();
   const contentId = useId();
@@ -203,6 +206,17 @@ export default function StaffEventGroup({
                     promoter={promoter}
                     onPay={({ id, name, balance }) =>
                       onPay({ eventId: event.id, staffId: id, name, balance })
+                    }
+                    onEditFreeTickets={
+                      invitable
+                        ? ({ id, name, freeTickets }) =>
+                            onEditFreeTickets({
+                              eventId: event.id,
+                              staffId: id,
+                              name,
+                              freeTickets,
+                            })
+                        : undefined
                     }
                   />
                 ))}

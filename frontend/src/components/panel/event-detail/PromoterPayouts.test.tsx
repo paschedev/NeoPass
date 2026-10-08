@@ -107,6 +107,39 @@ describe('PromoterPayouts', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('solo el dueño puede habilitar QR free al invitar un RPP', async () => {
+    server({ lists: [[]] });
+    const { unmount } = render(
+      <PromoterPayouts
+        eventId="e1"
+        inviteEvent={{ id: 'e1', title: 'Fiesta de prueba' }}
+        canGrantFreeTickets
+      />,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Invitar scanner o RPP' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Promotor' }));
+    expect(
+      screen.getByRole('checkbox', { name: /Puede mandar QR free/ }),
+    ).toBeInTheDocument();
+    unmount();
+
+    render(
+      <PromoterPayouts
+        eventId="e1"
+        inviteEvent={{ id: 'e1', title: 'Fiesta de prueba' }}
+      />,
+    );
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Invitar scanner o RPP' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Promotor' }));
+    expect(
+      screen.queryByRole('checkbox', { name: /Puede mandar QR free/ }),
+    ).not.toBeInTheDocument();
+  });
+
   it('registrar un pago propone el saldo, lo manda y actualiza la lista', async () => {
     server({
       lists: [[rocio()], [rocio({ totalPaid: 150.5, balance: 49.5 })]],

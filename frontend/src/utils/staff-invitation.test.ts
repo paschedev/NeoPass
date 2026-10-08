@@ -73,6 +73,27 @@ describe('validateInvitation', () => {
       'El tope de QR free tiene que ser un número entero mayor a 0',
     );
   });
+
+  it('un RPP con QR free necesita una cantidad máxima válida', () => {
+    expect(
+      validateInvitation({ ...valid, promoterFreeTicketLimit: '10' }),
+    ).toBeNull();
+    expect(validateInvitation({ ...valid, promoterFreeTicketLimit: '' })).toBe(
+      'Indicá cuántos QR free puede mandar',
+    );
+    expect(
+      validateInvitation({ ...valid, promoterFreeTicketLimit: '2.5' }),
+    ).toBe('El tope de QR free tiene que ser un número entero mayor a 0');
+    expect(validateInvitation({ ...valid, promoterFreeTicketLimit: '0' })).toBe(
+      'El tope de QR free tiene que ser un número entero mayor a 0',
+    );
+  });
+
+  it('un RPP sin QR free no pide cantidad', () => {
+    expect(
+      validateInvitation({ ...valid, promoterFreeTicketLimit: null }),
+    ).toBeNull();
+  });
 });
 
 describe('buildInvitationPayload', () => {
@@ -88,6 +109,33 @@ describe('buildInvitationPayload', () => {
       role: 'PROMOTER',
       commissionType: 'FIXED',
       commissionValue: 1500,
+    });
+  });
+
+  it('un RPP con QR free lleva su cantidad máxima', () => {
+    expect(
+      buildInvitationPayload('u1', 'RPP', 'PERCENTAGE', '10.0', {
+        freeTicketLimit: 10,
+      }),
+    ).toEqual({
+      userId: 'u1',
+      role: 'PROMOTER',
+      commissionType: 'PERCENTAGE',
+      commissionValue: 10,
+      freeTicketLimit: 10,
+    });
+  });
+
+  it('un RPP sin QR free viaja sin cantidad máxima', () => {
+    expect(
+      buildInvitationPayload('u1', 'RPP', 'PERCENTAGE', '10.0', {
+        freeTicketLimit: null,
+      }),
+    ).toEqual({
+      userId: 'u1',
+      role: 'PROMOTER',
+      commissionType: 'PERCENTAGE',
+      commissionValue: 10,
     });
   });
 

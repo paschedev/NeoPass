@@ -17,6 +17,7 @@ vi.mock('@/utils/toast', () => ({
 
 const OVERVIEW_PATH = '/events/organizer/staff/overview';
 const PAY_PATH = '/events/organizer/e1/promoters/s1/payments';
+const FREE_TICKETS_PATH = '/events/organizer/e1/promoters/s1/free-tickets';
 
 const sofia = (overrides = {}) => ({
   id: 's1',
@@ -33,6 +34,7 @@ const sofia = (overrides = {}) => ({
   payments: [
     { amount: 20000, note: 'Transferencia', createdAt: '2026-10-02T15:00:00Z' },
   ],
+  freeTickets: null,
   ...overrides,
 });
 
@@ -403,6 +405,231 @@ describe('StaffTab', () => {
     });
     expect(history).toHaveTextContent('Transferencia');
     expect(history).toHaveTextContent('$20.000');
+  });
+
+  describe('QR free de un RPP', () => {
+    const withFreeTickets = (overrides = {}) =>
+      group({
+        promoters: [sofia({ freeTickets: { limit: 10, sent: 3 }, ...overrides })],
+      });
+
+    const freeTicketsCalls = () =>
+      vi
+        .mocked(apiFetch)
+        .mock.calls.filter(([path]) => path === FREE_TICKETS_PATH);
+
+    it('la tarjeta del RPP dice cuántos QR free mandó de los que puede', async () => {
+      server([overview([withFreeTickets()])]);
+      renderTab();
+
+      const card = await screen.findByRole('article', { name: 'Sofía Martínez' });
+      expect(card).toHaveTextContent('QR free: 3 de 10');
+      expect(
+        within(card).getByRole('button', {
+          name: 'Cambiar QR free de Sofía Martínez',
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it('cambiar el tope lo guarda y recarga la tarjeta', async () => {
+      server(
+        [
+          overview([withFreeTickets()]),
+          overview([
+            group({
+              promoters: [sofia({ freeTickets: { limit: 15, sent: 3 } })],
+            }),
+          ]),
+        ],
+        Response.json({ id: 's1', freeTicketLimit: 15 }),
+      );
+      renderTab();
+
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Cambiar QR free de Sofía Martínez',
+        }),
+      );
+      const dialog = screen.getByRole('dialog');
+      const limit = within(dialog).getByLabelText('Cantidad máxima');
+      expect(limit).toHaveValue('10');
+      fireEvent.change(limit, { target: { value: '15' } });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+      await waitFor(() =>
+        expect(toast.success).toHaveBeenCalledWith(
+          'Guardamos los QR free de Sofía Martínez',
+        ),
+      );
+      expect(freeTicketsCalls()).toEqual([
+        [
+          FREE_TICKETS_PATH,
+          { method: 'PUT', body: JSON.stringify({ freeTicketLimit: 15 }) },
+        ],
+      ]);
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+      await waitFor(() =>
+        expect(
+          screen.getByRole('article', { name: 'Sofía Martínez' }),
+        ).toHaveTextContent('QR free: 3 de 15'),
+      );
+    });
+
+    it('quitarlos manda null y aclara que lo ya mandado sigue valiendo', async () => {
+      server(
+        [overview([withFreeTickets()])],
+        Response.json({ id: 's1', freeTicketLimit: null }),
+      );
+      renderTab();
+
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Cambiar QR free de Sofía Martínez',
+        }),
+      );
+      const dialog = screen.getByRole('dialog');
+      expect(dialog).toHaveTextContent(
+        'Ya mandó 3. Si bajás el tope o se los quitás, lo mandado sigue valiendo',
+      );
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: 'Quitar QR free' }),
+      );
+
+      await waitFor(() =>
+        expect(toast.success).toHaveBeenCalledWith(
+          'Sofía Martínez ya no puede mandar QR free',
+        ),
+      );
+      expect(freeTicketsCalls()).toEqual([
+        [
+          FREE_TICKETS_PATH,
+          { method: 'PUT', body: JSON.stringify({ freeTicketLimit: null }) },
+        ],
+      ]);
+    });
+
+    it('a un RPP sin QR free se los puede dar, siempre con una cantidad máxima', async () => {
+      server(
+        [overview([group()])],
+        Response.json({ id: 's1', freeTicketLimit: 5 }),
+      );
+      renderTab();
+
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Dar QR free a Sofía Martínez',
+        }),
+      );
+      const dialog = screen.getByRole('dialog');
+      expect(
+        within(dialog).queryByRole('button', { name: 'Quitar QR free' }),
+      ).not.toBeInTheDocument();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+      expect(toast.error).toHaveBeenCalledWith(
+        'Indicá cuántos QR free puede mandar',
+      );
+      expect(freeTicketsCalls()).toEqual([]);
+
+      fireEvent.change(within(dialog).getByLabelText('Cantidad máxima'), {
+        target: { value: '5' },
+      });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+      await waitFor(() =>
+        expect(freeTicketsCalls()).toEqual([
+          [
+            FREE_TICKETS_PATH,
+            { method: 'PUT', body: JSON.stringify({ freeTicketLimit: 5 }) },
+          ],
+        ]),
+      );
+    });
+
+    it('en un evento terminado se ven pero no se pueden cambiar ni dar', async () => {
+      server([
+        overview([
+          group({
+            phase: 'CLOSED',
+            status: 'FINISHED',
+            promoters: [
+              sofia({ freeTickets: { limit: 10, sent: 3 } }),
+              sofia({ id: 's2', name: 'Lucía Gómez' }),
+            ],
+          }),
+        ]),
+      ]);
+      renderTab();
+
+      const card = await screen.findByRole('article', { name: 'Sofía Martínez' });
+      expect(card).toHaveTextContent('QR free: 3 de 10');
+      expect(
+        screen.queryByRole('button', { name: /Cambiar QR free/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /Dar QR free/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('si el servidor rechaza el cambio muestra el motivo y deja el modal abierto', async () => {
+      server(
+        [overview([withFreeTickets()])],
+        Response.json(
+          { message: 'El evento ya terminó: no se pueden cambiar los QR free' },
+          { status: 409 },
+        ),
+      );
+      renderTab();
+
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Cambiar QR free de Sofía Martínez',
+        }),
+      );
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', {
+          name: 'Guardar',
+        }),
+      );
+
+      await waitFor(() =>
+        expect(toast.error).toHaveBeenCalledWith(
+          'El evento ya terminó: no se pueden cambiar los QR free',
+        ),
+      );
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+    });
+
+    it('una invitación pendiente muestra su tope y se puede cambiar; una rechazada no', async () => {
+      server([
+        overview([
+          group({
+            promoters: [
+              sofia({
+                status: 'PENDING',
+                freeTickets: { limit: 10, sent: 0 },
+              }),
+              sofia({ id: 's2', name: 'Lucía Gómez', status: 'REJECTED' }),
+            ],
+          }),
+        ]),
+      ]);
+      renderTab();
+
+      const pending = await screen.findByRole('article', {
+        name: 'Sofía Martínez',
+      });
+      expect(pending).toHaveTextContent(
+        'Todavía no aceptó · 10% por entrada · hasta 10 QR free',
+      );
+      expect(
+        within(pending).getByRole('button', {
+          name: 'Cambiar QR free de Sofía Martínez',
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'Dar QR free a Lucía Gómez' }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it('invitar desde un evento avisa cuál, y desde "Sin scanners" también el rol', async () => {
