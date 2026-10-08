@@ -143,6 +143,7 @@ function EventSections({
         <PromoterPayouts
           eventId={event.id}
           inviteEvent={open ? { id: event.id, title: event.title } : undefined}
+          canGrantFreeTickets={access.role === 'OWNER'}
         />
       ) : (
         <LockedSection title="RPPs" permission="MANAGE_STAFF" />
