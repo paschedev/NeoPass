@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, StaffRole, StaffStatus } from '@prisma/client';
 import { BatchChanges } from '../batch-changes';
 import { ActivityEntry } from '../event-activity';
+import { ORGANIZER_NAME_SELECT } from '../../common/organizer-name';
 
 export type InvitationAnswer = Extract<StaffStatus, 'ACCEPTED' | 'REJECTED'>;
 
@@ -78,6 +79,7 @@ export class EventsRepository {
         venuePlaceId: true,
         status: true,
         neoPassFeePercentage: true,
+        organizer: { select: ORGANIZER_NAME_SELECT },
         // Hidden batches never leave the database on the public endpoint.
         ticketBatches: {
           where: { isVisible: true },
@@ -517,7 +519,7 @@ export class EventsRepository {
             latitude: true,
             longitude: true,
             venuePlaceId: true,
-            organizer: { select: { name: true } },
+            organizer: { select: ORGANIZER_NAME_SELECT },
           },
         },
       },

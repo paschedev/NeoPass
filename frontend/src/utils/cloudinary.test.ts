@@ -1,5 +1,28 @@
 import { describe, expect, it } from 'vitest';
-import { optimizeCloudinaryUrl, validateImageFile } from './cloudinary';
+import {
+  avatarImageUrl,
+  optimizeCloudinaryUrl,
+  validateImageFile,
+} from './cloudinary';
+
+describe('avatarImageUrl', () => {
+  it('pide la foto cuadrada, centrada en la cara y del tamaño en que se muestra', () => {
+    expect(
+      avatarImageUrl(
+        'https://res.cloudinary.com/neopass/image/upload/v17/avatars/u1.jpg',
+        96,
+      ),
+    ).toBe(
+      'https://res.cloudinary.com/neopass/image/upload/c_fill,g_face,w_96,h_96,f_auto,q_auto/v17/avatars/u1.jpg',
+    );
+  });
+
+  it('una URL que no es de Cloudinary queda como está', () => {
+    expect(avatarImageUrl('https://otro.test/foto.jpg', 96)).toBe(
+      'https://otro.test/foto.jpg',
+    );
+  });
+});
 
 const CLOUDINARY_URL =
   'https://res.cloudinary.com/neopass/image/upload/v1712345678/flyers/fiesta.jpg';

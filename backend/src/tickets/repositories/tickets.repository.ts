@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, StaffRole } from '@prisma/client';
+import { ORGANIZER_NAME_SELECT } from '../../common/organizer-name';
 
 // What the tickets mail shows about the event.
 const EVENT_FOR_MAIL = {
@@ -64,7 +65,7 @@ export class TicketsRepository {
                 deletedById: true,
                 deletionContactEmail: true,
                 organizerId: true,
-                organizer: { select: { name: true } },
+                organizer: { select: ORGANIZER_NAME_SELECT },
               },
             },
           },

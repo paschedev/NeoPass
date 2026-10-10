@@ -3,6 +3,7 @@ import {
   BadRequestException,
   UnauthorizedException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -11,9 +12,12 @@ import { MailService } from '../mail/mail.service';
 import * as bcrypt from 'bcrypt';
 import { hasUsableMercadoPagoToken } from '../payments/mercadopago-token';
 import * as crypto from 'crypto';
-import { Prisma, User } from '@prisma/client';
+import { Prisma, User, UserRole } from '@prisma/client';
 import { RegisterUserDto } from './dto/register-user.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { isUniqueViolation } from '../prisma/prisma-errors';
+import { BRAND_NAME_MESSAGE, mentionsNeoPass } from '../common/brand-name';
+import { isOwnAvatarUrl } from './avatar-url';
 import { EmailConfirmationService } from './email-confirmation.service';
 
 const EMAIL_TAKEN = 'El correo electrónico ya existe';
@@ -49,27 +53,16 @@ export class AuthService {
     });
   }
 
-  async login(user: Omit<User, 'passwordHash'>) {
-    const hasBeenRpp = await this.userRepository.checkHasBeenRpp(user.id);
-    const isCurrentlyScanner =
-      await this.userRepository.checkIsCurrentlyScanner(user.id);
+  // The session and the same profile as GET /auth/me.
+  async login(user: Pick<User, 'id' | 'email' | 'role'>) {
     return {
       access_token: this.signToken(user),
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-        emailVerified: user.emailVerifiedAt !== null,
-        hasLinkedMp: hasUsableMercadoPagoToken(user, new Date()),
-        hasBeenRpp,
-        isCurrentlyScanner,
-      },
+      user: await this.getProfile(user.id),
     };
   }
 
   async getProfile(userId: string) {
-    const user = await this.userRepository.findById(userId);
+    const user = await this.userRepository.findProfile(userId);
     if (!user) throw new UnauthorizedException();
 
     const hasBeenRpp = await this.userRepository.checkHasBeenRpp(user.id);
@@ -81,11 +74,55 @@ export class AuthService {
       email: user.email,
       name: user.name,
       role: user.role,
+      avatarUrl: user.avatarUrl,
+      // Organizers only; null without a producer name.
+      companyName: user.organizerProfile?.companyName ?? null,
       emailVerified: user.emailVerifiedAt !== null,
       hasLinkedMp: hasUsableMercadoPagoToken(user, new Date()),
       hasBeenRpp,
       isCurrentlyScanner,
     };
+  }
+
+  // Name, producer name (organizers) and photo; only the fields sent change.
+  // Nobody but the ADMIN account passes as NeoPass.
+  async updateProfile(userId: string, role: UserRole, dto: UpdateProfileDto) {
+    const canUseBrand = role === 'ADMIN';
+    const data: Prisma.UserUpdateInput = {};
+
+    if (dto.name !== undefined) {
+      if (!canUseBrand && mentionsNeoPass(dto.name)) {
+        throw new BadRequestException(BRAND_NAME_MESSAGE);
+      }
+      data.name = dto.name;
+    }
+
+    if (dto.companyName !== undefined) {
+      const companyName = dto.companyName || null;
+      if (!(await this.userRepository.hasOrganizerProfile(userId))) {
+        throw new ForbiddenException(
+          'Solo los organizadores tienen productora',
+        );
+      }
+      if (companyName && !canUseBrand && mentionsNeoPass(companyName)) {
+        throw new BadRequestException(BRAND_NAME_MESSAGE);
+      }
+      data.organizerProfile = { update: { companyName } };
+    }
+
+    if (dto.avatarUrl !== undefined) {
+      const cloudinaryUrl = this.config.getOrThrow<string>('CLOUDINARY_URL');
+      if (
+        dto.avatarUrl !== null &&
+        !isOwnAvatarUrl(dto.avatarUrl, cloudinaryUrl, userId)
+      ) {
+        throw new BadRequestException('Subí la foto desde NeoPass');
+      }
+      data.avatarUrl = dto.avatarUrl;
+    }
+
+    await this.userRepository.update(userId, data);
+    return this.getProfile(userId);
   }
 
   async register(data: RegisterUserDto) {

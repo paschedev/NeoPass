@@ -14,6 +14,10 @@ import { getEventPhase } from '../events/event-phase';
 import { checkInOpensAt } from './check-in-window';
 import { Prisma } from '@prisma/client';
 import { eventForMail } from './event-for-mail';
+import {
+  organizerDisplayName,
+  type OrganizerForName,
+} from '../common/organizer-name';
 
 interface DoorCheckIn {
   checkedAt: Date;
@@ -41,7 +45,7 @@ type EventForBuyer = {
   deletedById: string | null;
   deletionContactEmail: string | null;
   organizerId: string;
-  organizer: { name: string };
+  organizer: OrganizerForName;
 };
 
 // A deleted event tells its buyers who deleted it (the organizer, or NeoPass
@@ -60,7 +64,7 @@ function withDeletionNotice<T extends EventForBuyer>({
     deletion: deletedAt
       ? {
           byNeoPass: deletedById !== organizerId,
-          organizerName: organizer.name,
+          organizerName: organizerDisplayName(organizer),
           contactEmail: deletionContactEmail,
         }
       : null,

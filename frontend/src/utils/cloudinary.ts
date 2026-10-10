@@ -23,6 +23,16 @@ export const optimizeCloudinaryUrl = (
   return `${urlParts[0]}/upload/${transforms}/${urlParts[1]}`;
 };
 
+// La foto de perfil cuadrada, centrada en la cara y del tamaño en que se
+// muestra (en píxeles), para no bajar la imagen original.
+export const avatarImageUrl = (rawUrl: string, size: number): string => {
+  const urlParts = rawUrl.split('/upload/');
+  if (!rawUrl.includes('cloudinary.com') || urlParts.length !== 2) {
+    return rawUrl;
+  }
+  return `${urlParts[0]}/upload/c_fill,g_face,w_${size},h_${size},f_auto,q_auto/${urlParts[1]}`;
+};
+
 export const IMAGE_UPLOAD_TYPES = [
   'image/jpeg',
   'image/png',

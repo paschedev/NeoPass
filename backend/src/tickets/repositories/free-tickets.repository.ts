@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ActivityEntry } from '../../events/event-activity';
+import { ORGANIZER_NAME_SELECT } from '../../common/organizer-name';
 
 const GRANT_SELECT = {
   id: true,
@@ -43,7 +44,7 @@ export class FreeTicketsRepository {
         venueName: true,
         venueAddress: true,
         venueCity: true,
-        organizer: { select: { name: true } },
+        organizer: { select: ORGANIZER_NAME_SELECT },
       },
     });
   }

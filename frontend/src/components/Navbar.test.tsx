@@ -113,6 +113,23 @@ describe('Navbar', () => {
     ).toHaveAttribute('href', 'mailto:soporte@neopass.ar');
   });
 
+  it('con foto de perfil la muestra en el botón del perfil', () => {
+    localStorage.setItem(
+      'user',
+      JSON.stringify({
+        name: 'Ana Gómez',
+        email: 'ana@neopass.test',
+        avatarUrl:
+          'https://res.cloudinary.com/neopass/image/upload/v1/avatars/u1.jpg',
+      }),
+    );
+    feed();
+
+    render(<Navbar />);
+
+    expect(screen.getByRole('img', { name: 'Ana Gómez' })).toBeInTheDocument();
+  });
+
   it('el menú del perfil no repite "Mi panel": queda solo el de la barra', async () => {
     logIn();
     feed();
