@@ -18,4 +18,10 @@ export class MediaController {
   ) {
     return this.mediaService.presign(userId, role, query.eventId);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('avatar-presign')
+  getAvatarSignature(@CurrentUser('userId') userId: string) {
+    return this.mediaService.avatarSignature(userId);
+  }
 }

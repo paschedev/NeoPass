@@ -8,12 +8,17 @@ import {
   Matches,
 } from 'class-validator';
 import { EmailField } from '../../common/email-field.decorator';
+import { NoNeoPassName } from '../../common/brand-name';
 
 export class RegisterUserDto {
   @IsString({ message: 'El nombre debe ser un texto' })
+  @MaxLength(30, { message: 'El nombre puede tener hasta 30 caracteres' })
+  @NoNeoPassName()
   firstName: string;
 
   @IsString({ message: 'El apellido debe ser un texto' })
+  @MaxLength(30, { message: 'El apellido puede tener hasta 30 caracteres' })
+  @NoNeoPassName()
   lastName: string;
 
   @EmailField()
@@ -49,5 +54,9 @@ export class RegisterUserDto {
   @ValidateIf((o) => o.role === 'ORGANIZER')
   @IsOptional()
   @IsString({ message: 'El nombre de la productora debe ser un texto' })
+  @MaxLength(50, {
+    message: 'El nombre de la productora puede tener hasta 50 caracteres',
+  })
+  @NoNeoPassName()
   companyName?: string;
 }

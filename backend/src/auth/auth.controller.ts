@@ -1,6 +1,7 @@
 import {
   Controller,
   Post,
+  Patch,
   Body,
   UnauthorizedException,
   Get,
@@ -9,7 +10,10 @@ import {
   Query,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
+import { UserRole } from '@prisma/client';
 import { AuthService } from './auth.service';
+import { CurrentUser } from './decorators/current-user.decorator';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { CaptchaService } from './captcha.service';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { LoginDto } from './dto/login.dto';
@@ -47,6 +51,16 @@ export class AuthController {
   @Get('me')
   getProfile(@Req() req: any) {
     return this.authService.getProfile(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  updateProfile(
+    @CurrentUser('userId') userId: string,
+    @CurrentUser('role') role: UserRole,
+    @Body() body: UpdateProfileDto,
+  ) {
+    return this.authService.updateProfile(userId, role, body);
   }
 
   @UseGuards(JwtAuthGuard)

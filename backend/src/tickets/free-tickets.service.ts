@@ -14,6 +14,7 @@ import {
 import { MailService } from '../mail/mail.service';
 import { SendFreeTicketsDto } from './dto/send-free-tickets.dto';
 import { eventForMail } from './event-for-mail';
+import { organizerDisplayName } from '../common/organizer-name';
 import {
   FREE_TICKETS_RESEND_COOLDOWN_MS,
   freeTicketLimitMessage,
@@ -234,7 +235,7 @@ export class FreeTicketsService {
       {
         to: grant.recipientEmail,
         name: grant.recipientName,
-        organizerName: event.organizer.name,
+        organizerName: organizerDisplayName(event.organizer),
         eventId: event.id,
         validUntil: grant.validUntil?.toISOString() ?? null,
         tickets: tickets.map((ticket) => ({

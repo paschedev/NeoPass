@@ -20,6 +20,27 @@ export class MediaService {
     return this.generateSignature();
   }
 
+  // Any account uploads its profile photo to avatars/<its id>: a new one
+  // replaces the previous file instead of piling up images.
+  avatarSignature(userId: string) {
+    const timestamp = Math.round(Date.now() / 1000);
+    const config = cloudinary.config();
+    const publicId = `avatars/${userId}`;
+    const signature = cloudinary.utils.api_sign_request(
+      { timestamp, public_id: publicId, overwrite: true },
+      config.api_secret as string,
+    );
+
+    return {
+      timestamp,
+      signature,
+      cloudName: config.cloud_name,
+      apiKey: config.api_key,
+      publicId,
+      overwrite: true,
+    };
+  }
+
   private generateSignature() {
     const timestamp = Math.round(new Date().getTime() / 1000);
     const config = cloudinary.config();
