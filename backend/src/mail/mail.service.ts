@@ -1,9 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectQueue } from '@nestjs/bullmq';
+import { EmailCodePurpose } from '@prisma/client';
 import { JobsOptions, Queue } from 'bullmq';
 import { Resend } from 'resend';
 import { SUPPORT_EMAIL, TICKETS_EMAIL } from './mail-addresses';
+import { emailChangedEmail } from './templates/email-changed-email';
+import { emailCodeEmail } from './templates/email-code-email';
 import { freeTicketsEmail } from './templates/free-tickets-email';
 import { passwordResetEmail } from './templates/password-reset-email';
 import { TicketForMail, ticketsEmail } from './templates/tickets-email';
@@ -44,6 +47,20 @@ export interface PasswordResetEmailJob {
   resetLink: string;
 }
 
+export interface EmailCodeJob {
+  to: string;
+  name: string;
+  code: string;
+  purpose: EmailCodePurpose;
+}
+
+// To the old email once the account switched: `newEmail` goes masked.
+export interface EmailChangedJob {
+  to: string;
+  name: string;
+  newEmail: string;
+}
+
 @Injectable()
 export class MailService {
   private resend: Resend;
@@ -77,6 +94,14 @@ export class MailService {
 
   async queuePasswordResetEmail(job: PasswordResetEmailJob) {
     await this.mailQueue.add('send-password-reset', job, MAIL_JOB_OPTIONS);
+  }
+
+  async queueEmailCode(job: EmailCodeJob) {
+    await this.mailQueue.add('send-email-code', job, MAIL_JOB_OPTIONS);
+  }
+
+  async queueEmailChangedNotice(job: EmailChangedJob) {
+    await this.mailQueue.add('send-email-changed', job, MAIL_JOB_OPTIONS);
   }
 
   async sendTicketsEmail(to: string, name: string, tickets: TicketForMail[]) {
@@ -116,6 +141,22 @@ export class MailService {
       from: SUPPORT_SENDER,
       to,
       ...passwordResetEmail({ name, resetLink }),
+    });
+  }
+
+  async sendEmailCode({ to, name, code, purpose }: EmailCodeJob) {
+    await this.send({
+      from: SUPPORT_SENDER,
+      to,
+      ...emailCodeEmail({ name, code, purpose }),
+    });
+  }
+
+  async sendEmailChangedNotice({ to, name, newEmail }: EmailChangedJob) {
+    await this.send({
+      from: SUPPORT_SENDER,
+      to,
+      ...emailChangedEmail({ name, newEmail }),
     });
   }
 
