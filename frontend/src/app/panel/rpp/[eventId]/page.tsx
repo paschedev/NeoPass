@@ -141,10 +141,10 @@ export default function RppEventDetailsPage() {
       `ventas_${stats.eventName.replace(/\s+/g, '_').toLowerCase()}.csv`,
     );
     document.body.appendChild(link);
+    // Sin aviso de éxito: la página no sabe si el archivo se guardó o si se
+    // canceló la ventana de guardar; el navegador muestra su propio aviso.
     link.click();
     document.body.removeChild(link);
-
-    toast.success('Planilla descargada');
   };
 
   if (loading)
@@ -272,6 +272,7 @@ export default function RppEventDetailsPage() {
             </div>
             <button
               onClick={handleExportCSV}
+              aria-label="Exportar planilla"
               className="flex items-center gap-2 text-sm text-neutral-400 hover:text-white transition-colors bg-white/5 px-4 py-2 rounded-xl"
             >
               <Download className="w-4 h-4" />
