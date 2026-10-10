@@ -155,7 +155,7 @@ describe('Confirmar y cambiar el correo', () => {
       await askCode(session).expect(201);
       const { code } = codeSentTo(user.email);
 
-      const messages: string[] = [];
+      const messages: (string | string[])[] = [];
       for (let i = 0; i < 5; i++) {
         const res = await confirm(session, wrongCode(code)).expect(400);
         messages.push(messageOf(res));
@@ -323,6 +323,15 @@ describe('Confirmar y cambiar el correo', () => {
 
       expect(messageOf(res)).toBe('Ese correo ya tiene una cuenta en NeoPass');
       expect(mailJobs('send-email-code')).toHaveLength(0);
+    });
+
+    it('recién registrado, corregir un correo mal escrito no espera el minuto', async () => {
+      const res = await register('ana@gmial.com').expect(201);
+      const session = `Bearer ${(res.body as { access_token: string }).access_token}`;
+
+      await askChange(session, 'ana@gmail.com').expect(201);
+
+      expect(codeSentTo('ana@gmail.com').purpose).toBe('CHANGE');
     });
 
     it('el código va al correo nuevo y hasta escribirlo la cuenta sigue con el de antes', async () => {
