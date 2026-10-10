@@ -179,9 +179,9 @@ model Event {
   // NeoPass's service fee, charged to the buyer on top of the ticket price.
   // Only ADMIN changes it; the database keeps it between 0 and 100.
   neoPassFeePercentage Decimal @default(15.0) @db.Decimal(5, 2)
-  // Unused: the fee's old column (WePass name). The previous version still
-  // reads it while this one deploys; dropped in the next deploy.
-  legacyFeePercentage  Decimal @default(15.0) @map("wePassFeePercentage") @db.Decimal(5, 2)
+  // Unused: the fee's old column (WePass name). Ignored by the client so the
+  // version that drops it can deploy while this one is still serving.
+  legacyFeePercentage  Decimal @default(15.0) @map("wePassFeePercentage") @db.Decimal(5, 2) @ignore
 
   organizerId   String
   organizer     User              @relation("EventOrganizer", fields: [organizerId], references: [id])
