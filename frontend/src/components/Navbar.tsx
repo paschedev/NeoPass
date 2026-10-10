@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import {
   Bell,
   LogOut,
-  LayoutDashboard,
   User as UserIcon,
   HelpCircle,
   CheckCheck,
@@ -279,12 +278,6 @@ export default function Navbar() {
                         </p>
                       </div>
 
-                      <Link
-                        href="/panel"
-                        className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors"
-                      >
-                        <LayoutDashboard className="w-4 h-4" /> Mi panel
-                      </Link>
                       <Link
                         href="/panel/perfil"
                         className="flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:text-white hover:bg-white/5 rounded-xl transition-colors"

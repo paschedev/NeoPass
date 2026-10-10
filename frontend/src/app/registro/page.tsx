@@ -8,12 +8,16 @@ import { Turnstile } from '@marsidev/react-turnstile';
 import { TURNSTILE_OPTIONS } from '@/utils/captcha';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { sameEmail, suggestEmailFix } from '@/utils/email-suggestion';
 import { toE164Phone } from '@/utils/phone';
 import PhoneInput from '@/components/forms/PhoneInput';
 import PasswordInput from '@/components/forms/PasswordInput';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+
+// El largo máximo de un correo (el mismo que acepta el backend).
+const EMAIL_MAX_LENGTH = 254;
 
 const registerSchema = z
   .object({
@@ -27,8 +31,10 @@ const registerSchema = z
       .max(16, 'Máximo 16 caracteres'),
     email: z
       .string()
+      .trim()
       .email('Correo electrónico inválido')
-      .max(38, 'Máximo 38 caracteres'),
+      .max(EMAIL_MAX_LENGTH, `Máximo ${EMAIL_MAX_LENGTH} caracteres`),
+    confirmEmail: z.string().trim().min(1, 'Repetí tu correo'),
     password: z
       .string()
       .min(8, 'Mínimo 8 caracteres')
@@ -40,6 +46,13 @@ const registerSchema = z
     companyName: z.string().max(50, 'Máximo 50 caracteres').optional(),
   })
   .superRefine((data, ctx) => {
+    if (!sameEmail(data.email, data.confirmEmail)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Los correos no coinciden',
+        path: ['confirmEmail'],
+      });
+    }
     if (data.password !== data.confirmPassword) {
       ctx.addIssue({
         code: 'custom',
@@ -74,12 +87,15 @@ export default function RegistroPage() {
   const [captchaToken, setCaptchaToken] = useState<string>('');
   const [captchaError, setCaptchaError] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // "¿Quisiste decir …?" cuando el dominio del correo parece mal escrito.
+  const [emailSuggestion, setEmailSuggestion] = useState<string | null>(null);
 
   const {
     control,
     handleSubmit,
     watch,
     setValue,
+    getValues,
     formState: { errors },
   } = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -88,6 +104,7 @@ export default function RegistroPage() {
       firstName: '',
       lastName: '',
       email: '',
+      confirmEmail: '',
       password: '',
       confirmPassword: '',
       isOrganizer: false,
@@ -113,6 +130,16 @@ export default function RegistroPage() {
 
     e.target.value = formatted;
     e.target.setSelectionRange(start, start);
+  };
+
+  // Corrige el correo, y también el repetido si se había escrito igual.
+  const acceptEmailSuggestion = (suggestion: string) => {
+    const typed = getValues('email');
+    setValue('email', suggestion, { shouldValidate: true });
+    if (sameEmail(getValues('confirmEmail'), typed)) {
+      setValue('confirmEmail', suggestion, { shouldValidate: true });
+    }
+    setEmailSuggestion(null);
   };
 
   const onSubmit = async (data: RegisterFormValues) => {
@@ -252,8 +279,11 @@ export default function RegistroPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-neutral-400 mb-1">
-              Email
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-neutral-400 mb-1"
+            >
+              Correo
             </label>
             <Controller
               name="email"
@@ -261,16 +291,68 @@ export default function RegistroPage() {
               render={({ field }) => (
                 <input
                   {...field}
+                  id="email"
                   type="email"
-                  maxLength={38}
+                  maxLength={EMAIL_MAX_LENGTH}
                   className={`w-full bg-white/5 border ${errors.email ? 'border-red-500' : 'border-white/10'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors`}
                   placeholder="tucorreo@ejemplo.com"
+                  onChange={(e) => {
+                    setEmailSuggestion(null);
+                    field.onChange(e);
+                  }}
+                  onBlur={() => {
+                    field.onBlur();
+                    setEmailSuggestion(suggestEmailFix(field.value));
+                  }}
                 />
               )}
             />
             {errors.email && (
               <span className="text-red-400 text-xs mt-1 block">
                 {errors.email.message}
+              </span>
+            )}
+            <div aria-live="polite">
+              {emailSuggestion && (
+                <p className="text-xs text-neutral-400 mt-1">
+                  ¿Quisiste decir{' '}
+                  <button
+                    type="button"
+                    onClick={() => acceptEmailSuggestion(emailSuggestion)}
+                    className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2"
+                  >
+                    {emailSuggestion}
+                  </button>
+                  ?
+                </p>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="confirmEmail"
+              className="block text-sm font-medium text-neutral-400 mb-1"
+            >
+              Repetí tu correo
+            </label>
+            <Controller
+              name="confirmEmail"
+              control={control}
+              render={({ field }) => (
+                <input
+                  {...field}
+                  id="confirmEmail"
+                  type="email"
+                  maxLength={EMAIL_MAX_LENGTH}
+                  className={`w-full bg-white/5 border ${errors.confirmEmail ? 'border-red-500' : 'border-white/10'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors`}
+                  placeholder="tucorreo@ejemplo.com"
+                />
+              )}
+            />
+            {errors.confirmEmail && (
+              <span className="text-red-400 text-xs mt-1 block">
+                {errors.confirmEmail.message}
               </span>
             )}
           </div>
