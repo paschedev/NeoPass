@@ -7,11 +7,68 @@ import {
   ShieldCheck,
   ArrowRight,
   Star,
+  Wallet,
+  type LucideIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { getHomePath } from '@/utils/navigation';
 import { isOrganizer } from '@/utils/roles';
+
+type Reason = {
+  id: string;
+  title: string;
+  text: string;
+  Icon: LucideIcon;
+  iconClass: string;
+  size: 'regular' | 'featured';
+};
+
+// Every claim here has to hold in the code (or in the infrastructure, like
+// Neon encrypting stored data): no promises the app does not keep.
+const REASONS: Reason[] = [
+  {
+    id: 'datos',
+    title: 'Conexión y datos cifrados',
+    text: 'Tu información viaja y se guarda cifrada. Tu contraseña no la conoce nadie, ni siquiera nosotros, y tu tarjeta la cargás en Mercado Pago: nunca pasa por NeoPass.',
+    Icon: ShieldCheck,
+    iconClass: 'bg-purple-500/20 text-purple-400',
+    size: 'regular',
+  },
+  {
+    id: 'facilidad',
+    title: 'Facilidad de uso',
+    text: 'Creás tu cuenta en un minuto, elegís tus entradas y pagás. Te llegan por correo para entrar aunque no haya señal.',
+    Icon: Ticket,
+    iconClass: 'bg-indigo-500/20 text-indigo-400',
+    size: 'regular',
+  },
+  {
+    id: 'orden',
+    title: 'Orden y flexibilidad',
+    text: 'Control total de tu evento: tandas con fechas y cupos, RPPs, scanners en la puerta y co-organizadores con los permisos que vos elijas.',
+    Icon: Calendar,
+    iconClass: 'bg-pink-500/20 text-pink-400',
+    size: 'regular',
+  },
+  {
+    id: 'cobro',
+    title: 'Cobro directo con Mercado Pago',
+    text: 'Vinculás tu cuenta de Mercado Pago y cada venta se acredita directo en ella. NeoPass no retiene tu plata y el cargo de servicio lo paga quien compra.',
+    Icon: Wallet,
+    iconClass: 'bg-emerald-500/20 text-emerald-400',
+    size: 'featured',
+  },
+];
+
+const REASON_STYLES = {
+  regular: { card: 'p-8', title: 'text-xl', text: '' },
+  featured: {
+    card: 'md:col-span-3 p-8 md:p-10',
+    title: 'text-2xl',
+    text: 'md:text-lg',
+  },
+};
 
 export default function Home() {
   const { user } = useCurrentUser();
@@ -86,10 +143,16 @@ export default function Home() {
         </section>
 
         {/* Features Section */}
-        <section className="py-24 bg-neutral-900/50 border-t border-white/5">
+        <section
+          aria-labelledby="por-que-neopass"
+          className="py-24 bg-neutral-900/50 border-t border-white/5"
+        >
           <div className="container mx-auto px-4">
             <div className="text-center mb-16">
-              <h2 className="font-outfit text-3xl md:text-4xl font-bold mb-4">
+              <h2
+                id="por-que-neopass"
+                className="font-outfit text-3xl md:text-4xl font-bold mb-4"
+              >
                 ¿Por qué elegir NeoPass?
               </h2>
               <p className="text-neutral-400 max-w-xl mx-auto">
@@ -99,46 +162,35 @@ export default function Home() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-8">
-              {/* Feature 1 */}
-              <div className="group bg-black/40 border border-white/10 rounded-3xl p-8 hover:bg-black/60 transition-colors">
-                <div className="w-14 h-14 bg-purple-500/20 text-purple-400 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <ShieldCheck className="w-7 h-7" />
-                </div>
-                <h3 className="text-xl font-bold mb-3">Tus datos, seguros</h3>
-                <p className="text-neutral-400 leading-relaxed">
-                  Navegás con conexión cifrada, tu contraseña nunca se guarda en
-                  texto plano y los datos de tu tarjeta no pasan por NeoPass.
-                </p>
-              </div>
-
-              {/* Feature 2 */}
-              <div className="group bg-black/40 border border-white/10 rounded-3xl p-8 hover:bg-black/60 transition-colors">
-                <div className="w-14 h-14 bg-indigo-500/20 text-indigo-400 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Ticket className="w-7 h-7" />
-                </div>
-                <h3 className="text-xl font-bold mb-3">
-                  Registrarte y comprar es fácil
-                </h3>
-                <p className="text-neutral-400 leading-relaxed">
-                  Creás tu cuenta en un minuto, elegís tus entradas y pagás. Te
-                  llegan por mail en PDF, para entrar aunque no haya señal.
-                </p>
-              </div>
-
-              {/* Feature 3 */}
-              <div className="group bg-black/40 border border-white/10 rounded-3xl p-8 hover:bg-black/60 transition-colors">
-                <div className="w-14 h-14 bg-pink-500/20 text-pink-400 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                  <Calendar className="w-7 h-7" />
-                </div>
-                <h3 className="text-xl font-bold mb-3">
-                  Control total para organizadores
-                </h3>
-                <p className="text-neutral-400 leading-relaxed">
-                  Tandas con fechas y cupos, RPPs con comisión, co-organizadores
-                  con permisos y escaneo en la puerta. Cobrás cada venta directo
-                  en tu cuenta.
-                </p>
-              </div>
+              {REASONS.map(({ id, title, text, Icon, iconClass, size }) => {
+                const styles = REASON_STYLES[size];
+                return (
+                  <article
+                    key={id}
+                    aria-labelledby={`razon-${id}`}
+                    className={`group bg-black/40 border border-white/10 rounded-3xl hover:bg-black/60 transition-colors ${styles.card}`}
+                  >
+                    <div className="flex items-center gap-4 mb-4">
+                      <div
+                        className={`shrink-0 w-12 h-12 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform ${iconClass}`}
+                      >
+                        <Icon className="w-6 h-6" />
+                      </div>
+                      <h3
+                        id={`razon-${id}`}
+                        className={`font-bold ${styles.title}`}
+                      >
+                        {title}
+                      </h3>
+                    </div>
+                    <p
+                      className={`text-neutral-400 leading-relaxed ${styles.text}`}
+                    >
+                      {text}
+                    </p>
+                  </article>
+                );
+              })}
             </div>
           </div>
         </section>
