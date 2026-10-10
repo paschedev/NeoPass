@@ -207,6 +207,11 @@ function EventContent() {
             <h1 className="font-outfit text-4xl md:text-6xl font-bold mb-4">
               {event.title}
             </h1>
+            {event.organizerName && (
+              <p className="text-neutral-200 text-sm md:text-base -mt-2">
+                Organiza {event.organizerName}
+              </p>
+            )}
           </div>
         </div>
 

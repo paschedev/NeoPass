@@ -8,8 +8,11 @@ export interface SessionUser {
   email: string;
   name: string;
   role: 'ADMIN' | 'ORGANIZER' | 'CUSTOMER';
-  // Sin valor en las sesiones guardadas antes de que existiera.
+  // Sin valor en las sesiones guardadas antes de que existieran.
   emailVerified?: boolean;
+  avatarUrl?: string | null;
+  // Solo organizadores: el nombre de su productora.
+  companyName?: string | null;
   hasLinkedMp: boolean;
   hasBeenRpp: boolean;
   isCurrentlyScanner: boolean;

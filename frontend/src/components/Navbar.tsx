@@ -15,6 +15,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useNotificationFeed } from '@/hooks/useNotificationFeed';
 import { useStaffInvitation } from '@/hooks/useStaffInvitation';
 import { NoticeLink } from '@/components/notifications/NoticeLink';
+import Avatar from '@/components/account/Avatar';
 import { noticeTime, pendingInvitationStaffId } from '@/utils/notifications';
 
 const SUPPORT_EMAIL = 'soporte@neopass.ar';
@@ -255,9 +256,7 @@ export default function Navbar() {
                   <span className="hidden md:block text-sm font-medium text-neutral-200">
                     {user.name.split(' ')[0]}
                   </span>
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-xs shadow-inner border border-white/20">
-                    {user.name.charAt(0)}
-                  </div>
+                  <Avatar user={user} size="sm" />
                 </button>
 
                 <AnimatePresence>
