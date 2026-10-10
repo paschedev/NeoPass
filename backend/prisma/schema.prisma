@@ -121,6 +121,8 @@ model User {
   emailVerifiedAt DateTime?
   passwordHash    String
   name            String
+  // Profile photo uploaded through NeoPass (see auth/avatar-url.ts).
+  avatarUrl       String?
   role            UserRole  @default(CUSTOMER)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @default(now()) @updatedAt

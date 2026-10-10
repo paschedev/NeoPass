@@ -7,6 +7,10 @@ import {
 } from '@prisma/client';
 import { compareByPhase, getEventPhase } from './event-phase';
 import {
+  organizerDisplayName,
+  type OrganizerForName,
+} from '../common/organizer-name';
+import {
   coOrganizerSendsFreeTickets,
   promoterFreeTickets,
 } from './promoter-free-tickets';
@@ -35,7 +39,7 @@ type MyAssignment = {
     latitude: number | null;
     longitude: number | null;
     venuePlaceId: string | null;
-    organizer: { name: string };
+    organizer: OrganizerForName;
   };
 };
 
@@ -79,7 +83,7 @@ export function buildMyStaff(
       return {
         ...event,
         phase: getEventPhase(event, now),
-        organizerName: organizer.name,
+        organizerName: organizerDisplayName(organizer),
         owed: promoter ? owedTo(promoter).toNumber() : 0,
         roles: roles
           .map((role) => role.role)
@@ -136,7 +140,7 @@ export function buildMyStaff(
           id: event.id,
           title: event.title,
           startDate: event.startDate,
-          organizerName: event.organizer.name,
+          organizerName: organizerDisplayName(event.organizer),
         },
       }),
     );

@@ -81,4 +81,38 @@ describe('Registro', () => {
 
     expect(await t.prisma.user.count()).toBe(0);
   });
+
+  it('el nombre y el apellido tienen hasta 30 caracteres y la productora hasta 50', async () => {
+    const messages = [];
+    for (const tooLong of [
+      { firstName: 'A'.repeat(31) },
+      { lastName: 'P'.repeat(31) },
+      { companyName: 'C'.repeat(51) },
+    ]) {
+      const res = await register({ ...ORGANIZER, ...tooLong }).expect(400);
+      messages.push((res.body as { message: string[] }).message);
+    }
+
+    expect(messages).toEqual([
+      ['El nombre puede tener hasta 30 caracteres'],
+      ['El apellido puede tener hasta 30 caracteres'],
+      ['El nombre de la productora puede tener hasta 50 caracteres'],
+    ]);
+    expect(await t.prisma.user.count()).toBe(0);
+  });
+
+  it('nadie se registra con "NeoPass" en su nombre o en el de su productora', async () => {
+    for (const branded of [
+      { firstName: 'NeoPass' },
+      { lastName: 'Neo Pass' },
+      { companyName: 'Soporte NEOPASS' },
+    ]) {
+      const res = await register({ ...ORGANIZER, ...branded }).expect(400);
+      expect((res.body as { message: string[] }).message).toEqual([
+        'El nombre no puede incluir "NeoPass"',
+      ]);
+    }
+
+    expect(await t.prisma.user.count()).toBe(0);
+  });
 });

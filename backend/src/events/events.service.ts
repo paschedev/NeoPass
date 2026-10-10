@@ -54,6 +54,7 @@ import {
   permissionsError,
 } from './co-organizers';
 import { formatPesos } from '../common/amounts';
+import { organizerDisplayName } from '../common/organizer-name';
 import {
   assertPermission,
   canDo,
@@ -395,7 +396,12 @@ export class EventsService {
       .filter(
         ({ saleStatus }) => saleStatus !== 'HIDDEN' && saleStatus !== 'ENDED',
       );
-    return { ...event, ticketBatches };
+    const { organizer, ...publicEvent } = event;
+    return {
+      ...publicEvent,
+      organizerName: organizerDisplayName(organizer),
+      ticketBatches,
+    };
   }
 
   async create(userId: string, data: CreateEventDto) {

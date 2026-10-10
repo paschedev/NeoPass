@@ -19,6 +19,20 @@ export class UserRepository {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
+  // The account plus its producer name, for the profile.
+  findProfile(id: string) {
+    return this.prisma.user.findUnique({
+      where: { id },
+      include: { organizerProfile: { select: { companyName: true } } },
+    });
+  }
+
+  async hasOrganizerProfile(userId: string) {
+    return (
+      (await this.prisma.organizerProfile.count({ where: { userId } })) > 0
+    );
+  }
+
   async findByResetToken(token: string): Promise<User | null> {
     return this.prisma.user.findFirst({
       where: {
