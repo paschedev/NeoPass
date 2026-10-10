@@ -14,6 +14,7 @@ import * as crypto from 'crypto';
 import { Prisma, User } from '@prisma/client';
 import { RegisterUserDto } from './dto/register-user.dto';
 import { isUniqueViolation } from '../prisma/prisma-errors';
+import { EmailConfirmationService } from './email-confirmation.service';
 
 const EMAIL_TAKEN = 'El correo electrónico ya existe';
 
@@ -28,6 +29,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly mailService: MailService,
     private readonly config: ConfigService,
+    private readonly emailConfirmation: EmailConfirmationService,
   ) {}
 
   async validateUser(email: string, pass: string): Promise<any> {
@@ -47,7 +49,7 @@ export class AuthService {
     });
   }
 
-  async login(user: any) {
+  async login(user: Omit<User, 'passwordHash'>) {
     const hasBeenRpp = await this.userRepository.checkHasBeenRpp(user.id);
     const isCurrentlyScanner =
       await this.userRepository.checkIsCurrentlyScanner(user.id);
@@ -58,6 +60,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         role: user.role,
+        emailVerified: user.emailVerifiedAt !== null,
         hasLinkedMp: hasUsableMercadoPagoToken(user, new Date()),
         hasBeenRpp,
         isCurrentlyScanner,
@@ -78,6 +81,7 @@ export class AuthService {
       email: user.email,
       name: user.name,
       role: user.role,
+      emailVerified: user.emailVerifiedAt !== null,
       hasLinkedMp: hasUsableMercadoPagoToken(user, new Date()),
       hasBeenRpp,
       isCurrentlyScanner,
@@ -92,12 +96,20 @@ export class AuthService {
 
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(data.password, salt);
+    // The account starts unconfirmed, with a code on its way to that email.
+    const { code, record } = await this.emailConfirmation.newCode(
+      'VERIFY',
+      data.email,
+      null,
+      new Date(),
+    );
 
     const userCreateInput: Prisma.UserCreateInput = {
       name: `${data.firstName} ${data.lastName}`.trim(),
       email: data.email,
       passwordHash: hashedPassword,
       role: data.role as any,
+      emailCode: { create: record },
     };
 
     if (data.role === 'ORGANIZER') {
@@ -125,13 +137,9 @@ export class AuthService {
       throw error;
     }
 
-    const { passwordHash, ...result } = user;
-    return {
-      ...result,
-      hasBeenRpp: false,
-      isCurrentlyScanner: false,
-      hasLinkedMp: false,
-    };
+    await this.emailConfirmation.mailRegistrationCode(user, code);
+    // Starts the session: the next step is typing that code.
+    return this.login(user);
   }
 
   async changePassword(userId: string, oldPass: string, newPass: string) {
@@ -206,13 +214,13 @@ export class AuthService {
     const salt = await bcrypt.genSalt();
     const newHash = await bcrypt.hash(newPass, salt);
 
-    // Whoever had the old password loses their open sessions too.
-    await this.userRepository.update(user.id, {
-      passwordHash: newHash,
-      passwordResetToken: null,
-      passwordResetExpires: null,
-      passwordChangedAt: new Date(),
-    });
+    // Whoever had the old password loses their open sessions too, and the
+    // link proved the mailbox: the email ends up confirmed.
+    await this.userRepository.completePasswordReset(
+      user.id,
+      newHash,
+      new Date(),
+    );
 
     return { message: 'Contraseña restablecida con éxito' };
   }

@@ -7,7 +7,10 @@ import { AuthController } from './auth.controller';
 import { JwtStrategy } from './jwt.strategy';
 import { MailModule } from '../mail/mail.module';
 import { UserRepository } from './repositories/user.repository';
+import { EmailCodeRepository } from './repositories/email-code.repository';
 import { CaptchaService } from './captcha.service';
+import { EmailConfirmationController } from './email-confirmation.controller';
+import { EmailConfirmationService } from './email-confirmation.service';
 
 @Module({
   imports: [
@@ -21,8 +24,15 @@ import { CaptchaService } from './captcha.service';
     }),
     MailModule,
   ],
-  controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, UserRepository, CaptchaService],
+  controllers: [AuthController, EmailConfirmationController],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    UserRepository,
+    CaptchaService,
+    EmailConfirmationService,
+    EmailCodeRepository,
+  ],
   exports: [AuthService, UserRepository, CaptchaService, JwtModule],
 })
 export class AuthModule {}

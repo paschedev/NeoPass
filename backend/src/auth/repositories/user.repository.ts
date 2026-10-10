@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Prisma, User } from '@prisma/client';
+import { maskEmail } from '../../common/mask-email';
 
 @Injectable()
 export class UserRepository {
@@ -60,21 +61,25 @@ export class UserRepository {
       take: 10,
     });
 
-    return users.map((user) => {
-      let maskedEmail = user.email;
-      const [local, domain] = user.email.split('@');
-      if (domain) {
-        const maskedLocal =
-          local.length > 2
-            ? local[0] + '*'.repeat(local.length - 2) + local[local.length - 1]
-            : local[0] + '***';
-        maskedEmail = `${maskedLocal}@${domain}`;
-      }
-      return {
-        ...user,
-        email: maskedEmail,
-      };
-    });
+    return users.map((user) => ({ ...user, email: maskEmail(user.email) }));
+  }
+
+  // The reset link proved the mailbox: the new password, the email confirmed
+  // and any pending email code cancelled, together. Closes the open sessions.
+  async completePasswordReset(id: string, passwordHash: string, now: Date) {
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id },
+        data: {
+          passwordHash,
+          passwordResetToken: null,
+          passwordResetExpires: null,
+          passwordChangedAt: now,
+          emailVerifiedAt: now,
+        },
+      }),
+      this.prisma.emailCode.deleteMany({ where: { userId: id } }),
+    ]);
   }
 
   async checkHasBeenRpp(userId: string): Promise<boolean> {
