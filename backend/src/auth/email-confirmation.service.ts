@@ -168,7 +168,7 @@ export class EmailConfirmationService {
   private async sendCode(user: User, purpose: EmailCodePurpose, email: string) {
     const now = new Date();
     const previous = await this.codes.findByUser(user.id);
-    const tooSoon = codeRequestError(previous, now);
+    const tooSoon = codeRequestError(previous, email, now);
     if (tooSoon) throw new HttpException(tooSoon, HttpStatus.TOO_MANY_REQUESTS);
 
     const { code, record } = await this.newCode(purpose, email, previous, now);

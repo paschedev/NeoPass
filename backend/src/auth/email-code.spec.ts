@@ -18,41 +18,55 @@ describe('Código para confirmar el correo', () => {
 
   describe('cuándo se puede pedir otro', () => {
     it('el primero sale siempre', () => {
-      expect(codeRequestError(null, NOW)).toBeNull();
+      expect(codeRequestError(null, 'ana@gmail.com', NOW)).toBeNull();
     });
 
-    it('entre un código y otro tiene que pasar un minuto', () => {
+    it('entre un código y otro al mismo correo tiene que pasar un minuto', () => {
       const previous = {
+        email: 'ana@gmail.com',
         sentAt: ago(20 * 1000),
         sentInWindow: 1,
         windowStartedAt: ago(20 * 1000),
       };
 
-      expect(codeRequestError(previous, NOW)).toBe(
+      expect(codeRequestError(previous, 'Ana@Gmail.com', NOW)).toBe(
         'Esperá 40 segundos para pedir otro código',
       );
     });
 
-    it('como mucho 5 por hora', () => {
+    it('a otro correo (por ejemplo, para corregir uno mal escrito) no espera el minuto', () => {
       const previous = {
+        email: 'ana@gmial.com',
+        sentAt: ago(20 * 1000),
+        sentInWindow: 1,
+        windowStartedAt: ago(20 * 1000),
+      };
+
+      expect(codeRequestError(previous, 'ana@gmail.com', NOW)).toBeNull();
+    });
+
+    it('como mucho 5 por hora, a cualquier correo', () => {
+      const previous = {
+        email: 'ana@gmail.com',
         sentAt: ago(2 * MINUTE_MS),
         sentInWindow: 5,
         windowStartedAt: ago(30 * MINUTE_MS),
       };
 
-      expect(codeRequestError(previous, NOW)).toBe(
+      expect(codeRequestError(previous, 'otro@gmail.com', NOW)).toBe(
         'Llegaste al máximo de 5 códigos por hora. Probá de nuevo más tarde.',
       );
     });
 
     it('pasada la hora vuelve a contar de cero', () => {
       const previous = {
+        email: 'ana@gmail.com',
         sentAt: ago(2 * MINUTE_MS),
         sentInWindow: 5,
         windowStartedAt: ago(61 * MINUTE_MS),
       };
 
-      expect(codeRequestError(previous, NOW)).toBeNull();
+      expect(codeRequestError(previous, 'ana@gmail.com', NOW)).toBeNull();
       expect(nextSendWindow(previous, NOW)).toEqual({
         sentInWindow: 1,
         windowStartedAt: NOW,
@@ -61,6 +75,7 @@ describe('Código para confirmar el correo', () => {
 
     it('dentro de la hora suma uno a los enviados', () => {
       const previous = {
+        email: 'ana@gmail.com',
         sentAt: ago(2 * MINUTE_MS),
         sentInWindow: 2,
         windowStartedAt: ago(10 * MINUTE_MS),

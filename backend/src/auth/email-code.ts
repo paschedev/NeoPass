@@ -9,7 +9,7 @@ const HOUR_MS = 60 * 60 * 1000;
 
 type SendHistory = Pick<
   EmailCode,
-  'sentAt' | 'sentInWindow' | 'windowStartedAt'
+  'email' | 'sentAt' | 'sentInWindow' | 'windowStartedAt'
 >;
 
 // Six digits, leading zeros included.
@@ -20,13 +20,20 @@ export function generateEmailCode() {
 const windowOpen = (previous: SendHistory, now: Date) =>
   now.getTime() - previous.windowStartedAt.getTime() < HOUR_MS;
 
-// Why another code can't be sent yet, or null: a minute between codes and at
-// most 5 per hour, so nobody uses NeoPass to flood a mailbox.
-export function codeRequestError(previous: SendHistory | null, now: Date) {
+// Why another code to `email` can't be sent yet, or null: a minute between
+// codes to the same email and at most 5 per hour, so nobody uses NeoPass to
+// flood a mailbox. A code to another email (fixing a mistyped one right after
+// signing up) doesn't wait the minute.
+export function codeRequestError(
+  previous: SendHistory | null,
+  email: string,
+  now: Date,
+) {
   if (!previous) return null;
 
+  const sameEmail = previous.email.toLowerCase() === email.toLowerCase();
   const wait = previous.sentAt.getTime() + COOLDOWN_MS - now.getTime();
-  if (wait > 0) {
+  if (sameEmail && wait > 0) {
     return `Esperá ${Math.ceil(wait / 1000)} segundos para pedir otro código`;
   }
   if (windowOpen(previous, now) && previous.sentInWindow >= CODES_PER_HOUR) {
