@@ -112,4 +112,20 @@ describe('Navbar', () => {
       await screen.findByRole('link', { name: 'Soporte' }),
     ).toHaveAttribute('href', 'mailto:soporte@neopass.ar');
   });
+
+  it('el menú del perfil no repite "Mi panel": queda solo el de la barra', async () => {
+    logIn();
+    feed();
+
+    render(<Navbar />);
+    fireEvent.click(screen.getByText('Ana'));
+
+    expect(
+      await screen.findByRole('link', { name: 'Perfil' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Cerrar sesión' }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole('link', { name: 'Mi panel' })).toHaveLength(1);
+  });
 });

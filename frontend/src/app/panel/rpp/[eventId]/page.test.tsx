@@ -183,6 +183,52 @@ describe('Métricas del RPP en un evento', () => {
     expect(toast.success).toHaveBeenCalledWith('Link copiado');
   });
 
+  it('exportar la planilla descarga las ventas sin decir que ya se guardó', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:ventas');
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {});
+    server({
+      ...stats,
+      recentSales: [
+        {
+          id: 'o1',
+          buyer: 'Ana Pérez',
+          tickets: 2,
+          price: 20000,
+          commission: 2000,
+          date: '2026-10-05T15:00:00.000Z',
+        },
+      ],
+    });
+    render(<RppEventDetailsPage />);
+    await screen.findByText('Fiesta Bresh');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Exportar planilla' }));
+
+    expect(click).toHaveBeenCalledTimes(1);
+    expect((click.mock.contexts[0] as HTMLAnchorElement).download).toBe(
+      'ventas_fiesta_bresh.csv',
+    );
+    expect(toast.success).not.toHaveBeenCalled();
+    click.mockRestore();
+  });
+
+  it('sin ventas no descarga nada y avisa que no hay ventas para exportar', async () => {
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {});
+    server(stats);
+    render(<RppEventDetailsPage />);
+    await screen.findByText('Fiesta Bresh');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Exportar planilla' }));
+
+    expect(toast.error).toHaveBeenCalledWith('No hay ventas para exportar');
+    expect(click).not.toHaveBeenCalled();
+    click.mockRestore();
+  });
+
   it('si el navegador no deja copiar, avisa que no se pudo en vez de decir "copiado"', async () => {
     withClipboard(vi.fn().mockRejectedValue(new Error('NotAllowedError')));
 
