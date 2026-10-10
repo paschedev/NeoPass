@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { UserPlus } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
@@ -12,6 +11,8 @@ import { sameEmail, suggestEmailFix } from '@/utils/email-suggestion';
 import { toE164Phone } from '@/utils/phone';
 import PhoneInput from '@/components/forms/PhoneInput';
 import PasswordInput from '@/components/forms/PasswordInput';
+import RegistrationEmailStep from '@/components/account/RegistrationEmailStep';
+import { saveSession, type SessionUser } from '@/hooks/useCurrentUser';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -80,10 +81,11 @@ const registerSchema = z
 type RegisterFormValues = z.infer<typeof registerSchema>;
 
 export default function RegistroPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [registeredUser, setRegisteredUser] = useState<SessionUser | null>(
+    null,
+  );
   const [captchaToken, setCaptchaToken] = useState<string>('');
   const [captchaError, setCaptchaError] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -171,10 +173,9 @@ export default function RegistroPage() {
       const responseData = await response.json();
 
       if (response.ok) {
-        setSuccess(true);
-        setTimeout(() => {
-          router.push('/login');
-        }, 2000);
+        // La cuenta nace con la sesión iniciada: sigue el código del correo.
+        saveSession(responseData.access_token, responseData.user);
+        setRegisteredUser(responseData.user);
       } else {
         setError(
           getApiErrorMessage(responseData, 'Error al registrar el usuario'),
@@ -187,12 +188,11 @@ export default function RegistroPage() {
     }
   };
 
-  if (success) {
+  if (registeredUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-950 p-4">
-        <div className="bg-green-500/10 border border-green-500/20 text-green-400 p-8 rounded-3xl text-center">
-          <h2 className="text-2xl font-bold mb-2">¡Registro exitoso!</h2>
-          <p>Te estamos redirigiendo al login...</p>
+      <div className="min-h-screen bg-neutral-950 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md bg-neutral-900 border border-white/5 p-8 rounded-3xl shadow-2xl">
+          <RegistrationEmailStep user={registeredUser} />
         </div>
       </div>
     );

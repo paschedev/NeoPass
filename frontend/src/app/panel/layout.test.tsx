@@ -5,6 +5,11 @@ import PanelLayout from './layout';
 const replace = vi.fn();
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace }),
+  usePathname: () => '/panel',
+}));
+// El aviso de confirmar el correo pide el perfil si la sesión no lo sabe.
+vi.mock('@/utils/api', () => ({
+  apiFetch: vi.fn(async () => Response.json({ role: 'CUSTOMER' })),
 }));
 
 describe('PanelLayout', () => {
