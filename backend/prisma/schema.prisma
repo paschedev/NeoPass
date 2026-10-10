@@ -14,6 +14,11 @@ enum UserRole {
   CUSTOMER
 }
 
+enum EmailCodePurpose {
+  VERIFY // confirm the account's email
+  CHANGE // switch the account to the email the code was sent to
+}
+
 enum EventStatus {
   DRAFT
   PUBLISHED
@@ -104,18 +109,21 @@ enum TicketCategory {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
+  id              String    @id @default(uuid())
+  email           String    @unique
   // Which mailbox the email reaches: lowercase and, for Gmail, without dots or
   // "+…" (googlemail.com is gmail.com). The database fills it in on every
   // write (trigger "User_normalize_email", which also stores the email in
   // lowercase) and accounts are looked up with its function email_key().
-  emailKey     String   @unique @default("")
-  passwordHash String
-  name         String
-  role         UserRole @default(CUSTOMER)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @default(now()) @updatedAt
+  emailKey        String    @unique @default("")
+  // When the account proved it controls `email`: a code sent there, a
+  // password reset link or an email change. Null = not confirmed.
+  emailVerifiedAt DateTime?
+  passwordHash    String
+  name            String
+  role            UserRole  @default(CUSTOMER)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @default(now()) @updatedAt
 
   // Mercado Pago (OAuth). The access token lasts 180 days and is renewed with
   // the refresh token, which changes on every renewal. Accounts linked before
@@ -145,6 +153,25 @@ model User {
   freeTicketGrantsIssued     FreeTicketGrant[]
   ticketPresets              TicketPreset[]    @relation("OrganizerPresets")
   notifications              Notification[]
+  emailCode                  EmailCode?
+}
+
+// The code that confirms an email, one per account at a time: asking for
+// another one replaces it. Only its bcrypt hash is stored.
+model EmailCode {
+  userId          String           @id
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose         EmailCodePurpose
+  // Where the code was sent (the account's email, or the new one).
+  email           String
+  codeHash        String
+  // Wrong guesses; at the limit the code no longer works.
+  attempts        Int              @default(0)
+  expiresAt       DateTime
+  sentAt          DateTime
+  // Codes sent since `windowStartedAt`, to cap them per hour.
+  sentInWindow    Int              @default(1)
+  windowStartedAt DateTime
 }
 
 model OrganizerProfile {
@@ -183,8 +210,8 @@ model Event {
   // version that drops it can deploy while this one is still serving.
   legacyFeePercentage  Decimal @default(15.0) @map("wePassFeePercentage") @db.Decimal(5, 2) @ignore
 
-  organizerId   String
-  organizer     User              @relation("EventOrganizer", fields: [organizerId], references: [id])
+  organizerId String
+  organizer   User   @relation("EventOrganizer", fields: [organizerId], references: [id])
 
   // A deleted event leaves the public site but stays for its organizer, its
   // staff and whoever bought tickets. Deleted by its organizer or, to take it

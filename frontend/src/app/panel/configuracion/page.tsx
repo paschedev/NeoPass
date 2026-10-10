@@ -2,6 +2,7 @@
 
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { isOrganizer } from '@/utils/roles';
+import EmailSection from '@/components/settings/EmailSection';
 import PasswordSection from '@/components/settings/PasswordSection';
 import MercadoPagoSection from '@/components/settings/MercadoPagoSection';
 import PresetsLinkSection from '@/components/settings/PresetsLinkSection';
@@ -15,6 +16,7 @@ export default function ConfiguracionPage() {
         Configuración
       </h1>
 
+      <EmailSection />
       <PasswordSection />
 
       {isOrganizer(user) && (

@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import EmailConfirmationBanner from '@/components/account/EmailConfirmationBanner';
 
 export default function PanelLayout({
   children,
@@ -24,5 +25,10 @@ export default function PanelLayout({
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <EmailConfirmationBanner />
+      {children}
+    </>
+  );
 }
