@@ -8,6 +8,8 @@ export interface SessionUser {
   email: string;
   name: string;
   role: 'ADMIN' | 'ORGANIZER' | 'CUSTOMER';
+  // Sin valor en las sesiones guardadas antes de que existiera.
+  emailVerified?: boolean;
   hasLinkedMp: boolean;
   hasBeenRpp: boolean;
   isCurrentlyScanner: boolean;
@@ -55,6 +57,12 @@ function saveUser(user: SessionUser): void {
 // Guarda la sesión que devuelve el login.
 export function saveSession(token: string, user: SessionUser): void {
   localStorage.setItem('token', token);
+  saveUser(user);
+}
+
+// Guarda el perfil actualizado que devolvió el backend (por ejemplo, al
+// confirmar o cambiar el correo); el token sigue siendo el mismo.
+export function updateSessionUser(user: SessionUser): void {
   saveUser(user);
 }
 
