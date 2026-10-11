@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Wordmark from '@/components/Wordmark';
+import LandingDemo from '@/components/landing/LandingDemo';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { getHomePath } from '@/utils/navigation';
 import { isOrganizer } from '@/utils/roles';
@@ -280,6 +281,28 @@ export default function Home() {
                   </ol>
                 </div>
               ))}
+            </div>
+          </div>
+        </section>
+
+        <section
+          aria-labelledby="por-dentro"
+          className="py-24 border-t border-white/5"
+        >
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-10">
+              <h2
+                id="por-dentro"
+                className="font-outfit text-3xl md:text-4xl font-bold mb-4"
+              >
+                Así se ve por dentro
+              </h2>
+              <p className="text-neutral-400 max-w-xl mx-auto">
+                El panel de quien organiza y el de un RPP, con datos de ejemplo.
+              </p>
+            </div>
+            <div className="reveal">
+              <LandingDemo />
             </div>
           </div>
         </section>
