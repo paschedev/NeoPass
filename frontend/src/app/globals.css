@@ -3,6 +3,47 @@
 @theme {
   --font-inter: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-outfit: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+
+  /* El resplandor del fondo de la landing, que se mueve lento. */
+  --animate-drift: drift 24s ease-in-out infinite alternate;
+
+  @keyframes drift {
+    to {
+      transform: translate(10%, 8%) scale(1.15);
+    }
+  }
+}
+
+/* Colores de la marca: hoy, los mismos índigo y violeta de siempre. Cuando
+   llegue la identidad visual se cambian acá. Por ahora los usan la landing y
+   la barra; la imagen para compartir (app/opengraph-image.tsx) repite los
+   valores porque no lee CSS. */
+@theme inline {
+  --color-brand-300: var(--color-indigo-300);
+  --color-brand-400: var(--color-indigo-400);
+  --color-brand-500: var(--color-indigo-500);
+  --color-brand-600: var(--color-indigo-600);
+  --color-brand-accent: var(--color-purple-500);
+}
+
+/* Las secciones de la landing aparecen al entrar en pantalla. Solo CSS: en
+   los navegadores sin animaciones por scroll se ven directo, y con "reducir
+   movimiento" no se anima nada. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: view()) {
+    .reveal {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 35%;
+    }
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    translate: 0 1.5rem;
+  }
 }
 
 :root {

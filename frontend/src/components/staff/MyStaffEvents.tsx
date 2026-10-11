@@ -36,7 +36,6 @@ export default function MyStaffEvents() {
   const [data, setData] = useState<MyStaff | null>(null);
   const [failed, setFailed] = useState(false);
   const [version, setVersion] = useState(0);
-  const [showSettled, setShowSettled] = useState(false);
 
   useEffect(() => {
     let current = true;
@@ -84,6 +83,18 @@ export default function MyStaffEvents() {
     );
   }
 
+  return <MyStaffEventsView data={data} onReload={reload} />;
+}
+
+// La vista sin la carga: la usa también la demo de la landing.
+export function MyStaffEventsView({
+  data,
+  onReload,
+}: {
+  data: MyStaff;
+  onReload: () => void;
+}) {
+  const [showSettled, setShowSettled] = useState(false);
   const { active, settled } = splitSettledClosed(data.events);
   const totals = data.promoterTotals;
 
@@ -92,7 +103,7 @@ export default function MyStaffEvents() {
       {data.invitations.length > 0 && (
         <StaffInvitations
           invitations={data.invitations}
-          onAnswered={reload}
+          onAnswered={onReload}
         />
       )}
 
