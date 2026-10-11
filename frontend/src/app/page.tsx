@@ -6,11 +6,11 @@ import {
   Ticket,
   ShieldCheck,
   ArrowRight,
-  Star,
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Wordmark from '@/components/Wordmark';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { getHomePath } from '@/utils/navigation';
 import { isOrganizer } from '@/utils/roles';
@@ -70,6 +70,47 @@ const REASON_STYLES = {
   },
 };
 
+// Comprar exige cuenta (el botón lleva al login) y crear un evento exige
+// tener Mercado Pago vinculado: por eso el orden de los pasos.
+const HOW_IT_WORKS = [
+  {
+    id: 'compras',
+    audience: 'Si comprás',
+    steps: [
+      {
+        title: 'Elegí tu evento',
+        text: 'Buscás el evento y elegís tus entradas.',
+      },
+      {
+        title: 'Pagá con Mercado Pago',
+        text: 'Entrás con tu cuenta y confirmás el pago.',
+      },
+      {
+        title: 'Entrá con tu QR',
+        text: 'Las entradas te llegan por correo y quedan en Mis entradas. En la puerta escanean tu QR.',
+      },
+    ],
+  },
+  {
+    id: 'organizas',
+    audience: 'Si organizás',
+    steps: [
+      {
+        title: 'Vinculá Mercado Pago',
+        text: 'Conectás tu cuenta y cada venta se acredita directo en ella.',
+      },
+      {
+        title: 'Creá tu evento',
+        text: 'Cargás el flyer, el lugar y las tandas con sus precios y cupos.',
+      },
+      {
+        title: 'Sumá a tu equipo',
+        text: 'Invitás RPPs con su link, scanners para la puerta y co-organizadores.',
+      },
+    ],
+  },
+];
+
 export default function Home() {
   const { user } = useCurrentUser();
 
@@ -78,14 +119,17 @@ export default function Home() {
       <main className="flex-1">
         {/* Hero Section */}
         <section className="relative pt-24 pb-32 overflow-hidden">
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 pointer-events-none"
+          >
+            <div className="absolute -top-32 -left-24 w-80 h-80 md:w-[32rem] md:h-[32rem] rounded-full bg-brand-600/15 blur-3xl motion-safe:animate-drift" />
+            <div className="absolute top-1/3 -right-24 w-72 h-72 md:w-[28rem] md:h-[28rem] rounded-full bg-brand-accent/10 blur-3xl motion-safe:animate-drift [animation-delay:-12s]" />
+          </div>
           <div className="container mx-auto px-4 relative z-10 flex flex-col items-center text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-sm font-medium mb-8">
-              <Star className="w-4 h-4" /> La nueva era de los eventos
-            </div>
-
             <h1 className="font-outfit text-5xl md:text-7xl font-bold tracking-tight mb-6 max-w-4xl text-transparent bg-clip-text bg-gradient-to-br from-white to-neutral-500">
               Viví experiencias únicas con{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-500">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-400 to-brand-accent">
                 NeoPass
               </span>
             </h1>
@@ -116,7 +160,7 @@ export default function Home() {
                   {user ? (
                     <Link
                       href={getHomePath(user)}
-                      className="inline-flex w-max items-center justify-center gap-2 bg-indigo-600 border border-indigo-500 text-white px-6 py-3 md:px-8 md:py-4 rounded-full font-semibold text-base md:text-lg transition-all hover:bg-indigo-500 active:scale-95 shadow-lg shadow-indigo-600/20"
+                      className="inline-flex w-max items-center justify-center gap-2 bg-brand-600 border border-brand-500 text-white px-6 py-3 md:px-8 md:py-4 rounded-full font-semibold text-base md:text-lg transition-all hover:bg-brand-500 active:scale-95 shadow-lg shadow-brand-600/20"
                     >
                       {isOrganizer(user) ? 'Ir a mi panel' : 'Mis entradas'}
                     </Link>
@@ -124,7 +168,7 @@ export default function Home() {
                     <>
                       <Link
                         href="/login"
-                        className="inline-flex w-max items-center justify-center gap-2 bg-indigo-600 border border-indigo-500 text-white px-6 py-3 md:px-8 md:py-4 rounded-full font-semibold text-base md:text-lg transition-all hover:bg-indigo-500 active:scale-95 shadow-lg shadow-indigo-600/20"
+                        className="inline-flex w-max items-center justify-center gap-2 bg-brand-600 border border-brand-500 text-white px-6 py-3 md:px-8 md:py-4 rounded-full font-semibold text-base md:text-lg transition-all hover:bg-brand-500 active:scale-95 shadow-lg shadow-brand-600/20"
                       >
                         Ingresar
                       </Link>
@@ -161,7 +205,7 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="reveal grid md:grid-cols-3 gap-8">
               {REASONS.map(({ id, title, text, Icon, iconClass, size }) => {
                 const styles = REASON_STYLES[size];
                 return (
@@ -194,11 +238,57 @@ export default function Home() {
             </div>
           </div>
         </section>
+
+        <section
+          aria-labelledby="como-funciona"
+          className="py-24 border-t border-white/5"
+        >
+          <div className="container mx-auto px-4">
+            <h2
+              id="como-funciona"
+              className="font-outfit text-3xl md:text-4xl font-bold text-center mb-16"
+            >
+              Cómo funciona
+            </h2>
+
+            <div className="reveal grid md:grid-cols-2 gap-8">
+              {HOW_IT_WORKS.map(({ id, audience, steps }) => (
+                <div
+                  key={id}
+                  className="bg-black/40 border border-white/10 rounded-3xl p-8"
+                >
+                  <h3 id={`pasos-${id}`} className="text-xl font-bold mb-6">
+                    {audience}
+                  </h3>
+                  <ol aria-labelledby={`pasos-${id}`} className="space-y-6">
+                    {steps.map(({ title, text }, index) => (
+                      <li key={title} className="flex gap-4">
+                        <span
+                          aria-hidden="true"
+                          className="shrink-0 w-9 h-9 rounded-full bg-brand-500/15 text-brand-300 font-bold flex items-center justify-center"
+                        >
+                          {index + 1}
+                        </span>
+                        <div>
+                          <h4 className="font-semibold mb-1">{title}</h4>
+                          <p className="text-neutral-400 leading-relaxed">
+                            {text}
+                          </p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
       </main>
 
       {/* Footer */}
       <footer className="bg-black py-12 border-t border-white/10">
-        <div className="container mx-auto px-4 text-center text-neutral-500">
+        <div className="container mx-auto px-4 flex flex-col items-center gap-3 text-center text-neutral-500">
+          <Wordmark className="text-2xl text-white" />
           <p>
             © {new Date().getFullYear()} NeoPass. Todos los derechos reservados.
           </p>

@@ -37,6 +37,15 @@ describe('Navbar', () => {
     vi.clearAllMocks();
   });
 
+  it('la marca lleva al inicio', () => {
+    render(<Navbar />);
+
+    expect(screen.getByRole('link', { name: 'NeoPass' })).toHaveAttribute(
+      'href',
+      '/',
+    );
+  });
+
   it('sin sesión ofrece ingresar y no pide notificaciones', () => {
     render(<Navbar />);
 

@@ -60,6 +60,35 @@ describe('Landing', () => {
     expect(order).not.toHaveTextContent(/cobr|plata|dinero|pag|comisi|\$/i);
   });
 
+  it('explica cómo funciona en tres pasos para quien compra y tres para quien organiza, que arranca vinculando Mercado Pago', () => {
+    render(<Home />);
+    const howItWorks = screen.getByRole('region', { name: 'Cómo funciona' });
+    const steps = (audience: string) =>
+      within(within(howItWorks).getByRole('list', { name: audience }))
+        .getAllByRole('heading')
+        .map((step) => step.textContent);
+
+    expect(steps('Si comprás')).toEqual([
+      'Elegí tu evento',
+      'Pagá con Mercado Pago',
+      'Entrá con tu QR',
+    ]);
+    // Sin Mercado Pago vinculado el backend no deja crear un evento.
+    expect(steps('Si organizás')).toEqual([
+      'Vinculá Mercado Pago',
+      'Creá tu evento',
+      'Sumá a tu equipo',
+    ]);
+  });
+
+  it('ya no muestra la etiqueta «La nueva era de los eventos»', () => {
+    render(<Home />);
+
+    expect(
+      screen.queryByText(/La nueva era de los eventos/),
+    ).not.toBeInTheDocument();
+  });
+
   it('no promete lo que la app no hace: QR dinámico, alta demanda sin caídas ni el fin de la reventa', () => {
     render(<Home />);
 
