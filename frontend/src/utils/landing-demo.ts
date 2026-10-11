@@ -36,8 +36,8 @@ export function organizerDemo(now: Date): StaffOverview {
     },
     events: [
       {
-        id: 'demo-noche-de-techno',
-        title: 'Noche de Techno',
+        id: 'demo-techno-night',
+        title: 'Techno Night',
         status: 'PUBLISHED',
         startDate: daysFrom(now, 5, 23),
         endDate: daysFrom(now, 6, 6),
@@ -160,8 +160,8 @@ export function promoterDemo(now: Date): MyStaff {
     events: [
       {
         ...venue,
-        id: 'demo-noche-de-techno',
-        title: 'Noche de Techno',
+        id: 'demo-techno-night',
+        title: 'Techno Night',
         startDate: daysFrom(now, 5, 23),
         endDate: daysFrom(now, 6, 6),
         venueName: 'Club Central',

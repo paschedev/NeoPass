@@ -19,7 +19,7 @@ describe('Demo de la landing', () => {
     );
     const panel = screen.getByRole('tabpanel', { name: 'Organizador' });
     expect(
-      within(panel).getByRole('heading', { name: 'Noche de Techno' }),
+      within(panel).getByRole('heading', { name: 'Techno Night' }),
     ).toBeInTheDocument();
     expect(
       within(panel).getAllByText('Lucía Fernández').length,
@@ -36,7 +36,7 @@ describe('Demo de la landing', () => {
     expect(
       within(panel).getByRole('region', { name: 'Tus números como RPP' }),
     ).toHaveTextContent('Te deben');
-    expect(within(panel).getByText('Noche de Techno')).toBeInTheDocument();
+    expect(within(panel).getByText('Techno Night')).toBeInTheDocument();
     expect(within(panel).getByText('Sunset en la Terraza')).toBeInTheDocument();
     expect(apiFetch).not.toHaveBeenCalled();
   });
