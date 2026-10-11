@@ -81,6 +81,14 @@ describe('Landing', () => {
     ]);
   });
 
+  it('muestra cómo se ve el panel por dentro, aclarando que son datos de ejemplo', () => {
+    render(<Home />);
+    const demo = screen.getByRole('region', { name: 'Así se ve por dentro' });
+
+    expect(demo).toHaveTextContent('con datos de ejemplo');
+    expect(within(demo).getByRole('tablist')).toBeInTheDocument();
+  });
+
   it('ya no muestra la etiqueta «La nueva era de los eventos»', () => {
     render(<Home />);
 
