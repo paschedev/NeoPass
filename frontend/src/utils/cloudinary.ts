@@ -33,6 +33,19 @@ export const avatarImageUrl = (rawUrl: string, size: number): string => {
   return `${urlParts[0]}/upload/c_fill,g_face,w_${size},h_${size},f_auto,q_auto/${urlParts[1]}`;
 };
 
+// La imagen que se ve al compartir un link (1200×630): el flyer entero,
+// centrado sobre el color predominante de sus bordes (el fondo desenfocado,
+// b_blurred, da 400 en Cloudinary) y en JPG, que WhatsApp muestra siempre.
+export const SHARE_IMAGE_SIZE = { width: 1200, height: 630 };
+
+export const shareImageUrl = (rawUrl: string): string => {
+  const urlParts = rawUrl.split('/upload/');
+  if (!rawUrl.includes('cloudinary.com') || urlParts.length !== 2) {
+    return rawUrl;
+  }
+  return `${urlParts[0]}/upload/c_pad,b_auto,w_${SHARE_IMAGE_SIZE.width},h_${SHARE_IMAGE_SIZE.height},f_jpg,q_auto/${urlParts[1]}`;
+};
+
 export const IMAGE_UPLOAD_TYPES = [
   'image/jpeg',
   'image/png',

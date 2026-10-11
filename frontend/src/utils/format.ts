@@ -60,8 +60,12 @@ export function formatDayMonthTime(value: string): string {
   });
 }
 
-// "sáb, 10 oct, 23:59", en la hora local del navegador.
-export function formatWeekdayDateTime(value: string): string {
+// "sáb, 10 oct, 23:59", en la hora local del navegador o en la zona que se
+// pida (en el servidor hace falta: Vercel corre en UTC).
+export function formatWeekdayDateTime(
+  value: string,
+  timeZone?: string,
+): string {
   return new Date(value).toLocaleString('es-AR', {
     weekday: 'short',
     day: 'numeric',
@@ -69,6 +73,7 @@ export function formatWeekdayDateTime(value: string): string {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
+    timeZone,
   });
 }
 
