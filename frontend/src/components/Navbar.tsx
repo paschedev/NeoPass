@@ -16,6 +16,7 @@ import { useNotificationFeed } from '@/hooks/useNotificationFeed';
 import { useStaffInvitation } from '@/hooks/useStaffInvitation';
 import { NoticeLink } from '@/components/notifications/NoticeLink';
 import Avatar from '@/components/account/Avatar';
+import Wordmark from '@/components/Wordmark';
 import { noticeTime, pendingInvitationStaffId } from '@/utils/notifications';
 
 const SUPPORT_EMAIL = 'soporte@neopass.ar';
@@ -75,12 +76,12 @@ export default function Navbar() {
         <div className="flex items-center">
           <Link
             href="/"
-            className="hidden md:block font-outfit text-2xl font-black tracking-tighter text-white hover:opacity-80 transition-opacity"
+            className="hidden md:block text-2xl text-white hover:opacity-80 transition-opacity"
           >
-            Neo<span className="text-indigo-500">Pass</span>
+            <Wordmark />
           </Link>
-          <div className="md:hidden font-outfit text-2xl font-black tracking-tighter text-white select-none">
-            Neo<span className="text-indigo-500">Pass</span>
+          <div className="md:hidden text-2xl text-white select-none">
+            <Wordmark />
           </div>
         </div>
 
@@ -94,7 +95,7 @@ export default function Navbar() {
           {user && (
             <Link
               href="/panel"
-              className="hidden md:block text-sm font-medium text-indigo-400 hover:text-indigo-300 transition-colors bg-indigo-500/10 px-3 py-1.5 rounded-full border border-indigo-500/20"
+              className="hidden md:block text-sm font-medium text-brand-400 hover:text-brand-300 transition-colors bg-brand-500/10 px-3 py-1.5 rounded-full border border-brand-500/20"
             >
               Mi panel
             </Link>
@@ -134,7 +135,7 @@ export default function Navbar() {
                             <div className="flex items-center gap-2">
                               {feed.unreadCount > 0 && (
                                 <>
-                                  <span className="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-full">
+                                  <span className="text-xs text-brand-400 bg-brand-500/10 px-2 py-0.5 rounded-full">
                                     {feed.unreadCount}{' '}
                                     {feed.unreadCount === 1
                                       ? 'nueva'
@@ -165,10 +166,10 @@ export default function Navbar() {
                               return (
                                 <div
                                   key={n.id}
-                                  className={`p-4 border-b border-white/5 hover:bg-white/5 transition-colors group relative ${!n.isRead ? 'bg-indigo-500/[0.03]' : ''}`}
+                                  className={`p-4 border-b border-white/5 hover:bg-white/5 transition-colors group relative ${!n.isRead ? 'bg-brand-500/[0.03]' : ''}`}
                                 >
                                   {!n.isRead && (
-                                    <div className="absolute left-2 top-5 w-1.5 h-1.5 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)]"></div>
+                                    <div className="absolute left-2 top-5 w-1.5 h-1.5 rounded-full bg-brand-500 shadow-[0_0_8px] shadow-brand-500/80"></div>
                                   )}
                                   <div
                                     className={`${!n.isRead ? 'pl-3' : 'pl-0'}`}
@@ -202,7 +203,7 @@ export default function Navbar() {
                                           disabled={processingIds.has(
                                             invitedStaffId,
                                           )}
-                                          className="flex-1 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white text-xs font-semibold py-1.5 rounded-md transition-colors"
+                                          className="flex-1 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-xs font-semibold py-1.5 rounded-md transition-colors"
                                         >
                                           Aceptar
                                         </button>
