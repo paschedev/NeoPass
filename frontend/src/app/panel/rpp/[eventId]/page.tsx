@@ -6,8 +6,6 @@ import {
   Ticket,
   ArrowLeft,
   Users,
-  Check,
-  Link2,
   Download,
   Search,
 } from 'lucide-react';
@@ -21,7 +19,7 @@ import {
   freeTicketTypeOptions,
 } from '@/utils/free-tickets';
 import { rppLink } from '@/utils/my-staff';
-import { copyLink } from '@/utils/share';
+import CopyLinkButton from '@/components/ui/CopyLinkButton';
 import PromoterPaymentsSummary from '@/components/rpp/PromoterPaymentsSummary';
 import FreeTickets from '@/components/panel/event-detail/FreeTickets';
 
@@ -62,7 +60,6 @@ export default function RppEventDetailsPage() {
     freeTickets: null as PromoterFreeTicketsAccess | null,
   });
 
-  const [copiedLink, setCopiedLink] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -98,16 +95,6 @@ export default function RppEventDetailsPage() {
         setLoading(false);
       });
   }, [eventId]);
-
-  const handleCopy = async () => {
-    if (!stats.staffId) return;
-    const copied = await copyLink(
-      rppLink(window.location.origin, String(eventId), stats.staffId),
-    );
-    if (!copied) return;
-    setCopiedLink(true);
-    setTimeout(() => setCopiedLink(false), 2000);
-  };
 
   const handleExportCSV = () => {
     if (filteredSales.length === 0) {
@@ -172,18 +159,15 @@ export default function RppEventDetailsPage() {
             <p className="text-sm text-neutral-400">{stats.eventName}</p>
           </div>
         </div>
-        <button
-          onClick={handleCopy}
-          disabled={!stats.staffId}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all flex items-center gap-2 disabled:opacity-50"
-        >
-          {copiedLink ? (
-            <Check className="w-4 h-4" />
-          ) : (
-            <Link2 className="w-4 h-4" />
-          )}
-          Copiar link
-        </button>
+        {stats.staffId && (
+          <CopyLinkButton
+            link={() =>
+              rppLink(window.location.origin, String(eventId), stats.staffId)
+            }
+            className="px-5 py-2.5 rounded-xl font-medium flex items-center gap-2"
+            idleClassName="bg-indigo-600 hover:bg-indigo-500 text-white"
+          />
+        )}
       </div>
 
       {/* Metrics Grid */}

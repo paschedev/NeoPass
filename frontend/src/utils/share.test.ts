@@ -1,10 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import toast from './toast';
+import { describe, expect, it, vi } from 'vitest';
 import { copyLink, eventLink } from './share';
-
-vi.mock('./toast', () => ({
-  default: { error: vi.fn(), success: vi.fn() },
-}));
 
 const withClipboard = (clipboard: unknown) =>
   Object.defineProperty(navigator, 'clipboard', {
@@ -20,22 +15,18 @@ describe('eventLink', () => {
   });
 });
 
+// El aviso lo da el botón (CopyLinkButton), no un toast.
 describe('copyLink', () => {
-  afterEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('copia el link y avisa que quedó copiado', async () => {
+  it('copia el link y dice que se pudo', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     withClipboard({ writeText });
 
     await expect(copyLink('https://neopass.ar/eventos/e1')).resolves.toBe(true);
 
     expect(writeText).toHaveBeenCalledWith('https://neopass.ar/eventos/e1');
-    expect(toast.success).toHaveBeenCalledWith('Link copiado');
   });
 
-  it('si el navegador no deja copiar, avisa que no se pudo y nunca dice "copiado"', async () => {
+  it('si el navegador no deja copiar, dice que no se pudo', async () => {
     withClipboard({
       writeText: vi.fn().mockRejectedValue(new Error('NotAllowedError')),
     });
@@ -43,18 +34,13 @@ describe('copyLink', () => {
     await expect(copyLink('https://neopass.ar/eventos/e1')).resolves.toBe(
       false,
     );
-
-    expect(toast.error).toHaveBeenCalledWith('No se pudo copiar el link');
-    expect(toast.success).not.toHaveBeenCalled();
   });
 
-  it('sin portapapeles (fuera de HTTPS) también avisa que no se pudo', async () => {
+  it('sin portapapeles (fuera de HTTPS) también dice que no se pudo', async () => {
     withClipboard(undefined);
 
     await expect(copyLink('https://neopass.ar/eventos/e1')).resolves.toBe(
       false,
     );
-
-    expect(toast.error).toHaveBeenCalledWith('No se pudo copiar el link');
   });
 });

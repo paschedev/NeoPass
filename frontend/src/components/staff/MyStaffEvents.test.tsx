@@ -218,10 +218,13 @@ describe('MyStaffEvents', () => {
         name: 'Copiar link',
       }),
     );
-    await waitFor(() =>
-      expect(writeText).toHaveBeenCalledWith(
-        `${window.location.origin}/eventos/e1?rpp=s1`,
-      ),
+    expect(
+      await within(await card('Fiesta Bresh')).findByRole('button', {
+        name: '¡Copiado!',
+      }),
+    ).toBeInTheDocument();
+    expect(writeText).toHaveBeenCalledWith(
+      `${window.location.origin}/eventos/e1?rpp=s1`,
     );
     expect(
       within(await card('Halloween')).queryByRole('button', {
