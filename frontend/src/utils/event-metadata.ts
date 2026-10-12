@@ -4,7 +4,7 @@ import { formatWeekdayDateTime } from './format';
 
 // Lo que usa la vista previa de GET /events/:id.
 type SharedEvent = {
-  name: string;
+  title: string;
   imageUrl: string | null;
   startDate: string;
   venueName: string;
@@ -28,13 +28,13 @@ function buildEventMetadata(event: SharedEvent): Metadata {
     ? {
         url: shareImageUrl(event.imageUrl),
         ...SHARE_IMAGE_SIZE,
-        alt: event.name,
+        alt: event.title,
       }
     : GENERAL_IMAGE;
   return {
-    title: { absolute: `${event.name} · NeoPass` },
+    title: { absolute: `${event.title} · NeoPass` },
     description,
-    openGraph: { title: event.name, description, images: [image] },
+    openGraph: { title: event.title, description, images: [image] },
   };
 }
 
