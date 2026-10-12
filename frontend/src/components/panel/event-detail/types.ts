@@ -29,6 +29,7 @@ export interface CoOrganizer {
   email: string;
   permissions: EventPermission[];
   freeTicketLimit: number | null;
+  freeTicketTypes: string[];
 }
 
 // Respuesta de GET /events/organizer/:id/activity.

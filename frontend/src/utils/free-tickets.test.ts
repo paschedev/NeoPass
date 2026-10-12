@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  allowsFreeTicketType,
+  chosenFreeTicketTypes,
   entryDeadlineOptions,
+  eventTicketTypeNames,
   freeTicketsBlockedReason,
   freeTicketsSchema,
   freeTicketTypeOptions,
+  freeTicketTypesError,
+  joinNames,
 } from './free-tickets';
 
 describe('freeTicketTypeOptions', () => {
@@ -165,5 +170,69 @@ describe('freeTicketsBlockedReason', () => {
     expect(freeTicketsBlockedReason(event, 0, now)).toBe(
       'Creá un tipo de entrada para mandar QR free.',
     );
+  });
+
+  it('a quien no le quedó ningún tipo permitido le dice que lo pida', () => {
+    expect(freeTicketsBlockedReason(event, 0, now, true)).toBe(
+      'No tenés tipos de entrada habilitados para QR free. Pedíselos a quien organiza el evento.',
+    );
+  });
+});
+
+describe('tipos de entrada que se pueden regalar', () => {
+  const batches = [
+    {
+      name: 'Preventa',
+      ticketTypes: [
+        { id: 't1', name: 'General' },
+        { id: 't2', name: 'VIP' },
+      ],
+    },
+    {
+      name: 'Lote 1',
+      ticketTypes: [
+        { id: 't3', name: 'general ' },
+        { id: 't4', name: 'Mesa' },
+      ],
+    },
+  ];
+
+  it('los nombres del evento van una vez cada uno, en el orden de las tandas', () => {
+    expect(eventTicketTypeNames(batches)).toEqual(['General', 'VIP', 'Mesa']);
+  });
+
+  it('un nombre permitido vale en todas las tandas, sin importar mayúsculas ni espacios', () => {
+    expect(allowsFreeTicketType(['general'], 'General ')).toBe(true);
+    expect(allowsFreeTicketType(['VIP'], 'VIP Gold')).toBe(false);
+  });
+
+  it('el formulario ofrece solo los tipos permitidos; sin lista, todos', () => {
+    expect(freeTicketTypeOptions(batches, ['General'])).toEqual([
+      { id: 't1', label: 'General · Preventa' },
+      { id: 't3', label: 'general  · Lote 1' },
+    ]);
+    expect(freeTicketTypeOptions(batches, null)).toHaveLength(4);
+  });
+
+  it('de lo tildado quedan solo los tipos que el evento tiene, en su orden', () => {
+    expect(
+      chosenFreeTicketTypes(
+        ['Mesa', 'VIP Gold', 'general'],
+        ['General', 'VIP', 'Mesa'],
+      ),
+    ).toEqual(['General', 'Mesa']);
+  });
+
+  it('une los nombres como se leen', () => {
+    expect(joinNames(['General'])).toBe('General');
+    expect(joinNames(['General', 'VIP'])).toBe('General y VIP');
+    expect(joinNames(['General', 'VIP', 'Mesa'])).toBe('General, VIP y Mesa');
+  });
+
+  it('habilitar QR free pide al menos un tipo', () => {
+    expect(freeTicketTypesError([])).toBe(
+      'Elegí al menos un tipo de entrada para los QR free',
+    );
+    expect(freeTicketTypesError(['General'])).toBeNull();
   });
 });

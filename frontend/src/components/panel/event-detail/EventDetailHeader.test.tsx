@@ -40,12 +40,14 @@ const OWNER: EventAccess = {
     'MANAGE_STAFF',
   ],
   freeTicketLimit: null,
+  freeTicketTypes: null,
 };
 
 const coOrganizer = (permissions: EventPermission[]): EventAccess => ({
   role: 'CO_ORGANIZER',
   permissions,
   freeTicketLimit: null,
+  freeTicketTypes: [],
 });
 
 describe('EventDetailHeader', () => {

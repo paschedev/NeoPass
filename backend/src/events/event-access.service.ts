@@ -14,6 +14,8 @@ export type EventAccess = {
   permissions: EventPermission[];
   // Most free tickets they can have sent; null = no limit.
   freeTicketLimit: number | null;
+  // The ticket types they can send as free tickets; null = any (the owner).
+  freeTicketTypes: string[] | null;
   // The co-organizer's staff row; null for the owner.
   coOrganizerId: string | null;
 };
@@ -23,21 +25,26 @@ export type FreeTicketsAccess = {
   role: 'OWNER' | 'CO_ORGANIZER' | 'PROMOTER';
   // The staff row whose sent tickets count for the limit; null = no limit.
   quota: { staffId: string; limit: number } | null;
+  // The ticket types they can send; null = any (the owner).
+  types: string[] | null;
 };
 
 type FoundAccess = Awaited<
   ReturnType<EventAccessRepository['findEventAccess']>
 >;
 
-// Who sends free tickets: the owner, a co-organizer allowed to (their rule
-// wins when they also promote the event) or a promoter the owner allowed,
-// always with a limit. Null if the user can't.
+// Who sends free tickets: the owner, of any type; a co-organizer allowed to
+// (their rule wins when they also promote the event) or a promoter the owner
+// allowed, always with a limit; both, of the types the owner ticked. Null if
+// the user can't.
 function freeTicketsAccessOf(
   found: FoundAccess,
   userId: string,
 ): FreeTicketsAccess | null {
   if (!found) return null;
-  if (found.organizerId === userId) return { role: 'OWNER', quota: null };
+  if (found.organizerId === userId) {
+    return { role: 'OWNER', quota: null, types: null };
+  }
   const { coOrganizer, promoter } = found;
   if (coOrganizer && coOrganizerSendsFreeTickets(coOrganizer)) {
     return {
@@ -46,6 +53,7 @@ function freeTicketsAccessOf(
         coOrganizer.freeTicketLimit === null
           ? null
           : { staffId: coOrganizer.id, limit: coOrganizer.freeTicketLimit },
+      types: coOrganizer.freeTicketTypes,
     };
   }
   if (
@@ -55,6 +63,7 @@ function freeTicketsAccessOf(
     return {
       role: 'PROMOTER',
       quota: { staffId: promoter.id, limit: promoter.freeTicketLimit },
+      types: promoter.freeTicketTypes,
     };
   }
   return null;
@@ -88,15 +97,18 @@ export class EventAccessService {
         role: 'OWNER',
         permissions: EVENT_PERMISSIONS,
         freeTicketLimit: null,
+        freeTicketTypes: null,
         coOrganizerId: null,
       };
     }
     if (found?.coOrganizer) {
-      const { id, permissions, freeTicketLimit } = found.coOrganizer;
+      const { id, permissions, freeTicketLimit, freeTicketTypes } =
+        found.coOrganizer;
       return {
         role: 'CO_ORGANIZER',
         permissions,
         freeTicketLimit,
+        freeTicketTypes,
         coOrganizerId: id,
       };
     }

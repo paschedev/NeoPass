@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  freeTicketsUpTo,
   ownFreeTicketsLabel,
   promoterFreeTicketLimitError,
   promoterFreeTicketsLabel,
@@ -30,19 +31,34 @@ describe('promoterFreeTicketLimitError', () => {
 });
 
 describe('ownFreeTicketsLabel', () => {
-  it('le dice al RPP cuántos le quedan, nunca menos de 0', () => {
-    expect(ownFreeTicketsLabel({ limit: 10, sent: 3 })).toBe(
-      'QR free: te quedan 7 de 10',
+  it('le dice al RPP cuántos le quedan, nunca menos de 0, y de qué tipos', () => {
+    expect(
+      ownFreeTicketsLabel({ limit: 10, sent: 3, types: ['General'] }),
+    ).toBe('QR free: te quedan 7 de 10 · General');
+    expect(
+      ownFreeTicketsLabel({ limit: 2, sent: 3, types: ['General', 'VIP'] }),
+    ).toBe('QR free: te quedan 0 de 2 · General y VIP');
+  });
+});
+
+describe('freeTicketsUpTo', () => {
+  it('una invitación dice hasta cuántos QR free y de qué tipos', () => {
+    expect(freeTicketsUpTo(10, ['General', 'VIP'])).toBe(
+      'hasta 10 QR free de General y VIP',
     );
-    expect(ownFreeTicketsLabel({ limit: 2, sent: 3 })).toBe(
-      'QR free: te quedan 0 de 2',
-    );
+    expect(freeTicketsUpTo(5, [])).toBe('hasta 5 QR free');
   });
 });
 
 describe('promoterFreeTicketsLabel', () => {
-  it('dice cuántos mandó de cuántos puede', () => {
-    expect(promoterFreeTicketsLabel({ limit: 10, sent: 3 })).toBe(
+  it('dice cuántos mandó de cuántos puede y de qué tipos', () => {
+    expect(
+      promoterFreeTicketsLabel({ limit: 10, sent: 3, types: ['General'] }),
+    ).toBe('QR free: 3 de 10 · General');
+  });
+
+  it('sin tipos, solo la cantidad', () => {
+    expect(promoterFreeTicketsLabel({ limit: 10, sent: 3, types: [] })).toBe(
       'QR free: 3 de 10',
     );
   });

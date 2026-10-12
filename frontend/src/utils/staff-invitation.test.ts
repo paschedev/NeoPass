@@ -74,9 +74,39 @@ describe('validateInvitation', () => {
     );
   });
 
+  it('con QR free hay que elegir qué tipos de entrada puede regalar', () => {
+    expect(
+      validateInvitation({
+        ...valid,
+        role: 'CO_ORGANIZER',
+        permissions: ['SEND_FREE_TICKETS'],
+        freeTicketTypes: [],
+      }),
+    ).toBe('Elegí al menos un tipo de entrada para los QR free');
+    expect(
+      validateInvitation({
+        ...valid,
+        role: 'CO_ORGANIZER',
+        permissions: ['VIEW_SALES'],
+        freeTicketTypes: [],
+      }),
+    ).toBeNull();
+    expect(
+      validateInvitation({
+        ...valid,
+        promoterFreeTicketLimit: '10',
+        freeTicketTypes: [],
+      }),
+    ).toBe('Elegí al menos un tipo de entrada para los QR free');
+  });
+
   it('un RPP con QR free necesita una cantidad máxima válida', () => {
     expect(
-      validateInvitation({ ...valid, promoterFreeTicketLimit: '10' }),
+      validateInvitation({
+        ...valid,
+        promoterFreeTicketLimit: '10',
+        freeTicketTypes: ['General'],
+      }),
     ).toBeNull();
     expect(validateInvitation({ ...valid, promoterFreeTicketLimit: '' })).toBe(
       'Indicá cuántos QR free puede mandar',
@@ -112,10 +142,11 @@ describe('buildInvitationPayload', () => {
     });
   });
 
-  it('un RPP con QR free lleva su cantidad máxima', () => {
+  it('un RPP con QR free lleva su cantidad máxima y sus tipos', () => {
     expect(
       buildInvitationPayload('u1', 'RPP', 'PERCENTAGE', '10.0', {
         freeTicketLimit: 10,
+        freeTicketTypes: ['General'],
       }),
     ).toEqual({
       userId: 'u1',
@@ -123,13 +154,15 @@ describe('buildInvitationPayload', () => {
       commissionType: 'PERCENTAGE',
       commissionValue: 10,
       freeTicketLimit: 10,
+      freeTicketTypes: ['General'],
     });
   });
 
-  it('un RPP sin QR free viaja sin cantidad máxima', () => {
+  it('un RPP sin QR free viaja sin cantidad máxima ni tipos', () => {
     expect(
       buildInvitationPayload('u1', 'RPP', 'PERCENTAGE', '10.0', {
         freeTicketLimit: null,
+        freeTicketTypes: ['General'],
       }),
     ).toEqual({
       userId: 'u1',
@@ -139,17 +172,19 @@ describe('buildInvitationPayload', () => {
     });
   });
 
-  it('un co-organizador viaja como MANAGER con sus permisos y su tope', () => {
+  it('un co-organizador viaja como MANAGER con sus permisos, su tope y sus tipos', () => {
     expect(
       buildInvitationPayload('u1', 'CO_ORGANIZER', 'PERCENTAGE', '', {
         permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
         freeTicketLimit: 20,
+        freeTicketTypes: ['VIP'],
       }),
     ).toEqual({
       userId: 'u1',
       role: 'MANAGER',
       permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
       freeTicketLimit: 20,
+      freeTicketTypes: ['VIP'],
     });
   });
 });

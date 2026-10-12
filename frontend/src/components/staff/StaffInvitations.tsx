@@ -6,6 +6,7 @@ import { formatWeekdayDateTime } from '@/utils/format';
 import { ownRoleLabel } from '@/utils/staff-roles';
 import { commissionLabel } from '@/utils/staff-overview';
 import { permissionsSummary } from '@/utils/co-organizers';
+import { freeTicketsUpTo } from '@/utils/promoter-free-tickets';
 import toast from '@/utils/toast';
 import type { MyStaffInvitation } from './types';
 
@@ -68,13 +69,14 @@ export default function StaffInvitations({
                     {permissionsSummary(
                       invitation.permissions,
                       invitation.freeTicketLimit,
+                      invitation.freeTicketTypes,
                     )}
                   </p>
                 )}
                 {invitation.role === 'PROMOTER' &&
                   invitation.freeTicketLimit !== null && (
                     <p className="text-xs text-neutral-300 mt-1">
-                      {`Vas a poder mandar hasta ${invitation.freeTicketLimit} QR free`}
+                      {`Vas a poder mandar ${freeTicketsUpTo(invitation.freeTicketLimit, invitation.freeTicketTypes)}`}
                     </p>
                   )}
               </div>

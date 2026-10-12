@@ -94,7 +94,25 @@ describe('Métricas del RPP en un evento', () => {
     vi.clearAllMocks();
   });
 
-  it('con QR free, muestra cuántos le quedan y manda uno de cualquier tipo de entrada del evento', async () => {
+  it('sin tipos de entrada habilitados le dice que los pida y no deja mandar', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-10-10T15:00:00.000Z'));
+    server({
+      ...stats,
+      freeTickets: { ...freeTickets(), ticketBatches: [] },
+    });
+    render(<RppEventDetailsPage />);
+
+    const section = await screen.findByRole('region', { name: 'QR free' });
+    expect(section).toHaveTextContent(
+      'No tenés tipos de entrada habilitados para QR free. Pedíselos a quien organiza el evento.',
+    );
+    expect(
+      within(section).queryByRole('button', { name: 'Enviar QR free' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('con QR free, muestra cuántos le quedan y manda uno de los tipos que el dueño le habilitó', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-10-10T15:00:00.000Z'));
     server({ ...stats, freeTickets: freeTickets() });

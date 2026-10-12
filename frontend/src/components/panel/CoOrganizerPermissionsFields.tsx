@@ -1,24 +1,29 @@
 'use client';
 
 import { useId } from 'react';
+import type { FreeTicketTypesChoice } from '@/hooks/useFreeTicketTypes';
 import {
   PERMISSION_OPTIONS,
   togglePermission,
   type EventPermission,
 } from '@/utils/co-organizers';
+import FreeTicketTypesField from './FreeTicketTypesField';
 
 // Qué puede hacer un co-organizador, al invitarlo o al cambiarle los permisos.
-// Escanear lo puede hacer siempre.
+// Escanear lo puede hacer siempre. Los tipos de QR free aparecen cuando hay un
+// evento elegido (freeTicketTypes no es null).
 export default function CoOrganizerPermissionsFields({
   permissions,
   onPermissionsChange,
   freeTicketLimit,
   onFreeTicketLimitChange,
+  freeTicketTypes,
 }: {
   permissions: EventPermission[];
   onPermissionsChange: (permissions: EventPermission[]) => void;
   freeTicketLimit: string;
   onFreeTicketLimitChange: (limit: string) => void;
+  freeTicketTypes: FreeTicketTypesChoice | null;
 }) {
   const limitId = useId();
 
@@ -51,22 +56,25 @@ export default function CoOrganizerPermissionsFields({
         </label>
       ))}
       {permissions.includes('SEND_FREE_TICKETS') && (
-        <div className="pl-7">
-          <label
-            htmlFor={limitId}
-            className="block text-xs font-medium text-neutral-400 mb-1"
-          >
-            Tope de QR free (opcional)
-          </label>
-          <input
-            id={limitId}
-            type="text"
-            inputMode="numeric"
-            value={freeTicketLimit}
-            onChange={(e) => onFreeTicketLimitChange(e.target.value)}
-            placeholder="Sin tope"
-            className="w-32 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
-          />
+        <div className="pl-7 space-y-3">
+          <div>
+            <label
+              htmlFor={limitId}
+              className="block text-xs font-medium text-neutral-400 mb-1"
+            >
+              Tope de QR free (opcional)
+            </label>
+            <input
+              id={limitId}
+              type="text"
+              inputMode="numeric"
+              value={freeTicketLimit}
+              onChange={(e) => onFreeTicketLimitChange(e.target.value)}
+              placeholder="Sin tope"
+              className="w-32 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+            />
+          </div>
+          {freeTicketTypes && <FreeTicketTypesField choice={freeTicketTypes} />}
         </div>
       )}
     </fieldset>

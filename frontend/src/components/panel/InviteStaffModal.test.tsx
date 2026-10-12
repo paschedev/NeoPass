@@ -11,17 +11,51 @@ vi.mock('@/utils/toast', () => ({
 
 const ANA = { id: 'u1', name: 'Ana Pérez', email: 'ana@example.com' };
 
+// GET /events/organizer/e1: General en dos tandas y VIP en una.
+const EVENT = {
+  id: 'e1',
+  ticketBatches: [
+    {
+      name: 'Preventa',
+      ticketTypes: [
+        { id: 't1', name: 'General' },
+        { id: 't2', name: 'VIP' },
+      ],
+    },
+    { name: 'Lote 1', ticketTypes: [{ id: 't3', name: 'General' }] },
+  ],
+};
+
+function mockApi() {
+  vi.mocked(apiFetch).mockImplementation(async (path) => {
+    const url = String(path);
+    if (url.startsWith('/auth/users/search')) return Response.json([ANA]);
+    if (url === '/events/organizer/e1') return Response.json(EVENT);
+    return Response.json({ id: 'staff-1' });
+  });
+}
+
+async function pickAna() {
+  fireEvent.change(screen.getByPlaceholderText(/Buscar por nombre/), {
+    target: { value: 'Ana' },
+  });
+  fireEvent.click(await screen.findByRole('button', { name: /Ana Pérez/ }));
+}
+
+const invitationBody = () => {
+  const [, init] = vi
+    .mocked(apiFetch)
+    .mock.calls.find(([path]) => path === '/events/e1/staff')!;
+  return JSON.parse(String(init?.body)) as unknown;
+};
+
 describe('InviteStaffModal', () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  it('invita a un co-organizador con los permisos marcados y su tope de QR free', async () => {
-    vi.mocked(apiFetch).mockImplementation(async (path) =>
-      String(path).startsWith('/auth/users/search')
-        ? Response.json([ANA])
-        : Response.json({ id: 'staff-1' }),
-    );
+  it('invita a un co-organizador con los permisos marcados, su tope y los tipos que puede regalar', async () => {
+    mockApi();
     const onInvited = vi.fn();
     render(
       <InviteStaffModal
@@ -44,30 +78,22 @@ describe('InviteStaffModal', () => {
     fireEvent.change(screen.getByLabelText(/Tope de QR free/), {
       target: { value: '20' },
     });
-    fireEvent.change(screen.getByPlaceholderText(/Buscar por nombre/), {
-      target: { value: 'Ana' },
-    });
-    fireEvent.click(await screen.findByRole('button', { name: /Ana Pérez/ }));
+    fireEvent.click(await screen.findByRole('checkbox', { name: 'VIP' }));
+    await pickAna();
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }));
 
     await waitFor(() => expect(onInvited).toHaveBeenCalled());
-    const [, init] = vi
-      .mocked(apiFetch)
-      .mock.calls.find(([path]) => path === '/events/e1/staff')!;
-    expect(JSON.parse(String(init?.body))).toEqual({
+    expect(invitationBody()).toEqual({
       userId: 'u1',
       role: 'MANAGER',
       permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS', 'MANAGE_STAFF'],
       freeTicketLimit: 20,
+      freeTicketTypes: ['VIP'],
     });
   });
 
-  it('el dueño invita a un RPP que puede mandar QR free hasta una cantidad máxima', async () => {
-    vi.mocked(apiFetch).mockImplementation(async (path) =>
-      String(path).startsWith('/auth/users/search')
-        ? Response.json([ANA])
-        : Response.json({ id: 'staff-1' }),
-    );
+  it('el dueño invita a un RPP que puede mandar QR free hasta una cantidad máxima, de los tipos que tilde', async () => {
+    mockApi();
     const onInvited = vi.fn();
     render(
       <InviteStaffModal
@@ -91,23 +117,64 @@ describe('InviteStaffModal', () => {
     fireEvent.change(screen.getByLabelText('Cantidad máxima'), {
       target: { value: '10' },
     });
-    fireEvent.change(screen.getByPlaceholderText(/Buscar por nombre/), {
-      target: { value: 'Ana' },
-    });
-    fireEvent.click(await screen.findByRole('button', { name: /Ana Pérez/ }));
+    // Cada nombre aparece una vez aunque esté en varias tandas, sin tildar.
+    expect(
+      await screen.findByRole('checkbox', { name: 'General' }),
+    ).not.toBeChecked();
+    expect(screen.getAllByRole('checkbox', { name: 'General' })).toHaveLength(
+      1,
+    );
+    expect(screen.getByRole('checkbox', { name: 'VIP' })).not.toBeChecked();
+    fireEvent.click(screen.getByRole('checkbox', { name: 'General' }));
+    await pickAna();
     fireEvent.click(screen.getByRole('button', { name: 'Enviar' }));
 
     await waitFor(() => expect(onInvited).toHaveBeenCalled());
-    const [, init] = vi
-      .mocked(apiFetch)
-      .mock.calls.find(([path]) => path === '/events/e1/staff')!;
-    expect(JSON.parse(String(init?.body))).toEqual({
+    expect(invitationBody()).toEqual({
       userId: 'u1',
       role: 'PROMOTER',
       commissionType: 'PERCENTAGE',
       commissionValue: 10,
       freeTicketLimit: 10,
+      freeTicketTypes: ['General'],
     });
+  });
+
+  it('con QR free y sin tipos tildados, avisa y no invita', async () => {
+    mockApi();
+    render(
+      <InviteStaffModal
+        open
+        onClose={vi.fn()}
+        events={[{ id: 'e1', title: 'Fiesta de prueba' }]}
+        initialEventId="e1"
+        initialRole="RPP"
+        canGrantFreeTickets
+        onInvited={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByPlaceholderText('Ej: 15.0'), {
+      target: { value: '10' },
+    });
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: /Puede mandar QR free/ }),
+    );
+    fireEvent.change(screen.getByLabelText('Cantidad máxima'), {
+      target: { value: '10' },
+    });
+    await screen.findByRole('checkbox', { name: 'General' });
+    await pickAna();
+    fireEvent.click(screen.getByRole('button', { name: 'Enviar' }));
+
+    expect(toast.error).toHaveBeenCalledWith(
+      'Elegí al menos un tipo de entrada para los QR free',
+    );
+    expect(
+      vi
+        .mocked(apiFetch)
+        .mock.calls.some(([path]) => path === '/events/e1/staff'),
+    ).toBe(false);
   });
 
   it('con QR free marcado y sin cantidad, avisa y no invita', async () => {

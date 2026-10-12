@@ -48,6 +48,7 @@ import { EventLocationDto } from './dto/event-location.dto';
 import { RegisterPromoterPaymentDto } from './dto/register-promoter-payment.dto';
 import { ListAttendeesQueryDto } from './dto/list-attendees-query.dto';
 import { AddStaffDto } from './dto/add-staff.dto';
+import { UpdatePromoterFreeTicketsDto } from './dto/update-promoter-free-tickets.dto';
 import {
   coOrganizerTerms,
   describePermissions,
@@ -69,6 +70,11 @@ import {
   ticketHolderChanges,
 } from './event-changes';
 import { ActivityEntry } from './event-activity';
+import {
+  allowedFreeTicketBatches,
+  freeTicketsUpTo,
+  pickFreeTicketTypes,
+} from './free-ticket-types';
 import {
   promoterFreeTicketTerms,
   promoterFreeTicketsNotice,
@@ -457,6 +463,7 @@ export class EventsService {
         role: access.role,
         permissions: access.permissions,
         freeTicketLimit: access.freeTicketLimit,
+        freeTicketTypes: access.freeTicketTypes,
       },
     };
   }
@@ -820,6 +827,7 @@ export class EventsService {
       commissionValue,
       permissions,
       freeTicketLimit,
+      freeTicketTypes: chosenTypes,
     }: AddStaffDto,
   ) {
     const { access, event } = await this.findForTeam(
@@ -863,13 +871,23 @@ export class EventsService {
         'El porcentaje de comisión tiene que estar entre 0 y 100',
       );
     }
+    const permissionsProblem =
+      role === 'MANAGER' && permissionsError(permissions ?? []);
+    if (permissionsProblem) throw new BadRequestException(permissionsProblem);
+    const sendsFreeTickets =
+      role === 'MANAGER'
+        ? (permissions ?? []).includes('SEND_FREE_TICKETS')
+        : promoterLimit !== null;
+    const freeTicketTypes = sendsFreeTickets
+      ? pickFreeTicketTypes(
+          chosenTypes,
+          await this.eventsRepository.findTicketTypeNames(eventId),
+        )
+      : [];
     const coOrganizer =
       role === 'MANAGER'
-        ? coOrganizerTerms(permissions ?? [], freeTicketLimit)
+        ? coOrganizerTerms(permissions ?? [], freeTicketLimit, freeTicketTypes)
         : null;
-    const permissionsProblem =
-      coOrganizer && permissionsError(coOrganizer.permissions);
-    if (permissionsProblem) throw new BadRequestException(permissionsProblem);
 
     const user = await this.userRepository.findById(inviteeId);
     if (!user) {
@@ -903,14 +921,20 @@ export class EventsService {
           : `, con $${commissionValue} de comisión por entrada`;
     }
     if (promoterLimit !== null) {
-      terms += `${terms ? ' y' : ', con'} hasta ${promoterLimit} QR free`;
+      terms += `${terms ? ' y' : ', con'} ${freeTicketsUpTo(promoterLimit, freeTicketTypes)}`;
     }
     // A promoter invited again starts from these terms, not the rejected ones.
     const freeTicketTerms =
-      role === 'PROMOTER' ? promoterFreeTicketTerms(promoterLimit) : {};
+      role === 'PROMOTER'
+        ? promoterFreeTicketTerms(promoterLimit, freeTicketTypes)
+        : {};
     const willDo =
       coOrganizer &&
-      describePermissions(coOrganizer.permissions, coOrganizer.freeTicketLimit);
+      describePermissions(
+        coOrganizer.permissions,
+        coOrganizer.freeTicketLimit,
+        coOrganizer.freeTicketTypes,
+      );
 
     const staff = await this.eventsRepository.saveStaffInvitation(
       existing?.id ?? null,
@@ -1034,13 +1058,16 @@ export class EventsService {
   }
 
   // Only the owner gives, changes or takes away a promoter's free tickets.
-  // Lowering the limit under what they already sent cancels nothing: it stops
-  // the next ones.
+  // Lowering the limit under what they already sent, or taking a type away,
+  // cancels nothing: it stops the next ones.
   async updatePromoterFreeTickets(
     eventId: string,
     userId: string,
     staffId: string,
-    freeTicketLimit: number | null,
+    {
+      freeTicketLimit,
+      freeTicketTypes: chosenTypes,
+    }: UpdatePromoterFreeTicketsDto,
   ) {
     const { access, event } = await this.findForTeam(
       eventId,
@@ -1067,21 +1094,36 @@ export class EventsService {
       );
     }
 
+    const freeTicketTypes =
+      freeTicketLimit === null
+        ? []
+        : pickFreeTicketTypes(
+            chosenTypes,
+            await this.eventsRepository.findTicketTypeNames(eventId),
+          );
     const updated = await this.eventsRepository.updateStaffTerms(
       staffId,
-      promoterFreeTicketTerms(freeTicketLimit),
+      promoterFreeTicketTerms(freeTicketLimit, freeTicketTypes),
     );
     if (staff.status === 'ACCEPTED') {
       await this.notificationsService.create({
         userId: staff.userId,
         type: 'SYSTEM',
         title: 'QR free',
-        message: promoterFreeTicketsNotice(event.title, freeTicketLimit),
+        message: promoterFreeTicketsNotice(
+          event.title,
+          freeTicketLimit,
+          freeTicketTypes,
+        ),
         eventId,
         actionUrl: `/panel/rpp/${eventId}`,
       });
     }
-    return { id: updated.id, freeTicketLimit: updated.freeTicketLimit };
+    return {
+      id: updated.id,
+      freeTicketLimit: updated.freeTicketLimit,
+      freeTicketTypes: updated.freeTicketTypes,
+    };
   }
 
   async registerPromoterPayment(
@@ -1168,7 +1210,8 @@ export class EventsService {
     );
 
     // What they need to send their free tickets, only if the owner let them
-    // as a promoter (a co-organizer sends them from the event detail).
+    // as a promoter (a co-organizer sends them from the event detail): the
+    // batches bring only the types they can send.
     const access = await this.eventAccess.getFreeTicketsAccess(eventId, userId);
     const { status, startDate, endDate, deletedAt } = staff.event;
     const freeTickets =
@@ -1176,8 +1219,10 @@ export class EventsService {
         ? {
             limit: access.quota.limit,
             event: { status, startDate, endDate, deletedAt },
-            ticketBatches:
+            ticketBatches: allowedFreeTicketBatches(
               await this.eventsRepository.findFreeTicketBatches(eventId),
+              access.types ?? [],
+            ),
           }
         : null;
 

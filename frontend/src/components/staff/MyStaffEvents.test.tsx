@@ -131,7 +131,9 @@ describe('MyStaffEvents', () => {
       myStaff({
         events: [
           event({
-            promoter: promoter({ freeTickets: { limit: 10, sent: 3 } }),
+            promoter: promoter({
+              freeTickets: { limit: 10, sent: 3, types: ['General'] },
+            }),
           }),
           event({
             id: 'e2',
@@ -139,7 +141,7 @@ describe('MyStaffEvents', () => {
             phase: 'CLOSED',
             promoter: promoter({
               staffId: 's2',
-              freeTickets: { limit: 4, sent: 4 },
+              freeTickets: { limit: 4, sent: 4, types: ['General'] },
             }),
           }),
           event({ id: 'e3', title: 'Sunset' }),
@@ -150,7 +152,7 @@ describe('MyStaffEvents', () => {
     render(<MyStaffEvents />);
 
     const fiesta = await card('Fiesta Bresh');
-    expect(fiesta).toHaveTextContent('QR free: te quedan 7 de 10');
+    expect(fiesta).toHaveTextContent('QR free: te quedan 7 de 10 · General');
     expect(
       within(fiesta).getByRole('link', { name: 'Mandar QR free' }),
     ).toHaveAttribute('href', '/panel/rpp/e1#qr-free');
@@ -162,7 +164,7 @@ describe('MyStaffEvents', () => {
     expect(await card('Sunset')).not.toHaveTextContent('QR free');
   });
 
-  it('la invitación de RPP dice cuántos QR free vas a poder mandar', async () => {
+  it('la invitación de RPP dice cuántos QR free vas a poder mandar y de qué tipos', async () => {
     server([
       myStaff({
         invitations: [
@@ -173,6 +175,7 @@ describe('MyStaffEvents', () => {
             commissionValue: 10,
             permissions: ['SEND_FREE_TICKETS'],
             freeTicketLimit: 10,
+            freeTicketTypes: ['General', 'VIP'],
             event: {
               id: 'e9',
               title: 'Sunset',
@@ -188,7 +191,7 @@ describe('MyStaffEvents', () => {
 
     expect(
       await screen.findByRole('region', { name: 'Invitaciones pendientes' }),
-    ).toHaveTextContent('Vas a poder mandar hasta 10 QR free');
+    ).toHaveTextContent('Vas a poder mandar hasta 10 QR free de General y VIP');
   });
 
   it('"Copiar link" copia el link de venta y no aparece en eventos terminados', async () => {
@@ -270,6 +273,7 @@ describe('MyStaffEvents', () => {
             coOrganizer: {
               permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
               freeTicketLimit: 10,
+              freeTicketTypes: ['VIP'],
             },
           }),
         ],
@@ -280,7 +284,7 @@ describe('MyStaffEvents', () => {
 
     const fiesta = await card('Fiesta Bresh');
     expect(fiesta).toHaveTextContent(
-      'Podés: Escanear · Ver ventas · QR free (hasta 10)',
+      'Podés: Escanear · Ver ventas · QR free de VIP (hasta 10)',
     );
     expect(
       within(fiesta).getByRole('link', { name: 'Gestionar' }),
@@ -298,6 +302,7 @@ describe('MyStaffEvents', () => {
             commissionValue: null,
             permissions: ['EDIT_EVENT'],
             freeTicketLimit: null,
+            freeTicketTypes: [],
             event: {
               id: 'e9',
               title: 'Sunset',
@@ -367,6 +372,9 @@ describe('MyStaffEvents', () => {
       role: 'PROMOTER',
       commissionType: 'FIXED',
       commissionValue: 1500,
+      permissions: [],
+      freeTicketLimit: null,
+      freeTicketTypes: [],
       event: {
         id: 'e9',
         title: 'Techno Sunset',

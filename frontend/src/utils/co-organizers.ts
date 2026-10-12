@@ -1,4 +1,4 @@
-import { freeTicketsSent } from './free-tickets';
+import { freeTicketsSent, joinNames } from './free-tickets';
 
 export type EventPermission =
   | 'EDIT_EVENT'
@@ -88,28 +88,43 @@ export function freeTicketLimitError(limit: string): string | null {
     : 'El tope de QR free tiene que ser un número entero mayor a 0';
 }
 
-// Lo que se manda al invitar o al cambiar permisos. Sin QR free no hay tope.
+// Lo que se manda al invitar o al cambiar permisos. Sin QR free no hay tope
+// ni tipos.
 export function buildCoOrganizerTerms(
   permissions: EventPermission[],
   limit: string,
+  freeTicketTypes: string[],
 ) {
   const canSend = permissions.includes('SEND_FREE_TICKETS');
   return {
     permissions: sorted(permissions),
     freeTicketLimit: canSend && limit.trim() !== '' ? Number(limit) : null,
+    freeTicketTypes: canSend ? freeTicketTypes : [],
   };
 }
 
-// "Escanear · Ver ventas · QR free (hasta 20)".
+function freeTicketsPart(
+  short: string,
+  freeTicketLimit: number | null,
+  freeTicketTypes: string[],
+) {
+  const types =
+    freeTicketTypes.length > 0 ? ` de ${joinNames(freeTicketTypes)}` : '';
+  const limit = freeTicketLimit ? ` (hasta ${freeTicketLimit})` : '';
+  return `${short}${types}${limit}`;
+}
+
+// "Escanear · Ver ventas · QR free de General (hasta 20)".
 export function permissionsSummary(
   permissions: EventPermission[],
   freeTicketLimit: number | null,
+  freeTicketTypes: string[],
 ): string {
   const parts = PERMISSION_OPTIONS.filter((option) =>
     permissions.includes(option.value),
   ).map((option) =>
-    option.value === 'SEND_FREE_TICKETS' && freeTicketLimit
-      ? `${option.short} (hasta ${freeTicketLimit})`
+    option.value === 'SEND_FREE_TICKETS'
+      ? freeTicketsPart(option.short, freeTicketLimit, freeTicketTypes)
       : option.short,
   );
   return ['Escanear', ...parts].join(' · ');
@@ -121,6 +136,8 @@ export interface EventAccess {
   role: 'OWNER' | 'CO_ORGANIZER';
   permissions: EventPermission[];
   freeTicketLimit: number | null;
+  // Los tipos que puede regalar como QR free; null = todos (el dueño).
+  freeTicketTypes: string[] | null;
 }
 
 export const can = (access: EventAccess, permission: EventPermission) =>
