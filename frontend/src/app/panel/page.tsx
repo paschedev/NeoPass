@@ -198,7 +198,7 @@ function OrganizerDashboardContent() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-1 md:px-6 py-3 rounded-xl flex-1 transition-all ${
+            className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-1 md:px-3 py-3 rounded-xl flex-1 transition-all ${
               activeTab === tab.id
                 ? 'bg-white/10 text-white shadow-sm'
                 : 'text-neutral-500 hover:text-white hover:bg-white/5'

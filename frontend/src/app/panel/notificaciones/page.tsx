@@ -63,7 +63,7 @@ export default function NotificacionesPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 pt-6 pb-24 md:pb-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-10">
         <div>
           <h1 className="font-outfit text-4xl font-bold text-white mb-2 flex items-center gap-3">
             <Bell className="w-8 h-8 text-indigo-400" />
