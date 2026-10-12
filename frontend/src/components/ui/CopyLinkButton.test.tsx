@@ -66,7 +66,7 @@ describe('CopyLinkButton', () => {
     expect(screen.getByRole('status')).toHaveTextContent('');
   });
 
-  it('si el navegador no deja copiar, dice "No se pudo copiar" y nunca "copiado"', async () => {
+  it('si el navegador no deja copiar, dice "No se copió" y nunca "copiado"', async () => {
     withClipboard({
       writeText: vi.fn().mockRejectedValue(new Error('NotAllowedError')),
     });
@@ -75,12 +75,14 @@ describe('CopyLinkButton', () => {
     await tap('Copiar link');
 
     expect(
-      screen.getByRole('button', { name: 'No se pudo copiar' }),
+      screen.getByRole('button', { name: 'No se copió' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent(
       'No se pudo copiar el link',
     );
-    expect(screen.queryByText('¡Copiado!')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '¡Copiado!' }),
+    ).not.toBeInTheDocument();
     expect(toast.error).not.toHaveBeenCalled();
   });
 
@@ -93,6 +95,29 @@ describe('CopyLinkButton', () => {
     expect(
       screen.getByRole('button', { name: '¡Copiado!' }),
     ).toBeInTheDocument();
+  });
+
+  it('no cambia de tamaño: siempre guarda el lugar de los tres textos y muestra uno', async () => {
+    withClipboard({ writeText: vi.fn().mockResolvedValue(undefined) });
+    renderButton();
+    const labels = () =>
+      [...screen.getByRole('button').querySelectorAll('[data-label]')].map(
+        (label) => [label.textContent, label.getAttribute('aria-hidden')],
+      );
+
+    expect(labels()).toEqual([
+      ['Copiar link', null],
+      ['¡Copiado!', 'true'],
+      ['No se copió', 'true'],
+    ]);
+
+    await tap('Copiar link');
+
+    expect(labels()).toEqual([
+      ['Copiar link', 'true'],
+      ['¡Copiado!', null],
+      ['No se copió', 'true'],
+    ]);
   });
 
   it('tocarlo de nuevo reinicia los 2 segundos', async () => {

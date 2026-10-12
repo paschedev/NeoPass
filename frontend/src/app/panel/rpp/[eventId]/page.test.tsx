@@ -254,8 +254,10 @@ describe('Métricas del RPP en un evento', () => {
     fireEvent.click(await copyButton());
 
     expect(
-      await screen.findByRole('button', { name: 'No se pudo copiar' }),
+      await screen.findByRole('button', { name: 'No se copió' }),
     ).toBeInTheDocument();
-    expect(screen.queryByText('¡Copiado!')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '¡Copiado!' }),
+    ).not.toBeInTheDocument();
   });
 });
