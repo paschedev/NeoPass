@@ -11,7 +11,9 @@ import {
 } from './co-organizers';
 import { UpdateCoOrganizerDto } from './dto/update-co-organizer.dto';
 import { EventAccessService } from './event-access.service';
+import { pickFreeTicketTypes } from './free-ticket-types';
 import { CoOrganizersRepository } from './repositories/co-organizers.repository';
+import { EventsRepository } from './repositories/events.repository';
 
 const ACTIVITY_PAGE_SIZE = 50;
 
@@ -39,6 +41,7 @@ export class CoOrganizersService {
   constructor(
     private readonly eventAccess: EventAccessService,
     private readonly coOrganizersRepository: CoOrganizersRepository,
+    private readonly eventsRepository: EventsRepository,
   ) {}
 
   async list(eventId: string, userId: string) {
@@ -58,14 +61,23 @@ export class CoOrganizersService {
     eventId: string,
     staffId: string,
     userId: string,
-    { permissions, freeTicketLimit }: UpdateCoOrganizerDto,
+    { permissions, freeTicketLimit, freeTicketTypes }: UpdateCoOrganizerDto,
   ) {
     await this.eventAccess.assertOwner(eventId, userId);
     const error = permissionsError(permissions);
     if (error) throw new BadRequestException(error);
     const current = await this.findCoOrganizer(eventId, staffId);
 
-    const terms = coOrganizerTerms(permissions, freeTicketLimit);
+    const terms = coOrganizerTerms(
+      permissions,
+      freeTicketLimit,
+      permissions.includes('SEND_FREE_TICKETS')
+        ? pickFreeTicketTypes(
+            freeTicketTypes,
+            await this.eventsRepository.findTicketTypeNames(eventId),
+          )
+        : [],
+    );
     const updated = await this.coOrganizersRepository.updateCoOrganizer(
       staffId,
       terms,
@@ -73,7 +85,7 @@ export class CoOrganizersService {
         eventId,
         actorId: userId,
         type: 'CO_ORGANIZER_UPDATED',
-        summary: `Cambió los permisos de ${current.user.name}. Ahora puede ${describePermissions(terms.permissions, terms.freeTicketLimit)}.`,
+        summary: `Cambió los permisos de ${current.user.name}. Ahora puede ${describePermissions(terms.permissions, terms.freeTicketLimit, terms.freeTicketTypes)}.`,
       },
     );
     if (!updated) throw new NotFoundException('Co-organizador no encontrado');

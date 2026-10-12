@@ -13,6 +13,7 @@ type CoOrganizer = {
   email: string;
   permissions: string[];
   freeTicketLimit: number | null;
+  freeTicketTypes: string[];
 };
 
 type ActivityPage = {
@@ -109,6 +110,7 @@ describe('Co-organizadores', () => {
         role: 'MANAGER',
         permissions: ['SEND_FREE_TICKETS', 'VIEW_SALES'],
         freeTicketLimit: 20,
+        freeTicketTypes: ['General'],
       }).expect(201);
 
       const staff = await t.prisma.eventStaff.findFirstOrThrow({
@@ -119,12 +121,13 @@ describe('Co-organizadores', () => {
         status: 'PENDING',
         permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
         freeTicketLimit: 20,
+        freeTicketTypes: ['General'],
       });
       const notification = await t.prisma.notification.findFirstOrThrow({
         where: { userId: buyer.id },
       });
       expect(notification.message).toBe(
-        `Te invitaron como co-organizador al evento "${event.title}". Vas a poder escanear, ver ventas y recaudación y mandar QR free (hasta 20 entradas).`,
+        `Te invitaron como co-organizador al evento "${event.title}". Vas a poder escanear, ver ventas y recaudación y mandar QR free de General (hasta 20 entradas).`,
       );
     });
 
@@ -323,6 +326,7 @@ describe('Co-organizadores', () => {
           email: accepted.user.email,
           permissions: ['VIEW_SALES'],
           freeTicketLimit: null,
+          freeTicketTypes: [],
         },
         {
           id: pending.staff.id,
@@ -331,6 +335,7 @@ describe('Co-organizadores', () => {
           email: pending.user.email,
           permissions: [],
           freeTicketLimit: null,
+          freeTicketTypes: [],
         },
       ]);
     });
@@ -344,6 +349,7 @@ describe('Co-organizadores', () => {
       const res = await update(organizer, event.id, staff.id, {
         permissions: ['VIEW_ATTENDEES', 'SEND_FREE_TICKETS'],
         freeTicketLimit: 5,
+        freeTicketTypes: ['General'],
       }).expect(200);
 
       expect(res.body as CoOrganizer).toMatchObject({
@@ -363,7 +369,7 @@ describe('Co-organizadores', () => {
       expect(history.items[0]).toMatchObject({
         type: 'CO_ORGANIZER_UPDATED',
         summary:
-          'Cambió los permisos de Ana Pérez. Ahora puede escanear, mandar QR free (hasta 5 entradas) y ver y exportar la lista del público.',
+          'Cambió los permisos de Ana Pérez. Ahora puede escanear, mandar QR free de General (hasta 5 entradas) y ver y exportar la lista del público.',
       });
     });
 

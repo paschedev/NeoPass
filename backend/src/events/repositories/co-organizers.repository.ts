@@ -8,6 +8,7 @@ const CO_ORGANIZER_SELECT = {
   status: true,
   permissions: true,
   freeTicketLimit: true,
+  freeTicketTypes: true,
   user: { select: { name: true, email: true } },
 } satisfies Prisma.EventStaffSelect;
 
@@ -33,7 +34,11 @@ export class CoOrganizersRepository {
   // nothing. Null if the co-organizer was removed in the meantime.
   async updateCoOrganizer(
     staffId: string,
-    terms: { permissions: EventPermission[]; freeTicketLimit: number | null },
+    terms: {
+      permissions: EventPermission[];
+      freeTicketLimit: number | null;
+      freeTicketTypes: string[];
+    },
     activity: ActivityEntry,
   ) {
     return this.prisma.$transaction(async (tx) => {

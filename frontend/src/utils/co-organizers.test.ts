@@ -18,6 +18,7 @@ describe('qué puede hacer quien está en sesión', () => {
     role: 'CO_ORGANIZER' as const,
     permissions,
     freeTicketLimit: null,
+    freeTicketTypes: [],
   });
 
   it('puede lo que tiene marcado', () => {
@@ -45,7 +46,12 @@ describe('qué puede hacer quien está en sesión', () => {
   it('después de editar, el dueño vuelve a Mis eventos y el co-organizador al detalle', () => {
     expect(
       afterEditPath(
-        { role: 'OWNER', permissions: [], freeTicketLimit: null },
+        {
+          role: 'OWNER',
+          permissions: [],
+          freeTicketLimit: null,
+          freeTicketTypes: null,
+        },
         'e1',
       ),
     ).toBe('/panel?tab=events');
@@ -117,27 +123,38 @@ describe('permisos de un co-organizador', () => {
     );
   });
 
-  it('el tope solo se manda con el permiso de QR free', () => {
-    expect(buildCoOrganizerTerms(['SEND_FREE_TICKETS'], '20')).toEqual({
+  it('el tope y los tipos solo se mandan con el permiso de QR free', () => {
+    expect(
+      buildCoOrganizerTerms(['SEND_FREE_TICKETS'], '20', ['General']),
+    ).toEqual({
       permissions: ['SEND_FREE_TICKETS'],
       freeTicketLimit: 20,
+      freeTicketTypes: ['General'],
     });
-    expect(buildCoOrganizerTerms(['SEND_FREE_TICKETS'], '')).toEqual({
+    expect(buildCoOrganizerTerms(['SEND_FREE_TICKETS'], '', ['VIP'])).toEqual({
       permissions: ['SEND_FREE_TICKETS'],
       freeTicketLimit: null,
+      freeTicketTypes: ['VIP'],
     });
-    expect(buildCoOrganizerTerms(['VIEW_SALES'], '20')).toEqual({
+    expect(buildCoOrganizerTerms(['VIEW_SALES'], '20', ['General'])).toEqual({
       permissions: ['VIEW_SALES'],
       freeTicketLimit: null,
+      freeTicketTypes: [],
     });
   });
 
   it('resume lo que puede hacer, siempre empezando por escanear', () => {
-    expect(permissionsSummary([], null)).toBe('Escanear');
-    expect(permissionsSummary(['VIEW_SALES', 'SEND_FREE_TICKETS'], 20)).toBe(
-      'Escanear · Ver ventas · QR free (hasta 20)',
+    expect(permissionsSummary([], null, [])).toBe('Escanear');
+    expect(
+      permissionsSummary(['VIEW_SALES', 'SEND_FREE_TICKETS'], 20, [
+        'General',
+        'VIP',
+      ]),
+    ).toBe('Escanear · Ver ventas · QR free de General y VIP (hasta 20)');
+    expect(permissionsSummary(['SEND_FREE_TICKETS'], null, ['General'])).toBe(
+      'Escanear · QR free de General',
     );
-    expect(permissionsSummary(['VIEW_ATTENDEES'], null)).toBe(
+    expect(permissionsSummary(['VIEW_ATTENDEES'], null, [])).toBe(
       'Escanear · Público',
     );
   });

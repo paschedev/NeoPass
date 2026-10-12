@@ -68,32 +68,78 @@ export function entryDeadlineOptions(
   return options;
 }
 
+// Los nombres de tipo se escriben a mano en cada tanda: "VIP" y "vip " son el
+// mismo tipo, en cualquier tanda. Espejo de backend/src/events/free-ticket-types.ts.
+const typeKey = (name: string) => name.trim().toLocaleLowerCase('es');
+
+// Si un QR free de este tipo está entre los que puede regalar.
+export const allowsFreeTicketType = (allowed: string[], name: string) =>
+  allowed.some((allowedName) => typeKey(allowedName) === typeKey(name));
+
+// Los nombres de tipo del evento, una vez cada uno y en el orden de las tandas:
+// las casillas de qué tipos puede regalar alguien.
+export function eventTicketTypeNames(
+  batches: { ticketTypes: { name: string }[] }[],
+): string[] {
+  const names: string[] = [];
+  for (const type of batches.flatMap((batch) => batch.ticketTypes)) {
+    if (!allowsFreeTicketType(names, type.name)) names.push(type.name);
+  }
+  return names;
+}
+
+// De lo tildado, los tipos que el evento tiene hoy, en su orden: un tipo
+// renombrado o borrado deja de estar.
+export const chosenFreeTicketTypes = (selected: string[], names: string[]) =>
+  names.filter((name) => allowsFreeTicketType(selected, name));
+
+// "General", "General y VIP", "General, VIP y Mesa".
+export function joinNames(names: string[]): string {
+  if (names.length <= 1) return names[0] ?? '';
+  return `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}`;
+}
+
+export function freeTicketTypesError(types: string[]): string | null {
+  return types.length === 0
+    ? 'Elegí al menos un tipo de entrada para los QR free'
+    : null;
+}
+
 // Los tipos de entrada que se pueden mandar como QR free, de todas las tandas
-// (también las ocultas): "General · Preventa".
+// (también las ocultas): "General · Preventa". Con una lista de permitidos,
+// solo esos; sin lista (quien organiza), todos.
 export function freeTicketTypeOptions(
   batches: { name: string; ticketTypes: { id: string; name: string }[] }[],
+  allowed: string[] | null = null,
 ): { id: string; label: string }[] {
   return batches.flatMap((batch) =>
-    batch.ticketTypes.map((type) => ({
-      id: type.id,
-      label: `${type.name} · ${batch.name}`,
-    })),
+    batch.ticketTypes
+      .filter((type) => !allowed || allowsFreeTicketType(allowed, type.name))
+      .map((type) => ({
+        id: type.id,
+        label: `${type.name} · ${batch.name}`,
+      })),
   );
 }
 
 // Por qué no se pueden mandar QR free de este evento, o null si se puede. El
-// servidor aplica las mismas reglas.
+// servidor aplica las mismas reglas. "restricted": quien manda tiene una
+// lista de tipos permitidos (co-organizador o RPP), así que si no queda
+// ninguno, lo pide.
 export function freeTicketsBlockedReason(
   event: { status: string; startDate: string; endDate: string },
   ticketTypesCount: number,
   now: Date,
+  restricted = false,
 ): string | null {
   if (getEventPhase(event, now) === 'CLOSED') {
     return 'El evento terminó: ya no se pueden mandar QR free.';
   }
   if (event.status === 'DRAFT') return 'Publicá el evento para mandar QR free.';
   if (ticketTypesCount === 0) {
-    return 'Creá un tipo de entrada para mandar QR free.';
+    return restricted
+      ? 'No tenés tipos de entrada habilitados para QR free. Pedíselos a quien organiza el evento.'
+      : 'Creá un tipo de entrada para mandar QR free.';
   }
   return null;
 }

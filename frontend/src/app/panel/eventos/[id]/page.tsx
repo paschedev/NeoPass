@@ -117,7 +117,11 @@ function EventSections({
   const { access } = event;
   const phase = getEventPhase(event, new Date());
   const open = phase !== 'CLOSED';
-  const ticketTypes = freeTicketTypeOptions(event.ticketBatches);
+  // Un co-organizador ve solo los tipos que puede regalar.
+  const ticketTypes = freeTicketTypeOptions(
+    event.ticketBatches,
+    access.freeTicketTypes,
+  );
 
   return (
     <div className="space-y-10">
@@ -150,6 +154,7 @@ function EventSections({
             event,
             ticketTypes.length,
             new Date(),
+            access.freeTicketTypes !== null,
           )}
           limit={access.freeTicketLimit}
           ownerId={access.role === 'OWNER' ? event.organizerId : null}

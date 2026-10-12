@@ -193,6 +193,7 @@ describe('Staff: los eventos donde trabaja cada uno', () => {
         status: 'ACCEPTED',
         permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
         freeTicketLimit: 5,
+        freeTicketTypes: ['General'],
       },
     });
     const invitation = await t.prisma.eventStaff.create({
@@ -213,6 +214,7 @@ describe('Staff: los eventos donde trabaja cada uno', () => {
     expect(coOrganizerOf(accepted.event.id)).toEqual({
       permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
       freeTicketLimit: 5,
+      freeTicketTypes: ['General'],
     });
     expect(coOrganizerOf(scanning.event.id)).toBeNull();
     expect(body.invitations).toEqual([

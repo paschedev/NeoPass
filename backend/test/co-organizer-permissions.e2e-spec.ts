@@ -38,6 +38,7 @@ type OrganizerEventView = {
     role: string;
     permissions: EventPermission[];
     freeTicketLimit: number | null;
+    freeTicketTypes: string[] | null;
   };
   ticketTypes: TicketTypeView[];
   ticketBatches: { ticketTypes: TicketTypeView[] }[];
@@ -84,6 +85,7 @@ describe('Co-organizadores: permisos sobre el evento', () => {
         status,
         permissions,
         freeTicketLimit,
+        freeTicketTypes: ['General'],
       },
     });
     const promoter = await t.prisma.eventStaff.create({
@@ -564,10 +566,11 @@ describe('Co-organizadores: permisos sobre el evento', () => {
         role: 'OWNER',
         permissions: ALL_PERMISSIONS,
         freeTicketLimit: null,
+        freeTicketTypes: null,
       });
     });
 
-    it('el co-organizador ve sus permisos y su tope de QR free', async () => {
+    it('el co-organizador ve sus permisos, su tope y sus tipos de QR free', async () => {
       const s = await scenario(['VIEW_SALES', 'SEND_FREE_TICKETS'], {
         freeTicketLimit: 5,
       });
@@ -580,6 +583,7 @@ describe('Co-organizadores: permisos sobre el evento', () => {
         role: 'CO_ORGANIZER',
         permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
         freeTicketLimit: 5,
+        freeTicketTypes: ['General'],
       });
     });
 

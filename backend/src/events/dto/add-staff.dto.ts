@@ -9,7 +9,21 @@ import {
 } from 'class-validator';
 import { StaffRole, CommissionType, EventPermission } from '@prisma/client';
 import { MAX_AMOUNT } from '../../common/amounts';
-import { FreeTicketLimit, PermissionList } from './co-organizer-terms';
+import {
+  FreeTicketLimit,
+  FreeTicketTypeList,
+  PermissionList,
+} from './co-organizer-terms';
+
+// Whether the invitation lets them send free tickets: a co-organizer with the
+// permission, or a promoter with a limit.
+const sendsFreeTickets = (o: AddStaffDto) =>
+  (o.role === 'MANAGER' &&
+    Array.isArray(o.permissions) &&
+    o.permissions.includes('SEND_FREE_TICKETS')) ||
+  (o.role === 'PROMOTER' &&
+    o.freeTicketLimit !== undefined &&
+    o.freeTicketLimit !== null);
 
 export class AddStaffDto {
   @IsUUID('all', { message: 'Elegí a quién invitar' })
@@ -58,4 +72,9 @@ export class AddStaffDto {
   )
   @FreeTicketLimit()
   freeTicketLimit?: number | null;
+
+  // The types they can send as free tickets; ignored if they can't send any.
+  @ValidateIf(sendsFreeTickets)
+  @FreeTicketTypeList()
+  freeTicketTypes?: string[];
 }

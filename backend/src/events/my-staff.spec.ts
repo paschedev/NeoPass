@@ -42,12 +42,14 @@ function assignment(
     paid = '0',
     permissions = [],
     freeTicketLimit = null,
+    freeTicketTypes = [],
   }: {
     status?: StaffStatus;
     earned?: string;
     paid?: string;
     permissions?: EventPermission[];
     freeTicketLimit?: number | null;
+    freeTicketTypes?: string[];
   } = {},
 ) {
   nextId += 1;
@@ -62,6 +64,7 @@ function assignment(
     totalPaid: new Prisma.Decimal(paid),
     permissions,
     freeTicketLimit,
+    freeTicketTypes,
     event: ev,
   };
 }
@@ -77,10 +80,12 @@ describe('buildMyStaff', () => {
         assignment(fiesta, 'MANAGER', {
           permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
           freeTicketLimit: 5,
+          freeTicketTypes: ['General'],
         }),
         assignment(otra, 'MANAGER', {
           status: 'PENDING',
-          permissions: ['EDIT_EVENT'],
+          permissions: ['EDIT_EVENT', 'SEND_FREE_TICKETS'],
+          freeTicketTypes: ['VIP'],
         }),
         assignment(scanning, 'SCANNER'),
       ],
@@ -96,6 +101,7 @@ describe('buildMyStaff', () => {
         coOrganizer: {
           permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
           freeTicketLimit: 5,
+          freeTicketTypes: ['General'],
         },
       },
       { id: 'scanning', coOrganizer: null },
@@ -103,8 +109,9 @@ describe('buildMyStaff', () => {
     expect(mine.invitations).toEqual([
       expect.objectContaining({
         role: 'MANAGER',
-        permissions: ['EDIT_EVENT'],
+        permissions: ['EDIT_EVENT', 'SEND_FREE_TICKETS'],
         freeTicketLimit: null,
+        freeTicketTypes: ['VIP'],
       }),
     ]);
   });
@@ -264,6 +271,7 @@ describe('buildMyStaff', () => {
         commissionValue: null,
         permissions: [],
         freeTicketLimit: null,
+        freeTicketTypes: [],
         event: {
           id: 'cercana',
           title: 'Evento cercana',

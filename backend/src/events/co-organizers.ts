@@ -39,32 +39,46 @@ export function permissionsError(
   return null;
 }
 
-// What gets stored: the permissions in order and the free ticket limit only
-// when they can send free tickets.
+// What gets stored: the permissions in order, and the free ticket limit and
+// types only when they can send free tickets.
 export function coOrganizerTerms(
   permissions: EventPermission[],
   freeTicketLimit: number | null | undefined,
+  freeTicketTypes: string[],
 ) {
   const sorted = sortPermissions(permissions);
+  const sendsFreeTickets = sorted.includes('SEND_FREE_TICKETS');
   return {
     permissions: sorted,
-    freeTicketLimit: sorted.includes('SEND_FREE_TICKETS')
-      ? (freeTicketLimit ?? null)
-      : null,
+    freeTicketLimit: sendsFreeTickets ? (freeTicketLimit ?? null) : null,
+    freeTicketTypes: sendsFreeTickets ? freeTicketTypes : [],
   };
 }
 
-// "escanear, ver ventas y recaudación y mandar QR free (hasta 20 entradas)",
-// for the invitation and the event history.
+function freeTicketsPhrase(
+  freeTicketLimit: number | null,
+  freeTicketTypes: string[],
+) {
+  const types =
+    freeTicketTypes.length > 0 ? ` de ${joinPhrases(freeTicketTypes)}` : '';
+  const limit = freeTicketLimit
+    ? ` (hasta ${freeTicketLimit} ${freeTicketLimit === 1 ? 'entrada' : 'entradas'})`
+    : '';
+  return `${PERMISSION_PHRASE.SEND_FREE_TICKETS}${types}${limit}`;
+}
+
+// "escanear, ver ventas y recaudación y mandar QR free de General (hasta 20
+// entradas)", for the invitation and the event history.
 export function describePermissions(
   permissions: EventPermission[],
   freeTicketLimit: number | null,
+  freeTicketTypes: string[],
 ): string {
   return joinPhrases([
     'escanear',
     ...sortPermissions(permissions).map((permission) =>
-      permission === 'SEND_FREE_TICKETS' && freeTicketLimit
-        ? `${PERMISSION_PHRASE[permission]} (hasta ${freeTicketLimit} ${freeTicketLimit === 1 ? 'entrada' : 'entradas'})`
+      permission === 'SEND_FREE_TICKETS'
+        ? freeTicketsPhrase(freeTicketLimit, freeTicketTypes)
         : PERMISSION_PHRASE[permission],
     ),
   ]);

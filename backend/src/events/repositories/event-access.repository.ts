@@ -25,6 +25,7 @@ export class EventAccessRepository {
             role: true,
             permissions: true,
             freeTicketLimit: true,
+            freeTicketTypes: true,
           },
         },
       },
@@ -39,6 +40,7 @@ export class EventAccessRepository {
             id: row.id,
             permissions: row.permissions,
             freeTicketLimit: row.freeTicketLimit,
+            freeTicketTypes: row.freeTicketTypes,
           }
         : null;
     };

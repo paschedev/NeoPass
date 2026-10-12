@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { apiFetch } from '@/utils/api';
 import type { EventAccess, EventPermission } from '@/utils/co-organizers';
 import EventDetailPage from './page';
@@ -25,12 +25,19 @@ const OWNER: EventAccess = {
   role: 'OWNER',
   permissions: ALL,
   freeTicketLimit: null,
+  freeTicketTypes: null,
 };
 
 const coOrganizer = (
   permissions: EventPermission[],
   freeTicketLimit: number | null = null,
-): EventAccess => ({ role: 'CO_ORGANIZER', permissions, freeTicketLimit });
+  freeTicketTypes: string[] = ['General'],
+): EventAccess => ({
+  role: 'CO_ORGANIZER',
+  permissions,
+  freeTicketLimit,
+  freeTicketTypes,
+});
 
 // GET /events/organizer/:id: el evento con lo que puede hacer quien lo pide.
 const teamEvent = (access: EventAccess) => ({
@@ -46,7 +53,10 @@ const teamEvent = (access: EventAccess) => ({
     {
       id: 'b1',
       name: 'Preventa',
-      ticketTypes: [{ id: 't1', name: 'General' }],
+      ticketTypes: [
+        { id: 't1', name: 'General' },
+        { id: 't2', name: 'VIP' },
+      ],
     },
   ],
   access,
@@ -175,6 +185,43 @@ describe('Detalle del evento', () => {
       await screen.findByText('Te quedan 5 de tus 5 QR free.'),
     ).toBeInTheDocument();
     expect(requested('/sales')).toBe(false);
+  });
+
+  it('un co-organizador elige entre los tipos que puede regalar; quien organiza, entre todos', async () => {
+    server(coOrganizer(['SEND_FREE_TICKETS'], null, ['VIP']));
+    const { unmount } = render(<EventDetailPage />);
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Enviar QR free' }),
+    );
+    const typeOptions = () =>
+      within(
+        within(screen.getByRole('dialog')).getByLabelText('Tipo de entrada'),
+      )
+        .getAllByRole('option')
+        .map((option) => option.textContent);
+    expect(typeOptions()).toEqual(['VIP · Preventa']);
+    unmount();
+
+    server(OWNER);
+    render(<EventDetailPage />);
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Enviar QR free' }),
+    );
+    expect(typeOptions()).toEqual(['General · Preventa', 'VIP · Preventa']);
+  });
+
+  it('a un co-organizador sin tipos que el evento tenga le dice que los pida', async () => {
+    server(coOrganizer(['SEND_FREE_TICKETS'], null, ['Mesa']));
+
+    render(<EventDetailPage />);
+
+    expect(await region('QR free')).toHaveTextContent(
+      'No tenés tipos de entrada habilitados para QR free. Pedíselos a quien organiza el evento.',
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Enviar QR free' }),
+    ).not.toBeInTheDocument();
   });
 
   it.each([403, 404])(

@@ -5,6 +5,7 @@ import toast from '@/utils/toast';
 import { Check, Search, UserPlus, X } from 'lucide-react';
 import CustomSelect from '@/components/CustomSelect';
 import Modal from '@/components/ui/Modal';
+import { useFreeTicketTypes } from '@/hooks/useFreeTicketTypes';
 import { useUserSearch, type UserSearchResult } from '@/hooks/useUserSearch';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
@@ -23,6 +24,7 @@ import {
   type EventPermission,
 } from '@/utils/co-organizers';
 import CoOrganizerPermissionsFields from './CoOrganizerPermissionsFields';
+import FreeTicketTypesField from './FreeTicketTypesField';
 
 const ROLE_OPTIONS: { value: InviteRole; label: string }[] = [
   { value: 'SCANNER', label: STAFF_ROLE_LABELS.SCANNER },
@@ -72,6 +74,14 @@ export default function InviteStaffModal({
   const searchResults = useUserSearch(searchTerm);
   const promoterFreeTicketLimit =
     canGrantFreeTickets && promoterSendsFree ? promoterFreeLimit : null;
+  // Los tipos del evento se piden solo si el invitado va a mandar QR free.
+  const sendsFreeTickets =
+    role === 'CO_ORGANIZER'
+      ? permissions.includes('SEND_FREE_TICKETS')
+      : role === 'RPP' && promoterFreeTicketLimit !== null;
+  const freeTicketTypes = useFreeTicketTypes(
+    sendsFreeTickets && eventId ? eventId : null,
+  );
 
   const handleSend = async () => {
     const error = validateInvitation({
@@ -81,17 +91,24 @@ export default function InviteStaffModal({
       commissionType,
       commissionValue,
       freeTicketLimit,
+      permissions,
       promoterFreeTicketLimit,
+      freeTicketTypes: freeTicketTypes.chosen,
     });
     if (error) return toast.error(error);
     const terms =
       role === 'CO_ORGANIZER'
-        ? buildCoOrganizerTerms(permissions, freeTicketLimit)
+        ? buildCoOrganizerTerms(
+            permissions,
+            freeTicketLimit,
+            freeTicketTypes.chosen,
+          )
         : {
             freeTicketLimit:
               promoterFreeTicketLimit === null
                 ? null
                 : Number(promoterFreeTicketLimit),
+            freeTicketTypes: freeTicketTypes.chosen,
           };
 
     setSending(true);
@@ -137,6 +154,7 @@ export default function InviteStaffModal({
     setFreeTicketLimit('');
     setPromoterSendsFree(false);
     setPromoterFreeLimit('');
+    freeTicketTypes.select([]);
     setSearchTerm('');
     onClose();
   };
@@ -257,28 +275,31 @@ export default function InviteStaffModal({
                     Puede mandar QR free
                   </span>
                   <span className="block text-xs text-neutral-500">
-                    Entradas gratis hasta la cantidad que pongas. Ve solo las
-                    suyas y no le dan comisión.
+                    Entradas gratis de los tipos que elijas, hasta la cantidad
+                    que pongas. Ve solo las suyas y no le dan comisión.
                   </span>
                 </span>
               </label>
               {promoterSendsFree && (
-                <div className="pl-7">
-                  <label
-                    htmlFor={promoterLimitId}
-                    className="block text-xs font-medium text-neutral-400 mb-1"
-                  >
-                    Cantidad máxima
-                  </label>
-                  <input
-                    id={promoterLimitId}
-                    type="text"
-                    inputMode="numeric"
-                    value={promoterFreeLimit}
-                    onChange={(e) => setPromoterFreeLimit(e.target.value)}
-                    placeholder="Ej: 10"
-                    className="w-32 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
-                  />
+                <div className="pl-7 space-y-3">
+                  <div>
+                    <label
+                      htmlFor={promoterLimitId}
+                      className="block text-xs font-medium text-neutral-400 mb-1"
+                    >
+                      Cantidad máxima
+                    </label>
+                    <input
+                      id={promoterLimitId}
+                      type="text"
+                      inputMode="numeric"
+                      value={promoterFreeLimit}
+                      onChange={(e) => setPromoterFreeLimit(e.target.value)}
+                      placeholder="Ej: 10"
+                      className="w-32 bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                    />
+                  </div>
+                  {eventId && <FreeTicketTypesField choice={freeTicketTypes} />}
                 </div>
               )}
             </div>
@@ -290,6 +311,7 @@ export default function InviteStaffModal({
               onPermissionsChange={setPermissions}
               freeTicketLimit={freeTicketLimit}
               onFreeTicketLimitChange={setFreeTicketLimit}
+              freeTicketTypes={eventId ? freeTicketTypes : null}
             />
           )}
         </div>

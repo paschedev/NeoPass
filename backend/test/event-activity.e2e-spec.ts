@@ -47,6 +47,7 @@ describe('Historial del evento: cada cambio queda con quién lo hizo', () => {
         role: 'MANAGER',
         status: 'ACCEPTED',
         permissions,
+        freeTicketTypes: ['General'],
       },
     });
     const promoter = await t.prisma.eventStaff.create({

@@ -137,7 +137,7 @@ export class EventsController {
       id,
       userId,
       staffId,
-      body.freeTicketLimit,
+      body,
     );
   }
 
