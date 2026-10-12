@@ -3,7 +3,10 @@
 import { useState } from 'react';
 import { Check } from 'lucide-react';
 import { formatCurrency, formatDayMonthTime } from '@/utils/format';
-import { promoterFreeTicketsLabel } from '@/utils/promoter-free-tickets';
+import {
+  freeTicketsUpTo,
+  promoterFreeTicketsLabel,
+} from '@/utils/promoter-free-tickets';
 import {
   commissionLabel,
   otherEventsDebt,
@@ -117,7 +120,8 @@ export default function PromoterCard({
               ? [
                   'Todavía no aceptó',
                   commission,
-                  freeTickets && `hasta ${freeTickets.limit} QR free`,
+                  freeTickets &&
+                    freeTicketsUpTo(freeTickets.limit, freeTickets.types),
                 ]
                   .filter(Boolean)
                   .join(' · ')

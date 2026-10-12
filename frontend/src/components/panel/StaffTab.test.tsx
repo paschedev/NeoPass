@@ -16,8 +16,23 @@ vi.mock('@/utils/toast', () => ({
 }));
 
 const OVERVIEW_PATH = '/events/organizer/staff/overview';
+const EVENT_PATH = '/events/organizer/e1';
 const PAY_PATH = '/events/organizer/e1/promoters/s1/payments';
 const FREE_TICKETS_PATH = '/events/organizer/e1/promoters/s1/free-tickets';
+
+// GET /events/organizer/e1: de dónde salen los tipos que se pueden tildar.
+const EVENT = {
+  id: 'e1',
+  ticketBatches: [
+    {
+      name: 'Preventa',
+      ticketTypes: [
+        { id: 't1', name: 'General' },
+        { id: 't2', name: 'VIP' },
+      ],
+    },
+  ],
+};
 
 const sofia = (overrides = {}) => ({
   id: 's1',
@@ -81,6 +96,7 @@ function server(
 ) {
   let calls = 0;
   vi.mocked(apiFetch).mockImplementation(async (path) => {
+    if (path === EVENT_PATH) return Response.json(EVENT);
     if (path !== OVERVIEW_PATH) return payment;
     const next = responses[Math.min(calls, responses.length - 1)];
     calls += 1;
@@ -408,9 +424,10 @@ describe('StaffTab', () => {
   });
 
   describe('QR free de un RPP', () => {
+    const GENERAL = { limit: 10, sent: 3, types: ['General'] };
     const withFreeTickets = (overrides = {}) =>
       group({
-        promoters: [sofia({ freeTickets: { limit: 10, sent: 3 }, ...overrides })],
+        promoters: [sofia({ freeTickets: GENERAL, ...overrides })],
       });
 
     const freeTicketsCalls = () =>
@@ -418,12 +435,12 @@ describe('StaffTab', () => {
         .mocked(apiFetch)
         .mock.calls.filter(([path]) => path === FREE_TICKETS_PATH);
 
-    it('la tarjeta del RPP dice cuántos QR free mandó de los que puede', async () => {
+    it('la tarjeta del RPP dice cuántos QR free mandó de los que puede y de qué tipos', async () => {
       server([overview([withFreeTickets()])]);
       renderTab();
 
       const card = await screen.findByRole('article', { name: 'Sofía Martínez' });
-      expect(card).toHaveTextContent('QR free: 3 de 10');
+      expect(card).toHaveTextContent('QR free: 3 de 10 · General');
       expect(
         within(card).getByRole('button', {
           name: 'Cambiar QR free de Sofía Martínez',
@@ -431,13 +448,17 @@ describe('StaffTab', () => {
       ).toBeInTheDocument();
     });
 
-    it('cambiar el tope lo guarda y recarga la tarjeta', async () => {
+    it('cambiar el tope y los tipos lo guarda y recarga la tarjeta', async () => {
       server(
         [
           overview([withFreeTickets()]),
           overview([
             group({
-              promoters: [sofia({ freeTickets: { limit: 15, sent: 3 } })],
+              promoters: [
+                sofia({
+                  freeTickets: { limit: 15, sent: 3, types: ['General', 'VIP'] },
+                }),
+              ],
             }),
           ]),
         ],
@@ -454,6 +475,10 @@ describe('StaffTab', () => {
       const limit = within(dialog).getByLabelText('Cantidad máxima');
       expect(limit).toHaveValue('10');
       fireEvent.change(limit, { target: { value: '15' } });
+      expect(
+        await within(dialog).findByRole('checkbox', { name: 'General' }),
+      ).toBeChecked();
+      fireEvent.click(within(dialog).getByRole('checkbox', { name: 'VIP' }));
       fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
 
       await waitFor(() =>
@@ -464,14 +489,20 @@ describe('StaffTab', () => {
       expect(freeTicketsCalls()).toEqual([
         [
           FREE_TICKETS_PATH,
-          { method: 'PUT', body: JSON.stringify({ freeTicketLimit: 15 }) },
+          {
+            method: 'PUT',
+            body: JSON.stringify({
+              freeTicketLimit: 15,
+              freeTicketTypes: ['General', 'VIP'],
+            }),
+          },
         ],
       ]);
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       await waitFor(() =>
         expect(
           screen.getByRole('article', { name: 'Sofía Martínez' }),
-        ).toHaveTextContent('QR free: 3 de 15'),
+        ).toHaveTextContent('QR free: 3 de 15 · General y VIP'),
       );
     });
 
@@ -508,7 +539,7 @@ describe('StaffTab', () => {
       ]);
     });
 
-    it('a un RPP sin QR free se los puede dar, siempre con una cantidad máxima', async () => {
+    it('a un RPP sin QR free se los puede dar, siempre con una cantidad máxima y al menos un tipo', async () => {
       server(
         [overview([group()])],
         Response.json({ id: 's1', freeTicketLimit: 5 }),
@@ -528,18 +559,33 @@ describe('StaffTab', () => {
       expect(toast.error).toHaveBeenCalledWith(
         'Indicá cuántos QR free puede mandar',
       );
-      expect(freeTicketsCalls()).toEqual([]);
 
       fireEvent.change(within(dialog).getByLabelText('Cantidad máxima'), {
         target: { value: '5' },
       });
+      expect(
+        await within(dialog).findByRole('checkbox', { name: 'General' }),
+      ).not.toBeChecked();
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+      expect(toast.error).toHaveBeenCalledWith(
+        'Elegí al menos un tipo de entrada para los QR free',
+      );
+      expect(freeTicketsCalls()).toEqual([]);
+
+      fireEvent.click(within(dialog).getByRole('checkbox', { name: 'General' }));
       fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
 
       await waitFor(() =>
         expect(freeTicketsCalls()).toEqual([
           [
             FREE_TICKETS_PATH,
-            { method: 'PUT', body: JSON.stringify({ freeTicketLimit: 5 }) },
+            {
+              method: 'PUT',
+              body: JSON.stringify({
+                freeTicketLimit: 5,
+                freeTicketTypes: ['General'],
+              }),
+            },
           ],
         ]),
       );
@@ -552,7 +598,7 @@ describe('StaffTab', () => {
             phase: 'CLOSED',
             status: 'FINISHED',
             promoters: [
-              sofia({ freeTickets: { limit: 10, sent: 3 } }),
+              sofia({ freeTickets: GENERAL }),
               sofia({ id: 's2', name: 'Lucía Gómez' }),
             ],
           }),
@@ -561,7 +607,7 @@ describe('StaffTab', () => {
       renderTab();
 
       const card = await screen.findByRole('article', { name: 'Sofía Martínez' });
-      expect(card).toHaveTextContent('QR free: 3 de 10');
+      expect(card).toHaveTextContent('QR free: 3 de 10 · General');
       expect(
         screen.queryByRole('button', { name: /Cambiar QR free/ }),
       ).not.toBeInTheDocument();
@@ -585,11 +631,9 @@ describe('StaffTab', () => {
           name: 'Cambiar QR free de Sofía Martínez',
         }),
       );
-      fireEvent.click(
-        within(screen.getByRole('dialog')).getByRole('button', {
-          name: 'Guardar',
-        }),
-      );
+      const dialog = screen.getByRole('dialog');
+      await within(dialog).findByRole('checkbox', { name: 'General' });
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
 
       await waitFor(() =>
         expect(toast.error).toHaveBeenCalledWith(
@@ -606,7 +650,7 @@ describe('StaffTab', () => {
             promoters: [
               sofia({
                 status: 'PENDING',
-                freeTickets: { limit: 10, sent: 0 },
+                freeTickets: { limit: 10, sent: 0, types: ['General'] },
               }),
               sofia({ id: 's2', name: 'Lucía Gómez', status: 'REJECTED' }),
             ],
@@ -619,7 +663,7 @@ describe('StaffTab', () => {
         name: 'Sofía Martínez',
       });
       expect(pending).toHaveTextContent(
-        'Todavía no aceptó · 10% por entrada · hasta 10 QR free',
+        'Todavía no aceptó · 10% por entrada · hasta 10 QR free de General',
       );
       expect(
         within(pending).getByRole('button', {

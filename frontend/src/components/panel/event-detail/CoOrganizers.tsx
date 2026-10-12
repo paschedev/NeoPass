@@ -3,6 +3,7 @@
 import { useEffect, useId, useState } from 'react';
 import { UserCog, UserPlus } from 'lucide-react';
 import Modal from '@/components/ui/Modal';
+import { useFreeTicketTypes } from '@/hooks/useFreeTicketTypes';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import {
@@ -12,6 +13,7 @@ import {
   permissionsSummary,
   type EventPermission,
 } from '@/utils/co-organizers';
+import { freeTicketTypesError } from '@/utils/free-tickets';
 import toast from '@/utils/toast';
 import CoOrganizerPermissionsFields from '../CoOrganizerPermissionsFields';
 import InviteStaffModal from '../InviteStaffModal';
@@ -52,6 +54,10 @@ export default function CoOrganizers({
   const removeTitleId = useId();
   const path = `/events/organizer/${event.id}/co-organizers`;
   const reload = () => setVersion((count) => count + 1);
+  const sendsFreeTickets = permissions.includes('SEND_FREE_TICKETS');
+  const freeTicketTypes = useFreeTicketTypes(
+    editing && sendsFreeTickets ? event.id : null,
+  );
 
   useEffect(() => {
     let current = true;
@@ -75,6 +81,7 @@ export default function CoOrganizers({
   const startEditing = (coOrganizer: CoOrganizer) => {
     setPermissions(coOrganizer.permissions);
     setFreeTicketLimit(coOrganizer.freeTicketLimit?.toString() ?? '');
+    freeTicketTypes.select(coOrganizer.freeTicketTypes);
     setEditing(coOrganizer);
   };
 
@@ -100,14 +107,20 @@ export default function CoOrganizers({
   };
 
   const save = async (coOrganizer: CoOrganizer) => {
-    const limitError = freeTicketLimitError(freeTicketLimit);
-    if (limitError) return toast.error(limitError);
+    const error =
+      freeTicketLimitError(freeTicketLimit) ??
+      (sendsFreeTickets ? freeTicketTypesError(freeTicketTypes.chosen) : null);
+    if (error) return toast.error(error);
     const saved = await send(
       coOrganizer,
       {
         method: 'PUT',
         body: JSON.stringify(
-          buildCoOrganizerTerms(permissions, freeTicketLimit),
+          buildCoOrganizerTerms(
+            permissions,
+            freeTicketLimit,
+            freeTicketTypes.chosen,
+          ),
         ),
       },
       'No se pudieron guardar los permisos',
@@ -194,6 +207,7 @@ export default function CoOrganizers({
                   {permissionsSummary(
                     coOrganizer.permissions,
                     coOrganizer.freeTicketLimit,
+                    coOrganizer.freeTicketTypes,
                   )}
                 </p>
               </div>
@@ -236,6 +250,7 @@ export default function CoOrganizers({
               onPermissionsChange={setPermissions}
               freeTicketLimit={freeTicketLimit}
               onFreeTicketLimitChange={setFreeTicketLimit}
+              freeTicketTypes={freeTicketTypes}
             />
             <div className="flex gap-3">
               <button

@@ -2,13 +2,16 @@
 
 import { useId, useState } from 'react';
 import Modal from '@/components/ui/Modal';
+import { useFreeTicketTypes } from '@/hooks/useFreeTicketTypes';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
+import { freeTicketTypesError } from '@/utils/free-tickets';
 import {
   promoterFreeTicketLimitError,
   type PromoterFreeTickets,
 } from '@/utils/promoter-free-tickets';
 import toast from '@/utils/toast';
+import FreeTicketTypesField from '../FreeTicketTypesField';
 
 export interface FreeTicketsTarget {
   eventId: string;
@@ -36,14 +39,21 @@ function FreeTicketsForm({
     target.freeTickets?.limit.toString() ?? '',
   );
   const [busy, setBusy] = useState(false);
+  const freeTicketTypes = useFreeTicketTypes(
+    target.eventId,
+    target.freeTickets?.types ?? [],
+  );
   const sent = target.freeTickets?.sent ?? 0;
 
-  const save = async (freeTicketLimit: number | null, success: string) => {
+  const save = async (
+    terms: { freeTicketLimit: number | null; freeTicketTypes?: string[] },
+    success: string,
+  ) => {
     setBusy(true);
     try {
       const res = await apiFetch(
         `/events/organizer/${target.eventId}/promoters/${target.staffId}/free-tickets`,
-        { method: 'PUT', body: JSON.stringify({ freeTicketLimit }) },
+        { method: 'PUT', body: JSON.stringify(terms) },
       );
       if (!res.ok) {
         toast.error(
@@ -64,9 +74,17 @@ function FreeTicketsForm({
   };
 
   const submit = () => {
-    const error = promoterFreeTicketLimitError(limit);
+    const error =
+      promoterFreeTicketLimitError(limit) ??
+      freeTicketTypesError(freeTicketTypes.chosen);
     if (error) return toast.error(error);
-    void save(Number(limit), `Guardamos los QR free de ${target.name}`);
+    void save(
+      {
+        freeTicketLimit: Number(limit),
+        freeTicketTypes: freeTicketTypes.chosen,
+      },
+      `Guardamos los QR free de ${target.name}`,
+    );
   };
 
   return (
@@ -76,8 +94,8 @@ function FreeTicketsForm({
           QR free de {target.name}
         </h2>
         <p className="text-sm text-neutral-400">
-          Cuántas entradas gratis puede mandar en este evento. Ve solo las suyas
-          y no le dan comisión.
+          Cuántas entradas gratis puede mandar en este evento y de qué tipos. Ve
+          solo las suyas y no le dan comisión.
         </p>
       </div>
       <div>
@@ -97,6 +115,7 @@ function FreeTicketsForm({
           className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors"
         />
       </div>
+      <FreeTicketTypesField choice={freeTicketTypes} />
       {sent > 0 && (
         <p className="text-xs text-neutral-400">
           Ya mandó {sent}. Si bajás el tope o se los quitás, lo mandado sigue
@@ -126,7 +145,10 @@ function FreeTicketsForm({
           <button
             type="button"
             onClick={() =>
-              void save(null, `${target.name} ya no puede mandar QR free`)
+              void save(
+                { freeTicketLimit: null },
+                `${target.name} ya no puede mandar QR free`,
+              )
             }
             disabled={busy}
             className={`${BUTTON} border border-red-500/30 text-red-300 hover:bg-red-500/10`}

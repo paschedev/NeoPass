@@ -211,6 +211,7 @@ export default function MyStaffEventCard({ event }: { event: MyStaffEvent }) {
               {permissionsSummary(
                 event.coOrganizer.permissions,
                 event.coOrganizer.freeTicketLimit,
+                event.coOrganizer.freeTicketTypes,
               )}
             </p>
           </div>

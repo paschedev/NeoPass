@@ -17,6 +17,20 @@ vi.mock('@/utils/toast', () => ({
 
 const PATH = '/events/organizer/e1/co-organizers';
 
+// GET /events/organizer/e1: de dónde salen los tipos que se pueden tildar.
+const EVENT = {
+  id: 'e1',
+  ticketBatches: [
+    {
+      name: 'Preventa',
+      ticketTypes: [
+        { id: 't1', name: 'General' },
+        { id: 't2', name: 'VIP' },
+      ],
+    },
+  ],
+};
+
 const ana = {
   id: 's1',
   status: 'ACCEPTED',
@@ -24,6 +38,7 @@ const ana = {
   email: 'ana@example.com',
   permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
   freeTicketLimit: 20,
+  freeTicketTypes: ['General'],
 };
 
 const bruno = {
@@ -33,6 +48,7 @@ const bruno = {
   email: 'bruno@example.com',
   permissions: [],
   freeTicketLimit: null,
+  freeTicketTypes: [],
 };
 
 // El servidor responde la lista (una por cada carga) y las acciones.
@@ -45,6 +61,7 @@ function server({
 }) {
   let listCalls = 0;
   vi.mocked(apiFetch).mockImplementation(async (path, init) => {
+    if (path === '/events/organizer/e1') return Response.json(EVENT);
     if (path === PATH && !init?.method) {
       const list = lists[Math.min(listCalls, lists.length - 1)];
       listCalls += 1;
@@ -82,7 +99,7 @@ describe('CoOrganizers', () => {
     expect(anaRow).toHaveTextContent('ana@example.com');
     expect(anaRow).toHaveTextContent('Aceptó');
     expect(anaRow).toHaveTextContent(
-      'Escanear · Ver ventas · QR free (hasta 20)',
+      'Escanear · Ver ventas · QR free de General (hasta 20)',
     );
     const brunoRow = screen.getByRole('listitem', { name: 'Bruno Díaz' });
     expect(brunoRow).toHaveTextContent('Pendiente');
@@ -128,10 +145,64 @@ describe('CoOrganizers', () => {
     expect(JSON.parse(String(init?.body))).toEqual({
       permissions: ['EDIT_EVENT'],
       freeTicketLimit: null,
+      freeTicketTypes: [],
     });
     expect(toast.success).toHaveBeenCalledWith(
       'Guardamos los permisos de Ana Pérez',
     );
+  });
+
+  it('cambiar los tipos que puede regalar arranca con los que ya tiene tildados', async () => {
+    server({ lists: [[ana], [ana]] });
+    renderSection();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Editar permisos de Ana Pérez',
+      }),
+    );
+    const dialog = screen.getByRole('dialog');
+    expect(
+      await within(dialog).findByRole('checkbox', { name: 'General' }),
+    ).toBeChecked();
+    expect(
+      within(dialog).getByRole('checkbox', { name: 'VIP' }),
+    ).not.toBeChecked();
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'VIP' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    await waitFor(() => expect(listCalls()).toHaveLength(2));
+    const [, init] = vi
+      .mocked(apiFetch)
+      .mock.calls.find(([path]) => path === `${PATH}/s1`)!;
+    expect(JSON.parse(String(init?.body))).toEqual({
+      permissions: ['VIEW_SALES', 'SEND_FREE_TICKETS'],
+      freeTicketLimit: 20,
+      freeTicketTypes: ['General', 'VIP'],
+    });
+  });
+
+  it('con QR free y sin tipos tildados, avisa y no guarda', async () => {
+    server({ lists: [[ana]] });
+    renderSection();
+
+    fireEvent.click(
+      await screen.findByRole('button', {
+        name: 'Editar permisos de Ana Pérez',
+      }),
+    );
+    const dialog = screen.getByRole('dialog');
+    fireEvent.click(
+      await within(dialog).findByRole('checkbox', { name: 'General' }),
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
+
+    expect(toast.error).toHaveBeenCalledWith(
+      'Elegí al menos un tipo de entrada para los QR free',
+    );
+    expect(
+      vi.mocked(apiFetch).mock.calls.some(([path]) => path === `${PATH}/s1`),
+    ).toBe(false);
   });
 
   it('si el servidor rechaza el cambio, muestra el motivo y no cierra', async () => {
@@ -149,6 +220,7 @@ describe('CoOrganizers', () => {
         name: 'Editar permisos de Ana Pérez',
       }),
     );
+    await screen.findByRole('checkbox', { name: 'General' });
     fireEvent.click(screen.getByRole('button', { name: 'Guardar' }));
 
     await waitFor(() =>

@@ -1,5 +1,6 @@
 import { freeTicketLimitError, type EventPermission } from './co-organizers';
 import { getEventPhase } from './event-edit';
+import { freeTicketTypesError } from './free-tickets';
 import { promoterFreeTicketLimitError } from './promoter-free-tickets';
 
 export type InviteRole = 'SCANNER' | 'RPP' | 'CO_ORGANIZER';
@@ -37,13 +38,20 @@ export function validateInvitation(invite: {
   commissionType: CommissionType;
   commissionValue: string;
   freeTicketLimit?: string;
+  permissions?: EventPermission[];
   // La cantidad máxima de QR free de un RPP; null si no puede mandar.
   promoterFreeTicketLimit?: string | null;
+  // Los tipos que puede regalar, si puede mandar QR free.
+  freeTicketTypes?: string[];
 }): string | null {
   if (!invite.eventId) return 'Seleccioná un evento';
   if (invite.userCount === 0) return 'Seleccioná al menos un usuario';
+  const typesError = () => freeTicketTypesError(invite.freeTicketTypes ?? []);
   if (invite.role === 'CO_ORGANIZER') {
-    return freeTicketLimitError(invite.freeTicketLimit ?? '');
+    return (
+      freeTicketLimitError(invite.freeTicketLimit ?? '') ??
+      (invite.permissions?.includes('SEND_FREE_TICKETS') ? typesError() : null)
+    );
   }
   if (invite.role !== 'RPP') return null;
 
@@ -56,12 +64,14 @@ export function validateInvitation(invite: {
   }
   return invite.promoterFreeTicketLimit == null
     ? null
-    : promoterFreeTicketLimitError(invite.promoterFreeTicketLimit);
+    : (promoterFreeTicketLimitError(invite.promoterFreeTicketLimit) ??
+        typesError());
 }
 
 // Body de POST /events/:id/staff. En el backend el RPP es el rol PROMOTER y
 // el co-organizador, MANAGER. Los permisos son solo del co-organizador; el
-// tope de QR free, del co-organizador o del RPP al que el dueño se los dio.
+// tope y los tipos de QR free, del co-organizador o del RPP al que el dueño
+// se los dio.
 export function buildInvitationPayload(
   userId: string,
   role: InviteRole,
@@ -70,6 +80,7 @@ export function buildInvitationPayload(
   terms?: {
     permissions?: EventPermission[];
     freeTicketLimit: number | null;
+    freeTicketTypes?: string[];
   },
 ) {
   if (role === 'SCANNER') return { userId, role: 'SCANNER' };
@@ -80,7 +91,10 @@ export function buildInvitationPayload(
     role: 'PROMOTER',
     commissionType,
     commissionValue: Number(commissionValue),
-    ...(freeTicketLimit !== null && { freeTicketLimit }),
+    ...(freeTicketLimit !== null && {
+      freeTicketLimit,
+      freeTicketTypes: terms?.freeTicketTypes ?? [],
+    }),
   };
 }
 

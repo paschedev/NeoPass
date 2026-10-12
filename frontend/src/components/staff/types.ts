@@ -6,6 +6,8 @@ import type { PromoterFreeTickets } from '@/utils/promoter-free-tickets';
 export interface CoOrganizerTerms {
   permissions: EventPermission[];
   freeTicketLimit: number | null;
+  // Los tipos que puede (o va a poder) regalar como QR free.
+  freeTicketTypes: string[];
 }
 
 export type StaffRoleName = 'PROMOTER' | 'SCANNER' | 'MANAGER';

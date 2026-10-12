@@ -20,7 +20,7 @@ const LUCIA_TECHNO = {
   totalEarned: 130500,
   totalPaid: 60000,
   balance: 70500,
-  freeTickets: { limit: 10, sent: 4 },
+  freeTickets: { limit: 10, sent: 4, types: ['General'] },
 };
 
 export function organizerDemo(now: Date): StaffOverview {

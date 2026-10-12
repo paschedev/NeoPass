@@ -248,6 +248,7 @@ export default function RppEventDetailsPage() {
               freeTickets.event,
               freeTicketTypes.length,
               new Date(),
+              true,
             )}
             limit={freeTickets.limit}
           />
