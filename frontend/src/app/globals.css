@@ -12,6 +12,15 @@
       transform: translate(10%, 8%) scale(1.15);
     }
   }
+
+  /* El rebote corto de un botón que confirma algo (CopyLinkButton). */
+  --animate-pop: pop 300ms ease-out;
+
+  @keyframes pop {
+    50% {
+      transform: scale(1.06);
+    }
+  }
 }
 
 /* Colores de la marca: hoy, los mismos índigo y violeta de siempre. Cuando

@@ -2,13 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import {
-  BarChart3,
-  Calendar as CalendarIcon,
-  Link2,
-  MapPin,
-  X,
-} from 'lucide-react';
+import { BarChart3, Calendar as CalendarIcon, MapPin, X } from 'lucide-react';
 import {
   closedEventLabel,
   getEventPhase,
@@ -16,7 +10,8 @@ import {
 } from '@/utils/event-edit';
 import { eventStatusBadge } from '@/utils/event-status';
 import { formatCurrency, formatEventRange } from '@/utils/format';
-import { copyLink, eventLink } from '@/utils/share';
+import { eventLink } from '@/utils/share';
+import CopyLinkButton from '@/components/ui/CopyLinkButton';
 import type { OrganizerEvent } from './types';
 
 const ticketsSold = (event: OrganizerEvent) =>
@@ -135,16 +130,12 @@ export default function EventsTab({
 
                 <div className="grid grid-cols-2 md:flex md:items-center gap-3 mt-6 pt-6 border-t border-white/5">
                   {isEventPublic(event, new Date()) && (
-                    <button
-                      type="button"
-                      aria-label={`Copiar link de ${event.title}`}
-                      onClick={() =>
-                        copyLink(eventLink(window.location.origin, event.id))
-                      }
-                      className="col-span-2 flex-1 bg-white/5 hover:bg-white/10 text-white py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Link2 className="w-4 h-4" /> Copiar link
-                    </button>
+                    <CopyLinkButton
+                      link={() => eventLink(window.location.origin, event.id)}
+                      ariaLabel={`Copiar link de ${event.title}`}
+                      className="col-span-2 flex-1 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2"
+                      idleClassName="bg-white/5 hover:bg-white/10 text-white"
+                    />
                   )}
                   {getEventPhase(event, new Date()) === 'CLOSED' ? (
                     <span className="flex-1 text-center bg-white/5 text-neutral-500 py-2.5 rounded-xl text-sm font-medium">

@@ -187,18 +187,19 @@ describe('Métricas del RPP en un evento', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('"Copiar link" copia el link de venta del RPP y avisa que quedó copiado', async () => {
+  it('"Copiar link" copia el link de venta del RPP y el botón confirma que quedó copiado', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     withClipboard(writeText);
 
     fireEvent.click(await copyButton());
 
-    await waitFor(() =>
-      expect(writeText).toHaveBeenCalledWith(
-        `${window.location.origin}/eventos/e1?rpp=s1`,
-      ),
+    expect(
+      await screen.findByRole('button', { name: '¡Copiado!' }),
+    ).toBeInTheDocument();
+    expect(writeText).toHaveBeenCalledWith(
+      `${window.location.origin}/eventos/e1?rpp=s1`,
     );
-    expect(toast.success).toHaveBeenCalledWith('Link copiado');
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it('exportar la planilla descarga las ventas sin decir que ya se guardó', async () => {
@@ -247,14 +248,14 @@ describe('Métricas del RPP en un evento', () => {
     click.mockRestore();
   });
 
-  it('si el navegador no deja copiar, avisa que no se pudo en vez de decir "copiado"', async () => {
+  it('si el navegador no deja copiar, el botón avisa que no se pudo en vez de decir "copiado"', async () => {
     withClipboard(vi.fn().mockRejectedValue(new Error('NotAllowedError')));
 
     fireEvent.click(await copyButton());
 
-    await waitFor(() =>
-      expect(toast.error).toHaveBeenCalledWith('No se pudo copiar el link'),
-    );
-    expect(toast.success).not.toHaveBeenCalled();
+    expect(
+      await screen.findByRole('button', { name: 'No se pudo copiar' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('¡Copiado!')).not.toBeInTheDocument();
   });
 });

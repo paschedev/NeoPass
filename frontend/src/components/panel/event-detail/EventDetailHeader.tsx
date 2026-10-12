@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   Calendar,
   ExternalLink,
-  Link2,
   MapPin,
   Pencil,
   Trash2,
@@ -23,7 +22,8 @@ import {
 } from '@/utils/event-edit';
 import { formatEventRange } from '@/utils/format';
 import { eventStatusBadge } from '@/utils/event-status';
-import { copyLink, eventLink } from '@/utils/share';
+import { eventLink } from '@/utils/share';
+import CopyLinkButton from '@/components/ui/CopyLinkButton';
 
 // Encabezado del detalle: qué evento es, cuándo y dónde, y lo que puede hacer
 // con él quien está en sesión (el dueño o un co-organizador). Solo el dueño lo
@@ -113,15 +113,11 @@ export default function EventDetailHeader({
           )}
           {isPublic && (
             <>
-              <button
-                type="button"
-                onClick={() =>
-                  copyLink(eventLink(window.location.origin, event.id))
-                }
-                className="inline-flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors"
-              >
-                <Link2 className="w-4 h-4" /> Copiar link
-              </button>
+              <CopyLinkButton
+                link={() => eventLink(window.location.origin, event.id)}
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-medium"
+                idleClassName="bg-white/5 hover:bg-white/10 text-white"
+              />
               <Link
                 href={`/eventos/${event.id}`}
                 target="_blank"
