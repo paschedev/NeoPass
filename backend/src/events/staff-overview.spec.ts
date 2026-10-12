@@ -41,6 +41,7 @@ function member(
     totalPaid: new Prisma.Decimal(paid),
     permissions: [] as EventPermission[],
     freeTicketLimit: null,
+    freeTicketTypes: [] as string[],
     user: { name, email: `${userId}@neopass.test` },
     payments: [] as Payment[],
   };

@@ -23,9 +23,10 @@ type MyAssignment = {
   commissionValue: Prisma.Decimal | null;
   totalEarned: Prisma.Decimal;
   totalPaid: Prisma.Decimal;
-  // Only co-organizers (MANAGER) have them.
+  // Only co-organizers (MANAGER) and promoters with free tickets have them.
   permissions: EventPermission[];
   freeTicketLimit: number | null;
+  freeTicketTypes: string[];
   event: {
     id: string;
     title: string;
@@ -92,6 +93,7 @@ export function buildMyStaff(
           ? {
               permissions: coOrganizer.permissions,
               freeTicketLimit: coOrganizer.freeTicketLimit,
+              freeTicketTypes: coOrganizer.freeTicketTypes,
             }
           : null,
         promoter: promoter
@@ -128,6 +130,7 @@ export function buildMyStaff(
         commissionValue,
         permissions,
         freeTicketLimit,
+        freeTicketTypes,
         event,
       }) => ({
         id,
@@ -136,6 +139,7 @@ export function buildMyStaff(
         commissionValue: commissionValue?.toNumber() ?? null,
         permissions,
         freeTicketLimit,
+        freeTicketTypes,
         event: {
           id: event.id,
           title: event.title,

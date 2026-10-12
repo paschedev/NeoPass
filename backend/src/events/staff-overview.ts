@@ -20,6 +20,7 @@ type OverviewMember = {
   totalPaid: Prisma.Decimal;
   permissions: EventPermission[];
   freeTicketLimit: number | null;
+  freeTicketTypes: string[];
   user: { name: string; email: string };
   payments: { amount: Prisma.Decimal; note: string | null; createdAt: Date }[];
 };

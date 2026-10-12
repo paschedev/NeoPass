@@ -1,12 +1,14 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   HttpException,
   HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { getEventPhase } from '../events/event-phase';
+import { allowsFreeTicketType } from '../events/free-ticket-types';
 import {
   EventAccessService,
   FreeTicketsAccess,
@@ -62,6 +64,11 @@ export class FreeTicketsService {
     );
     if (!ticketType) {
       throw new NotFoundException('Tipo de entrada no encontrado');
+    }
+    if (access.types && !allowsFreeTicketType(access.types, ticketType.name)) {
+      throw new ForbiddenException(
+        `No podés mandar QR free de "${ticketType.name}"`,
+      );
     }
 
     const validUntil = dto.validUntil ? new Date(dto.validUntil) : null;

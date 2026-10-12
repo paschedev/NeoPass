@@ -1,19 +1,30 @@
 import { EventPermission } from '@prisma/client';
+import { freeTicketsUpTo } from './free-ticket-types';
 
 type PromoterTerms = {
   id: string;
   permissions: EventPermission[];
   freeTicketLimit: number | null;
+  freeTicketTypes: string[];
 };
 
-// A promoter sends free tickets only if the owner let them, and always with a
-// limit: what gets stored on their staff row (null = they can't).
-export function promoterFreeTicketTerms(freeTicketLimit: number | null) {
+// A promoter sends free tickets only if the owner let them, always with a
+// limit and of the types the owner chose: what gets stored on their staff row
+// (a null limit = they can't).
+export function promoterFreeTicketTerms(
+  freeTicketLimit: number | null,
+  freeTicketTypes: string[],
+) {
   return freeTicketLimit === null
-    ? { permissions: [] as EventPermission[], freeTicketLimit: null }
+    ? {
+        permissions: [] as EventPermission[],
+        freeTicketLimit: null,
+        freeTicketTypes: [],
+      }
     : {
         permissions: ['SEND_FREE_TICKETS'] as EventPermission[],
         freeTicketLimit,
+        freeTicketTypes,
       };
 }
 
@@ -23,7 +34,8 @@ export const coOrganizerSendsFreeTickets = (
   coOrganizer: { permissions: EventPermission[] } | null | undefined,
 ) => coOrganizer?.permissions.includes('SEND_FREE_TICKETS') ?? false;
 
-// Their quota and how much of it they used, or null if they can't send.
+// Their quota, how much of it they used and of which types, or null if they
+// can't send.
 export function promoterFreeTickets(
   promoter: PromoterTerms,
   sentByPromoter: Map<string, number>,
@@ -33,6 +45,7 @@ export function promoterFreeTickets(
     ? {
         limit: promoter.freeTicketLimit,
         sent: sentByPromoter.get(promoter.id) ?? 0,
+        types: promoter.freeTicketTypes,
       }
     : null;
 }
@@ -41,8 +54,9 @@ export function promoterFreeTickets(
 export function promoterFreeTicketsNotice(
   eventTitle: string,
   freeTicketLimit: number | null,
+  freeTicketTypes: string[],
 ) {
   return freeTicketLimit === null
     ? `Ya no podés mandar QR free en "${eventTitle}".`
-    : `Ahora podés mandar hasta ${freeTicketLimit} QR free en "${eventTitle}".`;
+    : `Ahora podés mandar ${freeTicketsUpTo(freeTicketLimit, freeTicketTypes)} en "${eventTitle}".`;
 }

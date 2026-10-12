@@ -436,6 +436,7 @@ export class EventsRepository {
             totalPaid: true,
             permissions: true,
             freeTicketLimit: true,
+            freeTicketTypes: true,
             user: { select: { name: true, email: true } },
             payments: PAYMENT_HISTORY,
           },
@@ -505,6 +506,7 @@ export class EventsRepository {
         totalPaid: true,
         permissions: true,
         freeTicketLimit: true,
+        freeTicketTypes: true,
         event: {
           select: {
             id: true,
@@ -546,7 +548,7 @@ export class EventsRepository {
     id: string,
     terms: Pick<
       Prisma.EventStaffUncheckedUpdateInput,
-      'permissions' | 'freeTicketLimit'
+      'permissions' | 'freeTicketLimit' | 'freeTicketTypes'
     >,
   ) {
     return this.prisma.eventStaff.update({ where: { id }, data: terms });
@@ -608,6 +610,17 @@ export class EventsRepository {
         ticketTypes: { select: { id: true, name: true } },
       },
     });
+  }
+
+  // The names of the event's ticket types, to choose which ones someone can
+  // send as free tickets.
+  async findTicketTypeNames(eventId: string) {
+    const types = await this.prisma.ticketType.findMany({
+      where: { eventId },
+      orderBy: { name: 'asc' },
+      select: { name: true },
+    });
+    return types.map((type) => type.name);
   }
 
   async getPromoterStatsForEvent(userId: string, eventId: string) {

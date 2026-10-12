@@ -406,10 +406,14 @@ model EventStaff {
   clicks          Int             @default(0)
   totalPaid       Decimal         @default(0) @db.Decimal(10, 2)
 
-  // Co-organizers (MANAGER) only.
+  // What a co-organizer (MANAGER) can do; a promoter only gets
+  // SEND_FREE_TICKETS.
   permissions     EventPermission[] @default([])
   // Most free tickets they can have sent (not cancelled); null = no limit.
   freeTicketLimit Int?
+  // The ticket type names they can send as free tickets, compared without
+  // case or extra spaces (one name covers every batch). The owner sends any.
+  freeTicketTypes String[]          @default([])
 
   event    Event             @relation(fields: [eventId], references: [id])
   user     User              @relation(fields: [userId], references: [id])

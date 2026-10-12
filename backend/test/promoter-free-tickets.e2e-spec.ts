@@ -9,7 +9,7 @@ import {
 import { createTestApp, TestApp } from './utils/test-app';
 import { resetDb } from './utils/test-database';
 
-type Quota = { limit: number; sent: number } | null;
+type Quota = { limit: number; sent: number; types: string[] } | null;
 type OverviewBody = {
   events: { id: string; promoters: { id: string; freeTickets: Quota }[] }[];
 };
@@ -64,6 +64,7 @@ describe('QR free de los RPPs', () => {
       .set('Authorization', auth(user));
   }
 
+  // De entradas General salvo que el cuerpo diga otra cosa.
   function setQuota(
     user: User,
     eventId: string,
@@ -73,7 +74,7 @@ describe('QR free de los RPPs', () => {
     return http()
       .put(`/events/organizer/${eventId}/promoters/${staffId}/free-tickets`)
       .set('Authorization', auth(user))
-      .send(body);
+      .send({ freeTicketTypes: ['General'], ...body });
   }
 
   function send(
@@ -100,11 +101,15 @@ describe('QR free de los RPPs', () => {
       .set('Authorization', auth(user));
   }
 
+  // Con tope, de entradas General (la única del evento de prueba).
   const rppTerms = (freeTicketLimit?: number | null) => ({
     role: 'PROMOTER',
     commissionType: 'PERCENTAGE',
     commissionValue: 10,
     ...(freeTicketLimit !== undefined && { freeTicketLimit }),
+    ...(typeof freeTicketLimit === 'number' && {
+      freeTicketTypes: ['General'],
+    }),
   });
 
   // Evento con un RPP que aceptó la invitación, con o sin QR free.
@@ -131,6 +136,7 @@ describe('QR free de los RPPs', () => {
       userId: member.id,
       role: 'MANAGER',
       permissions,
+      freeTicketTypes: ['General'],
     }).expect(201);
     await accept(member, (invited.body as { id: string }).id).expect(200);
     return member;
@@ -372,7 +378,7 @@ describe('QR free de los RPPs', () => {
         orderBy: { createdAt: 'asc' },
       });
       expect(notices.map((notice) => notice.message)).toEqual([
-        `Ahora podés mandar hasta 8 QR free en "${s.event.title}".`,
+        `Ahora podés mandar hasta 8 QR free de General en "${s.event.title}".`,
         `Ya no podés mandar QR free en "${s.event.title}".`,
       ]);
       expect(notices[0].actionUrl).toBe(`/panel/rpp/${s.event.id}`);
@@ -452,6 +458,7 @@ describe('QR free de los RPPs', () => {
       expect(promoters.find((p) => p.id === s.staffId)?.freeTickets).toEqual({
         limit: 5,
         sent: 3,
+        types: ['General'],
       });
       expect(
         promoters.find((p) => p.id === (otherInvite.body as { id: string }).id)
@@ -467,10 +474,11 @@ describe('QR free de los RPPs', () => {
       expect(mine.events[0].promoter?.freeTickets).toEqual({
         limit: 5,
         sent: 3,
+        types: ['General'],
       });
     });
 
-    it('en sus métricas, el RPP con QR free ve su tope, las fechas del evento y los tipos de entrada de todas las tandas', async () => {
+    it('en sus métricas, el RPP con QR free ve su tope, las fechas del evento y sus tipos de entrada en todas las tandas', async () => {
       const s = await promoterScenario(5);
       const hidden = await createBatch(t.prisma, {
         eventId: s.event.id,
