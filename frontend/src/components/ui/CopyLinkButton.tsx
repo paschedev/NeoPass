@@ -8,18 +8,23 @@ type CopyState = 'idle' | 'copied' | 'failed';
 
 const FEEDBACK_MS = 2000;
 
+// Lo que muestra el botón en cada momento. Los textos tienen largos parecidos
+// y van superpuestos: el botón guarda el lugar del más largo y no cambia de
+// tamaño (ni mueve a los botones de al lado) al confirmar.
+const LABELS: { state: CopyState; Icon: typeof Link2; text: string }[] = [
+  { state: 'idle', Icon: Link2, text: 'Copiar link' },
+  { state: 'copied', Icon: Check, text: '¡Copiado!' },
+  { state: 'failed', Icon: X, text: 'No se copió' },
+];
+
 // Cómo se ve el botón después de tocarlo, y lo que escucha un lector de
 // pantalla. El rebote solo corre si el teléfono no pide menos movimiento.
 const RESULT = {
   copied: {
-    Icon: Check,
-    label: '¡Copiado!',
     announcement: 'Link copiado',
     className: 'bg-emerald-600 hover:bg-emerald-600 text-white',
   },
   failed: {
-    Icon: X,
-    label: 'No se pudo copiar',
     announcement: 'No se pudo copiar el link',
     className: 'bg-red-600 hover:bg-red-600 text-white',
   },
@@ -58,7 +63,6 @@ export default function CopyLinkButton({
   };
 
   const result = state === 'idle' ? null : RESULT[state];
-  const Icon = result?.Icon ?? Link2;
 
   return (
     <>
@@ -69,7 +73,19 @@ export default function CopyLinkButton({
         aria-label={result ? undefined : ariaLabel}
         className={`${className} transition-colors ${result ? `${result.className} motion-safe:animate-pop` : idleClassName}`}
       >
-        <Icon className="w-4 h-4" /> {result?.label ?? 'Copiar link'}
+        <span className="grid">
+          {LABELS.map(({ state: labelState, Icon, text }) => (
+            <span
+              key={labelState}
+              data-label
+              aria-hidden={labelState === state ? undefined : true}
+              className={`col-start-1 row-start-1 inline-flex items-center justify-center gap-2 ${labelState === state ? '' : 'invisible'}`}
+            >
+              <Icon className="w-4 h-4" />
+              {text}
+            </span>
+          ))}
+        </span>
       </button>
       <span role="status" className="sr-only">
         {result?.announcement}
