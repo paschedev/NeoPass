@@ -4,9 +4,10 @@ import { fetchEventMetadata } from './event-metadata';
 
 const EVENT_ID = '3f1c2b6e-8a4d-4c1e-9b7a-2d5e6f708192';
 
+// Con los nombres de campo de GET /events/:id.
 const event = {
   id: EVENT_ID,
-  name: 'Noche de Techno',
+  title: 'Noche de Techno',
   imageUrl:
     'https://res.cloudinary.com/neopass/image/upload/v1760000000/flyers/noche.jpg',
   // Sábado 14 de noviembre a las 23:00 en Argentina (domingo 02:00 en UTC).
