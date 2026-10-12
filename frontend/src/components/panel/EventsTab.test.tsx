@@ -124,10 +124,11 @@ describe('EventsTab', () => {
       }),
     );
 
-    await waitFor(() =>
-      expect(writeText).toHaveBeenCalledWith(
-        `${window.location.origin}/eventos/event-1`,
-      ),
+    expect(
+      await screen.findByRole('button', { name: '¡Copiado!' }),
+    ).toBeInTheDocument();
+    expect(writeText).toHaveBeenCalledWith(
+      `${window.location.origin}/eventos/event-1`,
     );
   });
 

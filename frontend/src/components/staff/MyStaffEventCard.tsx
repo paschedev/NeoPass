@@ -6,7 +6,6 @@ import {
   BarChart3,
   Check,
   Gift,
-  Link2,
   MapPin,
   Navigation,
   ScanLine,
@@ -18,9 +17,9 @@ import { formatCurrency, formatEventRange } from '@/utils/format';
 import { getDirectionsUrl, hasMapLocation } from '@/utils/maps';
 import { rppLink } from '@/utils/my-staff';
 import { ownFreeTicketsLabel } from '@/utils/promoter-free-tickets';
-import { copyLink } from '@/utils/share';
 import { commissionLabel, eventPhaseLabel } from '@/utils/staff-overview';
 import { ownRoleLabel } from '@/utils/staff-roles';
+import CopyLinkButton from '@/components/ui/CopyLinkButton';
 import type { MyPromoterRole, MyStaffEvent } from './types';
 
 const PHASE_STYLES: Record<EventPhase, string> = {
@@ -121,17 +120,13 @@ function PromoterRole({
             <BarChart3 className="w-4 h-4" /> Ver mis ventas
           </Link>
           {event.phase !== 'CLOSED' && (
-            <button
-              type="button"
-              onClick={() =>
-                copyLink(
-                  rppLink(window.location.origin, event.id, promoter.staffId),
-                )
+            <CopyLinkButton
+              link={() =>
+                rppLink(window.location.origin, event.id, promoter.staffId)
               }
-              className={`${ACTION} bg-indigo-600 hover:bg-indigo-500 text-white`}
-            >
-              <Link2 className="w-4 h-4" /> Copiar link
-            </button>
+              className={ACTION}
+              idleClassName="bg-indigo-600 hover:bg-indigo-500 text-white"
+            />
           )}
         </div>
       </div>
