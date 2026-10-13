@@ -18,8 +18,7 @@ import { NoticeLink } from '@/components/notifications/NoticeLink';
 import Avatar from '@/components/account/Avatar';
 import Wordmark from '@/components/Wordmark';
 import { noticeTime, pendingInvitationStaffId } from '@/utils/notifications';
-
-const SUPPORT_EMAIL = 'soporte@neopass.ar';
+import { SUPPORT_EMAIL } from '@/utils/support';
 
 export default function Navbar() {
   const { user, logout } = useCurrentUser();

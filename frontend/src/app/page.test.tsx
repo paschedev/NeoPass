@@ -89,12 +89,10 @@ describe('Landing', () => {
     expect(within(demo).getByRole('tablist')).toBeInTheDocument();
   });
 
-  it('ya no muestra la etiqueta «La nueva era de los eventos»', () => {
+  it('arriba del título muestra la etiqueta «La nueva era de los eventos»', () => {
     render(<Home />);
 
-    expect(
-      screen.queryByText(/La nueva era de los eventos/),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText('La nueva era de los eventos')).toBeInTheDocument();
   });
 
   it('no promete lo que la app no hace: QR dinámico, alta demanda sin caídas ni el fin de la reventa', () => {
