@@ -3,13 +3,37 @@
 @theme {
   --font-inter: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-outfit: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+}
 
+/* Animaciones. Van inline para que cada elemento pueda retrasar la suya con
+   [--delay:…]: un [animation-delay:…] suelto lo pisa el shorthand. */
+@theme inline {
   /* El resplandor del fondo de la landing, que se mueve lento. */
-  --animate-drift: drift 24s ease-in-out infinite alternate;
+  --animate-drift: drift 24s ease-in-out var(--delay, 0s) infinite alternate;
 
   @keyframes drift {
     to {
       transform: translate(10%, 8%) scale(1.15);
+    }
+  }
+
+  /* La entrada del hero al cargar la página: sube y aparece. */
+  --animate-fade-up: fade-up 700ms cubic-bezier(0.16, 1, 0.3, 1)
+    var(--delay, 0s) both;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      translate: 0 1rem;
+    }
+  }
+
+  /* La flecha del pie del hero, que invita a bajar. */
+  --animate-nudge: nudge 2s ease-in-out infinite;
+
+  @keyframes nudge {
+    50% {
+      transform: translateY(0.375rem);
     }
   }
 
@@ -35,23 +59,54 @@
   --color-brand-accent: var(--color-purple-500);
 }
 
-/* Las secciones de la landing aparecen al entrar en pantalla. Solo CSS: en
-   los navegadores sin animaciones por scroll se ven directo, y con "reducir
-   movimiento" no se anima nada. */
+/* La landing se mueve al bajar, atada al scroll. Solo CSS: en los
+   navegadores sin animaciones por scroll se ve todo quieto, y con "reducir
+   movimiento" no se anima nada.
+   - .reveal: aparece con un fundido al entrar por abajo y se desvanece al
+     salir por arriba (al subir, al revés). Para bloques más bajos que la
+     pantalla: títulos y tarjetas.
+   - .reveal-in: solo la entrada, para bloques altos que se leen mientras
+     salen (la vitrina).
+   - .reveal-out: solo la salida, para el contenido del hero. */
 @media (prefers-reduced-motion: no-preference) {
   @supports (animation-timeline: view()) {
+    /* La salida no rellena hacia atrás: antes de empezar no toca nada y la
+       entrada manda sola. */
     .reveal {
-      animation: reveal linear both;
+      animation:
+        reveal-in linear both,
+        reveal-out linear forwards;
       animation-timeline: view();
-      animation-range: entry 0% entry 35%;
+      animation-range:
+        entry,
+        exit 30% exit 100%;
+    }
+
+    .reveal-in {
+      animation: reveal-in linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 20rem;
+    }
+
+    .reveal-out {
+      animation: reveal-out linear both;
+      animation-timeline: view();
+      animation-range: exit;
     }
   }
 }
 
-@keyframes reveal {
+@keyframes reveal-in {
   from {
     opacity: 0;
-    translate: 0 1.5rem;
+    translate: 0 2rem;
+  }
+}
+
+@keyframes reveal-out {
+  to {
+    opacity: 0;
+    translate: 0 -1rem;
   }
 }
 
