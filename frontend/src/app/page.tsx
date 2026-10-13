@@ -10,9 +10,9 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
-import Wordmark from '@/components/Wordmark';
 import HeroBadge from '@/components/landing/HeroBadge';
 import LandingDemo from '@/components/landing/LandingDemo';
+import LandingFooter from '@/components/landing/LandingFooter';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { getHomePath } from '@/utils/navigation';
 import { isOrganizer } from '@/utils/roles';
@@ -120,7 +120,7 @@ export default function Home() {
     <div className="flex flex-col min-h-screen">
       <div className="flex-1">
         {/* Hero: en PC ocupa justo la pantalla, como en celular. */}
-        <section className="relative pt-24 pb-32 overflow-hidden md:min-h-svh md:flex md:flex-col md:justify-center md:py-16">
+        <section className="relative pt-24 pb-32 overflow-clip md:min-h-svh md:flex md:flex-col md:justify-center md:py-16">
           <div
             aria-hidden="true"
             className="absolute inset-0 pointer-events-none"
@@ -258,7 +258,7 @@ export default function Home() {
           <div className="container mx-auto px-4">
             <h2
               id="como-funciona"
-              className="reveal font-outfit text-3xl md:text-4xl font-bold text-center mb-16"
+              className="reveal scroll-mt-24 font-outfit text-3xl md:text-4xl font-bold text-center mb-16"
             >
               Cómo funciona
             </h2>
@@ -321,15 +321,7 @@ export default function Home() {
         </section>
       </div>
 
-      {/* Footer */}
-      <footer className="bg-black py-12 border-t border-white/10">
-        <div className="container mx-auto px-4 flex flex-col items-center gap-3 text-center text-neutral-500">
-          <Wordmark className="text-2xl text-white" />
-          <p>
-            © {new Date().getFullYear()} NeoPass. Todos los derechos reservados.
-          </p>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   );
 }
