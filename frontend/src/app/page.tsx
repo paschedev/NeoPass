@@ -120,7 +120,7 @@ export default function Home() {
     <div className="flex flex-col min-h-screen">
       <div className="flex-1">
         {/* Hero: en PC ocupa justo la pantalla, como en celular. */}
-        <section className="relative pt-24 pb-32 overflow-hidden md:min-h-svh md:flex md:flex-col md:justify-center md:py-16">
+        <section className="relative pt-24 pb-32 overflow-clip md:min-h-svh md:flex md:flex-col md:justify-center md:py-16">
           <div
             aria-hidden="true"
             className="absolute inset-0 pointer-events-none"

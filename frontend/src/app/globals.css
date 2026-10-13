@@ -67,15 +67,19 @@
      pantalla: títulos y tarjetas.
    - .reveal-in: solo la entrada, para bloques altos que se leen mientras
      salen (la vitrina).
-   - .reveal-out: solo la salida, para el contenido del hero. */
+   - .reveal-out: solo la salida, para el contenido del hero.
+   Van sin el shorthand animation: con dos animaciones, el build lo compila
+   con duración 0s y saltan de golpe en vez de acompañar el scroll. La
+   duración queda en auto, que reparte el rango. Ningún ancestro puede tener
+   overflow hidden: view() tomaría ese elemento como el que scrollea. */
 @media (prefers-reduced-motion: no-preference) {
   @supports (animation-timeline: view()) {
     /* La salida no rellena hacia atrás: antes de empezar no toca nada y la
        entrada manda sola. */
     .reveal {
-      animation:
-        reveal-in linear both,
-        reveal-out linear forwards;
+      animation-name: reveal-in, reveal-out;
+      animation-timing-function: linear;
+      animation-fill-mode: both, forwards;
       animation-timeline: view();
       animation-range:
         entry,
@@ -83,13 +87,17 @@
     }
 
     .reveal-in {
-      animation: reveal-in linear both;
+      animation-name: reveal-in;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
       animation-timeline: view();
       animation-range: entry 0% entry 20rem;
     }
 
     .reveal-out {
-      animation: reveal-out linear both;
+      animation-name: reveal-out;
+      animation-timing-function: linear;
+      animation-fill-mode: both;
       animation-timeline: view();
       animation-range: exit;
     }
