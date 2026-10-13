@@ -10,6 +10,28 @@ import { SUPPORT_EMAIL } from '@/utils/support';
 const TITLE = 'text-sm font-semibold text-white mb-4';
 const LINK = 'text-neutral-300 hover:text-white transition-colors';
 
+const INSTAGRAM_URL = 'https://www.instagram.com/neopass.ar/';
+
+// lucide-react ya no trae logos de marcas: este sigue su trazo.
+function InstagramIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="w-5 h-5"
+    >
+      <rect x="2" y="2" width="20" height="20" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+    </svg>
+  );
+}
+
 // El cierre de la landing: una foto a todo el ancho con el borde de arriba en
 // diagonal y, encima, los accesos y el contacto. En PC la foto queda fija
 // mientras la página pasa por encima (el clip-path del pie la recorta); en
@@ -34,8 +56,18 @@ export default function LandingFooter() {
 
       <div className="container mx-auto px-4 pt-40 md:pt-64 pb-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
-          <div className="col-span-2 md:col-span-1">
+          <div className="col-span-2 md:col-span-1 flex flex-col items-start">
             <Wordmark className="text-3xl text-white" />
+            <a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="NeoPass en Instagram"
+              className={`mt-4 inline-flex items-center gap-2 ${LINK}`}
+            >
+              <InstagramIcon />
+              @neopass.ar
+            </a>
           </div>
 
           <nav aria-labelledby="pie-eventos">
