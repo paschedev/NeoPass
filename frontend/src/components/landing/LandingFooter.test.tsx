@@ -70,6 +70,20 @@ describe('Pie de la landing', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('lleva al Instagram de NeoPass en otra pestaña', () => {
+    const footer = renderFooter();
+
+    const instagram = footer.getByRole('link', {
+      name: 'NeoPass en Instagram',
+    });
+    expect(instagram).toHaveAttribute(
+      'href',
+      'https://www.instagram.com/neopass.ar/',
+    );
+    expect(instagram).toHaveAttribute('target', '_blank');
+    expect(instagram).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
   it('tiene el correo de soporte', () => {
     const footer = renderFooter();
 
