@@ -1,9 +1,16 @@
 'use client';
 
-import { useId, useMemo, useState, useSyncExternalStore } from 'react';
+import {
+  useId,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from 'react';
 import StaffEventGroup from '@/components/panel/staff/StaffEventGroup';
 import StaffSummary from '@/components/panel/staff/StaffSummary';
 import { MyStaffEventsView } from '@/components/staff/MyStaffEvents';
+import MyStaffEventCard from '@/components/staff/MyStaffEventCard';
 import { organizerDemo, promoterDemo } from '@/utils/landing-demo';
 
 type Tab = 'organizer' | 'promoter';
@@ -26,16 +33,70 @@ function useIsClient() {
   );
 }
 
+// Lo que sigue al primer evento: cortado y desvanecido, para que se note que
+// hay más sin tapar nada útil. No suma a su alto (contain: size) y crece
+// hasta igualar a la otra pestaña, así cambiar de pestaña no mueve la página.
+function Teaser({ children }: { children: ReactNode }) {
+  return (
+    <div
+      aria-hidden="true"
+      className="flex-1 min-h-36 overflow-hidden [contain:size] [mask-image:linear-gradient(to_bottom,#000_calc(100%_-_9rem),transparent)]"
+    >
+      <div className="space-y-6">{children}</div>
+    </div>
+  );
+}
+
 // Vitrina de la landing: los paneles reales con datos inventados, sin
 // llamadas a la API. El panel es inert: se mira, no se toca.
 export default function LandingDemo() {
   const id = useId();
   const [tab, setTab] = useState<Tab>('organizer');
   const isClient = useIsClient();
-  const demo = useMemo(() => {
+  const panels = useMemo((): Record<Tab, ReactNode> | null => {
     if (!isClient) return null;
     const now = new Date();
-    return { organizer: organizerDemo(now), promoter: promoterDemo(now) };
+    const organizer = organizerDemo(now);
+    const promoter = promoterDemo(now);
+    const [firstGroup, ...nextGroups] = organizer.events;
+    const [firstEvent, ...nextEvents] = promoter.events;
+    return {
+      organizer: (
+        <>
+          <StaffSummary totals={organizer.totals} />
+          <StaffEventGroup
+            event={firstGroup}
+            onInvite={noop}
+            onPay={noop}
+            onEditFreeTickets={noop}
+          />
+          <Teaser>
+            {nextGroups.map((event) => (
+              <StaffEventGroup
+                key={event.id}
+                event={event}
+                onInvite={noop}
+                onPay={noop}
+                onEditFreeTickets={noop}
+              />
+            ))}
+          </Teaser>
+        </>
+      ),
+      promoter: (
+        <>
+          <MyStaffEventsView
+            data={{ ...promoter, events: [firstEvent] }}
+            onReload={noop}
+          />
+          <Teaser>
+            {nextEvents.map((event) => (
+              <MyStaffEventCard key={event.id} event={event} />
+            ))}
+          </Teaser>
+        </>
+      ),
+    };
   }, [isClient]);
 
   return (
@@ -65,34 +126,26 @@ export default function LandingDemo() {
         ))}
       </div>
 
-      <div
-        role="tabpanel"
-        id={`${id}-${tab}-panel`}
-        aria-labelledby={`${id}-${tab}-tab`}
-        inert
-        className="relative max-w-5xl mx-auto max-h-[40rem] overflow-hidden"
-      >
-        {demo && (
-          <div className="space-y-6">
-            {tab === 'organizer' ? (
-              <>
-                <StaffSummary totals={demo.organizer.totals} />
-                {demo.organizer.events.map((event) => (
-                  <StaffEventGroup
-                    key={event.id}
-                    event={event}
-                    onInvite={noop}
-                    onPay={noop}
-                    onEditFreeTickets={noop}
-                  />
-                ))}
-              </>
-            ) : (
-              <MyStaffEventsView data={demo.promoter} onReload={noop} />
-            )}
-          </div>
-        )}
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-neutral-950 to-transparent" />
+      {/* Las dos pestañas ocupan la misma celda: mide lo que la más alta. */}
+      <div className="grid max-w-5xl mx-auto">
+        {TABS.map(([value]) => {
+          const active = tab === value;
+          return (
+            <div
+              key={value}
+              role="tabpanel"
+              id={`${id}-${value}-panel`}
+              aria-labelledby={`${id}-${value}-tab`}
+              aria-hidden={active ? undefined : true}
+              inert
+              className={`[grid-area:1/1] flex flex-col gap-6 ${
+                active ? '' : 'invisible'
+              }`}
+            >
+              {panels?.[value]}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
