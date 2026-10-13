@@ -26,10 +26,13 @@ const adminEvent = (overrides = {}) => ({
   startDate: at(24),
   endDate: at(30),
   deletedAt: null,
+  deletedByNeoPass: null,
   neoPassFeePercentage: '15',
   organizer: { name: 'Productora Sur', email: 'sur@neopass.test' },
+  sales: { sold: 0, capacity: 100, revenue: 0, serviceFee: 0 },
   ...overrides,
 });
+const deleted = { deletedAt: at(-1), deletedByNeoPass: true };
 
 const eventsPage = (items: object[], overrides = {}) => ({
   items,
@@ -211,6 +214,226 @@ describe('Panel ADMIN: eventos', () => {
       ),
     );
     expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it('muestra las entradas vendidas sobre el total, lo recaudado y el cargo cobrado', async () => {
+    server(
+      eventsPage([
+        adminEvent({
+          sales: {
+            sold: 120,
+            capacity: 300,
+            revenue: 1200000,
+            serviceFee: 96000,
+          },
+        }),
+      ]),
+    );
+
+    render(<AdminEvents />);
+
+    const card = await eventCard('Fiesta de primavera');
+    expect(card).toHaveTextContent('120 de 300 vendidas');
+    expect(card).toHaveTextContent('Recaudado $1.200.000');
+    expect(card).toHaveTextContent('Cargo cobrado $96.000');
+  });
+
+  it.each([
+    ['NeoPass', true, 'por NeoPass'],
+    ['su organizador', false, 'por el organizador'],
+  ])(
+    'un evento que eliminó %s dice cuándo y quién',
+    async (_, deletedByNeoPass, who) => {
+      server(
+        eventsPage([
+          adminEvent({ deletedAt: '2026-10-12T17:05:00.000Z', deletedByNeoPass }),
+        ]),
+      );
+
+      render(<AdminEvents />);
+
+      expect(await eventCard('Fiesta de primavera')).toHaveTextContent(
+        `Eliminado el 12 oct, 14:05 ${who}`,
+      );
+    },
+  );
+
+  it('un evento vigente se puede dar de baja y uno eliminado se puede restaurar', async () => {
+    server(
+      eventsPage([
+        adminEvent(),
+        adminEvent({ id: 'e2', title: 'Noche de techno', ...deleted }),
+      ]),
+    );
+
+    render(<AdminEvents />);
+
+    const live = await eventCard('Fiesta de primavera');
+    expect(
+      within(live).getByRole('button', {
+        name: 'Dar de baja Fiesta de primavera',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(live).queryByRole('button', { name: /restaurar/i }),
+    ).not.toBeInTheDocument();
+    const gone = await eventCard('Noche de techno');
+    expect(
+      within(gone).getByRole('button', { name: 'Restaurar Noche de techno' }),
+    ).toBeInTheDocument();
+    expect(
+      within(gone).queryByRole('button', { name: /dar de baja/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('ofrece ver la página pública solo de un evento publicado que no terminó', async () => {
+    server(
+      eventsPage([
+        adminEvent(),
+        adminEvent({ id: 'e2', title: 'Noche de techno', status: 'FINISHED' }),
+        adminEvent({ id: 'e3', title: 'Fiesta de otoño', ...deleted }),
+      ]),
+    );
+
+    render(<AdminEvents />);
+
+    expect(
+      within(await eventCard('Fiesta de primavera')).getByRole('link', {
+        name: 'Ver página pública',
+      }),
+    ).toHaveAttribute('href', '/eventos/e1');
+    for (const title of ['Noche de techno', 'Fiesta de otoño']) {
+      expect(
+        within(await eventCard(title)).queryByRole('link', {
+          name: 'Ver página pública',
+        }),
+      ).not.toBeInTheDocument();
+    }
+  });
+
+  it('dar de baja usa el aviso de la página pública y la tarjeta pasa a eliminada', async () => {
+    server(eventsPage([adminEvent()]));
+    render(<AdminEvents />);
+    fireEvent.click(
+      within(await eventCard('Fiesta de primavera')).getByRole('button', {
+        name: 'Dar de baja Fiesta de primavera',
+      }),
+    );
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'Dar de baja «Fiesta de primavera»',
+    });
+    fireEvent.change(
+      within(dialog).getByLabelText(/Escribí el nombre del evento/),
+      { target: { value: 'Fiesta de primavera' } },
+    );
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Dar de baja' }));
+
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith('Evento dado de baja'),
+    );
+    expect(apiFetch).toHaveBeenCalledWith('/events/e1', {
+      method: 'DELETE',
+      body: JSON.stringify({}),
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const card = await eventCard('Fiesta de primavera');
+    expect(card).toHaveTextContent('ELIMINADO');
+    expect(card).toHaveTextContent('por NeoPass');
+    expect(
+      within(card).getByRole('button', {
+        name: 'Restaurar Fiesta de primavera',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('restaurar explica qué pasa, pide confirmación y la tarjeta vuelve a como estaba', async () => {
+    server(
+      eventsPage([adminEvent({ deletedAt: at(-1), deletedByNeoPass: false })]),
+      Response.json({ id: 'e1', deletedAt: null }),
+    );
+    render(<AdminEvents />);
+    fireEvent.click(
+      within(await eventCard('Fiesta de primavera')).getByRole('button', {
+        name: 'Restaurar Fiesta de primavera',
+      }),
+    );
+
+    const dialog = screen.getByRole('dialog', {
+      name: 'Restaurar «Fiesta de primavera»',
+    });
+    expect(dialog).toHaveTextContent(
+      'Vuelve a la vista pública y se pueden comprar entradas.',
+    );
+    expect(dialog).toHaveTextContent(
+      'Sus entradas vuelven a servir para entrar y avisamos a quienes las tienen.',
+    );
+    expect(dialog).toHaveTextContent('Avisamos al organizador.');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Restaurar' }));
+
+    await waitFor(() =>
+      expect(toast.success).toHaveBeenCalledWith('Evento restaurado'),
+    );
+    expect(apiFetch).toHaveBeenCalledWith('/admin/events/e1/restore', {
+      method: 'PATCH',
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    const card = await eventCard('Fiesta de primavera');
+    expect(card).not.toHaveTextContent('ELIMINADO');
+    expect(card).not.toHaveTextContent('Eliminado el');
+    expect(
+      within(card).getByRole('button', {
+        name: 'Dar de baja Fiesta de primavera',
+      }),
+    ).toBeInTheDocument();
+  });
+
+  it('restaurar un evento que ya no vende avisa que vuelve a su historial', async () => {
+    server(
+      eventsPage([
+        adminEvent({ startDate: at(-30), endDate: at(-24), ...deleted }),
+      ]),
+    );
+    render(<AdminEvents />);
+    fireEvent.click(
+      within(await eventCard('Fiesta de primavera')).getByRole('button', {
+        name: 'Restaurar Fiesta de primavera',
+      }),
+    );
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent(
+      'Ya no vende entradas: vuelve a su historial.',
+    );
+    expect(dialog).not.toHaveTextContent('se pueden comprar entradas');
+    expect(dialog).toHaveTextContent('Avisamos al organizador.');
+  });
+
+  it('si el servidor no lo restaura, muestra su motivo', async () => {
+    server(
+      eventsPage([adminEvent(deleted)]),
+      Response.json(
+        { message: 'El evento no está eliminado.' },
+        { status: 409 },
+      ),
+    );
+    render(<AdminEvents />);
+    fireEvent.click(
+      within(await eventCard('Fiesta de primavera')).getByRole('button', {
+        name: 'Restaurar Fiesta de primavera',
+      }),
+    );
+    fireEvent.click(
+      within(screen.getByRole('dialog')).getByRole('button', {
+        name: 'Restaurar',
+      }),
+    );
+
+    await waitFor(() =>
+      expect(toast.error).toHaveBeenCalledWith('El evento no está eliminado.'),
+    );
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
   it('si la lista no carga, ofrece reintentar', async () => {

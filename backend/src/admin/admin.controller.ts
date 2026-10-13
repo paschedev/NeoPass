@@ -7,6 +7,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -31,7 +32,16 @@ export class AdminController {
   updateServiceFee(
     @Param('id', ParseIdPipe) id: string,
     @Body() body: UpdateServiceFeeDto,
+    @CurrentUser('userId') adminId: string,
   ) {
-    return this.adminService.updateServiceFee(id, body.percentage);
+    return this.adminService.updateServiceFee(id, body.percentage, adminId);
+  }
+
+  @Patch('events/:id/restore')
+  restoreEvent(
+    @Param('id', ParseIdPipe) id: string,
+    @CurrentUser('userId') adminId: string,
+  ) {
+    return this.adminService.restoreEvent(id, adminId);
   }
 }

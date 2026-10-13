@@ -128,4 +128,15 @@ describe('DeleteEventModal', () => {
       }),
     );
   });
+
+  it('como ADMIN avisa que se puede restaurar desde Administración', () => {
+    renderModal(null);
+
+    expect(
+      screen.getByText(
+        'Si fue un error, lo podés restaurar desde Administración.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/No se puede deshacer/)).not.toBeInTheDocument();
+  });
 });
