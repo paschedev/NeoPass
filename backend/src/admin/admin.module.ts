@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
+import { NotificationsModule } from '../notifications/notifications.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { AdminRepository } from './repositories/admin.repository';
 
 @Module({
+  imports: [NotificationsModule],
   controllers: [AdminController],
   providers: [AdminService, AdminRepository],
 })
