@@ -117,6 +117,34 @@ export class NotificationsService {
     });
   }
 
+  // NeoPass brought a deleted event back. Those told their tickets no longer
+  // worked hear they work again, unless the event can't be attended anymore;
+  // its organizer always hears about it.
+  async notifyEventRestored(
+    event: { id: string; title: string; organizerId: string },
+    actorId: string,
+    ticketsWorkAgain: boolean,
+  ) {
+    if (ticketsWorkAgain) {
+      await this.notificationsRepository.notifyTicketHolders({
+        eventId: event.id,
+        actorId,
+        title: `Volvió ${event.title}`,
+        message:
+          'Tu entrada vuelve a servir para entrar. La tenés en Mis entradas.',
+      });
+    }
+    await this.notificationsRepository.create({
+      userId: event.organizerId,
+      type: 'EVENT_UPDATE',
+      title: `NeoPass restauró ${event.title}`,
+      message:
+        'Tu evento volvió a estar como antes de que lo eliminaran. Si todavía no terminó, se pueden comprar entradas de nuevo.',
+      eventId: event.id,
+      actionUrl: `/panel/eventos/${event.id}`,
+    });
+  }
+
   async findFeed(
     userId: string,
     { cursor, limit, onlyRequests }: ListNotificationsQueryDto,

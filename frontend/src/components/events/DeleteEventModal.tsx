@@ -118,7 +118,7 @@ export default function DeleteEventModal({
                 Quien compró ve el aviso «NeoPass dio de baja este evento» con el
                 email del organizador para consultas o devoluciones.
               </li>
-              <li>No se puede deshacer desde la app.</li>
+              <li>Si fue un error, lo podés restaurar desde Administración.</li>
             </>
           )}
         </ul>

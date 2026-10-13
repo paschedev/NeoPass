@@ -1,7 +1,11 @@
 import request from 'supertest';
 import { mercadoPagoMock } from './mocks/mercadopago';
 import { authHeader } from './utils/auth';
-import { createOrganizerWithEvent, createUser } from './utils/factories';
+import {
+  createOrder,
+  createOrganizerWithEvent,
+  createUser,
+} from './utils/factories';
 import { mockTurnstile } from './utils/network';
 import { createTestApp, TestApp } from './utils/test-app';
 import { resetDb } from './utils/test-database';
@@ -13,8 +17,16 @@ type AdminEvent = {
   id: string;
   title: string;
   status: string;
+  deletedAt: string | null;
+  deletedByNeoPass: boolean | null;
   neoPassFeePercentage: string;
   organizer: { name: string; email: string };
+  sales: {
+    sold: number;
+    capacity: number;
+    revenue: number;
+    serviceFee: number;
+  };
 };
 type AdminEventsPage = {
   items: AdminEvent[];
@@ -121,11 +133,13 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
         startDate: second.event.startDate.toISOString(),
         endDate: second.event.endDate.toISOString(),
         deletedAt: null,
+        deletedByNeoPass: null,
         neoPassFeePercentage: '8',
         organizer: {
           name: second.organizer.name,
           email: second.organizer.email,
         },
+        sales: { sold: 0, capacity: 100, revenue: 0, serviceFee: 0 },
       });
       expect(
         page.items.find((e) => e.id === first.event.id)?.neoPassFeePercentage,
@@ -196,6 +210,131 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
 
       await listEvents(admin, '?page=0').expect(400);
       await listEvents(admin, `?q=${'a'.repeat(101)}`).expect(400);
+    });
+  });
+
+  describe('los números de cada evento', () => {
+    async function itemOf(eventId: string) {
+      const res = await listEvents(await createAdmin()).expect(200);
+      const item = (res.body as AdminEventsPage).items.find(
+        (e) => e.id === eventId,
+      );
+      if (!item) throw new Error(`event ${eventId} not listed`);
+      return item;
+    }
+
+    function chargeFee(orderId: string, serviceFee: number) {
+      return t.prisma.order.update({
+        where: { id: orderId },
+        data: { serviceFee, totalAmount: { increment: serviceFee } },
+      });
+    }
+
+    it('suma las vendidas sobre el total, lo recaudado y el cargo cobrado contando solo las compras pagadas', async () => {
+      const { event, ticketType } = await createOrganizerWithEvent(t.prisma, {
+        price: 1000,
+        stock: 100,
+      });
+      const buyer = await createUser(t.prisma);
+      const paid = await createOrder(t.prisma, {
+        user: buyer,
+        ticketType,
+        quantity: 2,
+        status: 'PAID',
+      });
+      await chargeFee(paid.id, 300);
+      for (const status of ['EXPIRED', 'CANCELLED', 'PENDING'] as const) {
+        const other = await createOrder(t.prisma, {
+          user: buyer,
+          ticketType,
+          status,
+        });
+        await chargeFee(other.id, 150);
+      }
+
+      expect((await itemOf(event.id)).sales).toEqual({
+        sold: 2,
+        capacity: 100,
+        revenue: 2000,
+        serviceFee: 300,
+      });
+    });
+
+    it('una compra con dos tipos de entrada suma su cargo una sola vez', async () => {
+      const { event, batch, ticketType } = await createOrganizerWithEvent(
+        t.prisma,
+        { price: 1000, stock: 100 },
+      );
+      const vip = await t.prisma.ticketType.create({
+        data: {
+          eventId: event.id,
+          batchId: batch.id,
+          name: 'VIP',
+          price: 3000,
+          stock: 50,
+          sold: 1,
+        },
+      });
+      const order = await createOrder(t.prisma, {
+        user: await createUser(t.prisma),
+        ticketType,
+        status: 'PAID',
+      });
+      await t.prisma.orderItem.create({
+        data: {
+          orderId: order.id,
+          ticketTypeId: vip.id,
+          quantity: 1,
+          unitPrice: 3000,
+        },
+      });
+      await t.prisma.order.update({
+        where: { id: order.id },
+        data: { ticketAmount: 4000, totalAmount: 4000 },
+      });
+      await chargeFee(order.id, 600);
+
+      expect((await itemOf(event.id)).sales).toEqual({
+        sold: 2,
+        capacity: 150,
+        revenue: 4000,
+        serviceFee: 600,
+      });
+    });
+
+    it('un evento eliminado dice cuándo y si lo eliminó su organizador o NeoPass', async () => {
+      const admin = await createAdmin();
+      const byOrganizer = await createOrganizerWithEvent(t.prisma);
+      const byNeoPass = await createOrganizerWithEvent(t.prisma);
+      const untouched = await createOrganizerWithEvent(t.prisma);
+      for (const [user, eventId] of [
+        [byOrganizer.organizer, byOrganizer.event.id],
+        [admin, byNeoPass.event.id],
+      ] as const) {
+        await http()
+          .delete(`/events/${eventId}`)
+          .set('Authorization', authHeader(t.app, user))
+          .send({})
+          .expect(200);
+      }
+
+      const items = (
+        (await listEvents(admin).expect(200)).body as AdminEventsPage
+      ).items;
+      const find = (id: string) => items.find((e) => e.id === id);
+
+      expect(find(byOrganizer.event.id)).toMatchObject({
+        deletedAt: expect.any(String) as string,
+        deletedByNeoPass: false,
+      });
+      expect(find(byNeoPass.event.id)).toMatchObject({
+        deletedAt: expect.any(String) as string,
+        deletedByNeoPass: true,
+      });
+      expect(find(untouched.event.id)).toMatchObject({
+        deletedAt: null,
+        deletedByNeoPass: null,
+      });
     });
   });
 
