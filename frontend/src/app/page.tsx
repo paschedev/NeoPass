@@ -32,7 +32,7 @@ const REASONS: Reason[] = [
   {
     id: 'datos',
     title: 'Conexión y datos cifrados',
-    text: 'Tu información viaja y se guarda cifrada. Tu contraseña no la conoce nadie, ni siquiera nosotros, y tu tarjeta la cargás en Mercado Pago: nunca pasa por NeoPass.',
+    text: 'Tu información viaja y se guarda cifrada. Tu contraseña no la conoce nadie, ni siquiera nosotros, y tu tarjeta nunca pasa por NeoPass.',
     Icon: ShieldCheck,
     iconClass: 'bg-purple-500/20 text-purple-400',
     size: 'regular',
