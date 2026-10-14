@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useId, useState, type FormEvent } from 'react';
+import { useId, useState } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Search } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import DeleteEventModal from '@/components/events/DeleteEventModal';
-import { apiFetch } from '@/utils/api';
+import { useAdminList } from '@/hooks/useAdminList';
 import { getEventPhase, isEventPublic } from '@/utils/event-edit';
 import { eventStatusBadge } from '@/utils/event-status';
 import {
@@ -14,19 +14,10 @@ import {
 } from '@/utils/format';
 import { formatPercentage } from '@/utils/service-fee';
 import toast from '@/utils/toast';
+import AdminListView, { ADMIN_ACTION as ACTION } from './AdminListView';
 import RestoreEventModal from './RestoreEventModal';
 import ServiceFeeModal from './ServiceFeeModal';
-import type { AdminEvent, AdminEventsPage } from './types';
-
-const ACTION =
-  'inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors';
-
-function eventsUrl(search: string, page: number) {
-  const params = new URLSearchParams();
-  if (search) params.set('q', search);
-  params.set('page', String(page));
-  return `/admin/events?${params}`;
-}
+import type { AdminEvent } from './types';
 
 function AdminEventCard({
   event,
@@ -133,58 +124,18 @@ function AdminEventCard({
 }
 
 // Los eventos de todos los organizadores, con el cargo de servicio de cada uno.
-export default function AdminEvents() {
-  const [query, setQuery] = useState('');
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [data, setData] = useState<AdminEventsPage | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [version, setVersion] = useState(0);
+export default function AdminEvents({
+  search,
+  onSearch,
+}: {
+  search: string;
+  onSearch: (q: string) => void;
+}) {
+  const list = useAdminList<AdminEvent>('/admin/events', search);
+  const updateEvent = list.updateItem;
   const [editing, setEditing] = useState<AdminEvent | null>(null);
   const [deleting, setDeleting] = useState<AdminEvent | null>(null);
   const [restoring, setRestoring] = useState<AdminEvent | null>(null);
-
-  useEffect(() => {
-    let current = true;
-    apiFetch(eventsUrl(search, page))
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`GET admin events ${res.status}`);
-        return (await res.json()) as AdminEventsPage;
-      })
-      .then((loaded) => {
-        if (current) setData(loaded);
-      })
-      .catch((error: unknown) => {
-        console.error(error);
-        if (current) setFailed(true);
-      });
-    return () => {
-      current = false;
-    };
-  }, [search, page, version]);
-
-  const submitSearch = (event: FormEvent) => {
-    event.preventDefault();
-    setPage(1);
-    setSearch(query.trim());
-  };
-
-  const reload = () => {
-    setFailed(false);
-    setVersion((count) => count + 1);
-  };
-
-  const updateEvent = (eventId: string, changes: Partial<AdminEvent>) => {
-    setData(
-      (current) =>
-        current && {
-          ...current,
-          items: current.items.map((item) =>
-            item.id === eventId ? { ...item, ...changes } : item,
-          ),
-        },
-    );
-  };
 
   const saveFee = (eventId: string, percentage: string) => {
     updateEvent(eventId, { neoPassFeePercentage: percentage });
@@ -205,87 +156,10 @@ export default function AdminEvents() {
     setRestoring(null);
   };
 
-  const renderList = () => {
-    if (failed) {
-      return (
-        <div className="bg-red-500/10 border border-red-500/20 rounded-3xl p-10 text-center">
-          <p className="text-neutral-300 mb-4">
-            No pudimos cargar los eventos.
-          </p>
-          <button
-            type="button"
-            onClick={reload}
-            className="bg-white/10 hover:bg-white/20 text-white px-6 py-2 rounded-xl transition-colors font-medium"
-          >
-            Reintentar
-          </button>
-        </div>
-      );
-    }
-    if (!data) {
-      return (
-        <p className="text-center py-12 text-neutral-500">
-          Cargando eventos...
-        </p>
-      );
-    }
-    if (data.items.length === 0) {
-      return (
-        <p className="text-center py-12 px-6 bg-white/[0.02] rounded-3xl border border-white/5 border-dashed text-neutral-400">
-          {search
-            ? 'No hay eventos que coincidan con la búsqueda.'
-            : 'Todavía no hay eventos.'}
-        </p>
-      );
-    }
-
-    const totalPages = Math.max(1, Math.ceil(data.total / data.limit));
-    return (
-      <>
-        <ul className="space-y-3">
-          {data.items.map((event) => (
-            <li key={event.id}>
-              <AdminEventCard
-                event={event}
-                onChangeFee={() => setEditing(event)}
-                onDelete={() => setDeleting(event)}
-                onRestore={() => setRestoring(event)}
-              />
-            </li>
-          ))}
-        </ul>
-        <nav
-          aria-label="Páginas de eventos"
-          className="flex items-center justify-between gap-3"
-        >
-          <button
-            type="button"
-            onClick={() => setPage((current) => current - 1)}
-            disabled={page <= 1}
-            className="px-4 py-2 rounded-xl text-sm font-medium bg-white/5 hover:bg-white/10 text-white transition-colors disabled:opacity-40"
-          >
-            Anterior
-          </button>
-          <span className="text-sm text-neutral-400">
-            Página {page} de {totalPages}
-          </span>
-          <button
-            type="button"
-            onClick={() => setPage((current) => current + 1)}
-            disabled={page >= totalPages}
-            className="px-4 py-2 rounded-xl text-sm font-medium bg-white/5 hover:bg-white/10 text-white transition-colors disabled:opacity-40"
-          >
-            Siguiente
-          </button>
-        </nav>
-      </>
-    );
-  };
-
   return (
     <section aria-labelledby="admin-events-title" className="space-y-6">
       <div>
-        <h2 id="admin-events-title" className="font-outfit text-2xl font-bold">
+        <h2 id="admin-events-title" className="sr-only">
           Eventos
         </h2>
         <p className="text-sm text-neutral-400">
@@ -293,25 +167,28 @@ export default function AdminEvents() {
         </p>
       </div>
 
-      <form role="search" onSubmit={submitSearch} className="flex gap-2">
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          aria-label="Buscar por evento o email del organizador"
-          placeholder="Evento o email del organizador"
-          maxLength={100}
-          className="flex-1 min-w-0 bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-indigo-500"
-        />
-        <button
-          type="submit"
-          className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
-        >
-          <Search className="w-4 h-4" /> Buscar
-        </button>
-      </form>
-
-      {renderList()}
+      <AdminListView
+        list={list}
+        search={search}
+        onSearch={onSearch}
+        searchLabel="Buscar por evento o email del organizador"
+        searchPlaceholder="Evento o email del organizador"
+        texts={{
+          loading: 'Cargando eventos...',
+          failed: 'No pudimos cargar los eventos.',
+          empty: 'Todavía no hay eventos.',
+          noMatches: 'No hay eventos que coincidan con la búsqueda.',
+        }}
+        pagerLabel="Páginas de eventos"
+        renderItem={(event) => (
+          <AdminEventCard
+            event={event}
+            onChangeFee={() => setEditing(event)}
+            onDelete={() => setDeleting(event)}
+            onRestore={() => setRestoring(event)}
+          />
+        )}
+      />
 
       <ServiceFeeModal
         event={editing}
