@@ -1,5 +1,6 @@
 'use client';
 
+import type { MouseEvent } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -114,6 +115,20 @@ const HOW_IT_WORKS = [
   },
 ];
 
+// La flecha del hero baja hasta las razones con una transición suave, o de
+// golpe si se pidió reducir el movimiento. El href queda para el teclado y
+// por si no hay JavaScript.
+function scrollToReasons(event: MouseEvent<HTMLAnchorElement>) {
+  event.preventDefault();
+  const reduceMotion = window.matchMedia(
+    '(prefers-reduced-motion: reduce)',
+  ).matches;
+  document.getElementById('razones')?.scrollIntoView({
+    behavior: reduceMotion ? 'auto' : 'smooth',
+    block: 'start',
+  });
+}
+
 export default function Home() {
   const { user, ready } = useCurrentUser();
 
@@ -191,8 +206,9 @@ export default function Home() {
           {/* Con el hero a pantalla completa, avisa que hay más abajo. */}
           <a
             href="#razones"
+            onClick={scrollToReasons}
             aria-label="Ver por qué elegir NeoPass"
-            className="hidden md:flex absolute bottom-8 inset-x-0 mx-auto w-fit p-2 text-neutral-500 hover:text-white transition-colors motion-safe:animate-nudge"
+            className="hidden md:flex absolute bottom-8 inset-x-0 mx-auto w-fit p-2.5 rounded-full border border-brand-accent/50 bg-brand-accent/10 text-purple-200 shadow-lg shadow-brand-accent/20 hover:bg-brand-accent/25 hover:border-brand-accent hover:text-white transition-colors motion-safe:animate-nudge"
           >
             <ChevronDown className="w-6 h-6" />
           </a>

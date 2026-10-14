@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import {
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react';
 import Home from './page';
 
 function renderReasons() {
@@ -101,5 +106,49 @@ describe('Landing', () => {
     expect(
       screen.queryByText(/QR dinámico|sin caídas|reventa/),
     ).not.toBeInTheDocument();
+  });
+
+  describe('la flecha del final del hero', () => {
+    // jsdom no implementa scrollIntoView.
+    const scrollIntoView = vi.fn();
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      scrollIntoView.mockClear();
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+    });
+
+    function clickArrow() {
+      Element.prototype.scrollIntoView = scrollIntoView;
+      render(<Home />);
+      fireEvent.click(
+        screen.getByRole('link', { name: 'Ver por qué elegir NeoPass' }),
+      );
+    }
+
+    it('baja con una transición suave hasta «¿Por qué elegir NeoPass?»', () => {
+      clickArrow();
+
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        behavior: 'smooth',
+        block: 'start',
+      });
+      expect(scrollIntoView.mock.contexts[0]).toBe(
+        document.getElementById('razones'),
+      );
+    });
+
+    it('si se pidió reducir el movimiento, baja sin animación', () => {
+      vi.spyOn(window, 'matchMedia').mockReturnValue({
+        matches: true,
+      } as MediaQueryList);
+
+      clickArrow();
+
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        behavior: 'auto',
+        block: 'start',
+      });
+    });
   });
 });
