@@ -8,8 +8,8 @@ import {
   Min,
 } from 'class-validator';
 
-export class ListAdminEventsQueryDto {
-  // Part of the event's title or of its organizer's email.
+// A page of one of the ADMIN lists; each list says where it looks for `q`.
+export class AdminSearchQueryDto {
   @IsOptional()
   @IsString({ message: 'La búsqueda no es válida' })
   @MaxLength(100, { message: 'La búsqueda puede tener hasta 100 caracteres' })

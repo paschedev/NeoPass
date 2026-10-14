@@ -50,6 +50,11 @@ export function pdfText(text: string): string {
   return text.replace(NOT_DRAWABLE, '').replace(/\s+/g, ' ').trim();
 }
 
+// The short reference printed on each page, by which support finds a ticket.
+export function ticketCode(ticketId: string): string {
+  return ticketId.slice(0, 8).toUpperCase();
+}
+
 export function ticketPdfPages({
   tickets,
   validUntil,
@@ -68,7 +73,7 @@ export function ticketPdfPages({
     details: eventDetailLines(ticket).map(pdfText),
     deadline,
     ticketTypeName: pdfText(ticket.ticketTypeName),
-    code: ticket.id.slice(0, 8).toUpperCase(),
+    code: ticketCode(ticket.id),
     qrCode: ticket.qrCode,
   }));
 }

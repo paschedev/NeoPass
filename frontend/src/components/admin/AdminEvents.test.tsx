@@ -49,6 +49,10 @@ function server(page: object, saved: Response = Response.json({})) {
   );
 }
 
+const onSearch = vi.fn();
+const renderEvents = (search = '') =>
+  render(<AdminEvents search={search} onSearch={onSearch} />);
+
 const eventCard = (title: string) =>
   screen.findByRole('article', { name: title });
 
@@ -60,7 +64,7 @@ describe('Panel ADMIN: eventos', () => {
   it('lista los eventos con su organizador, su estado y su cargo', async () => {
     server(eventsPage([adminEvent()]));
 
-    render(<AdminEvents />);
+    renderEvents();
 
     const card = await eventCard('Fiesta de primavera');
     expect(card).toHaveTextContent('Productora Sur');
@@ -72,7 +76,7 @@ describe('Panel ADMIN: eventos', () => {
 
   it('busca por nombre del evento o email del organizador', async () => {
     server(eventsPage([adminEvent()]));
-    render(<AdminEvents />);
+    renderEvents();
     await eventCard('Fiesta de primavera');
 
     fireEvent.change(
@@ -83,16 +87,26 @@ describe('Panel ADMIN: eventos', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Buscar' }));
 
-    await waitFor(() =>
-      expect(apiFetch).toHaveBeenLastCalledWith(
-        '/admin/events?q=primavera&page=1',
-      ),
-    );
+    expect(onSearch).toHaveBeenCalledWith('primavera');
+  });
+
+  it('pide los eventos que coinciden con la búsqueda', async () => {
+    server(eventsPage([adminEvent()]));
+
+    renderEvents('primavera');
+
+    await eventCard('Fiesta de primavera');
+    expect(apiFetch).toHaveBeenCalledWith('/admin/events?q=primavera&page=1');
+    expect(
+      screen.getByRole('searchbox', {
+        name: 'Buscar por evento o email del organizador',
+      }),
+    ).toHaveValue('primavera');
   });
 
   it('pasa de página de a 20 eventos', async () => {
     server(eventsPage([adminEvent()], { total: 25 }));
-    render(<AdminEvents />);
+    renderEvents();
     await eventCard('Fiesta de primavera');
 
     expect(screen.getByText('Página 1 de 2')).toBeInTheDocument();
@@ -113,7 +127,7 @@ describe('Panel ADMIN: eventos', () => {
     async (_, overrides) => {
       server(eventsPage([adminEvent(overrides)]));
 
-      render(<AdminEvents />);
+      renderEvents();
 
       const card = await eventCard('Fiesta de primavera');
       expect(
@@ -127,7 +141,7 @@ describe('Panel ADMIN: eventos', () => {
       eventsPage([adminEvent()]),
       Response.json({ id: 'e1', neoPassFeePercentage: '8.5' }),
     );
-    render(<AdminEvents />);
+    renderEvents();
     fireEvent.click(
       within(await eventCard('Fiesta de primavera')).getByRole('button', {
         name: 'Cambiar el cargo de Fiesta de primavera',
@@ -161,7 +175,7 @@ describe('Panel ADMIN: eventos', () => {
 
   it('un cargo de más de 100 % no se manda', async () => {
     server(eventsPage([adminEvent()]));
-    render(<AdminEvents />);
+    renderEvents();
     fireEvent.click(
       within(await eventCard('Fiesta de primavera')).getByRole('button', {
         name: 'Cambiar el cargo de Fiesta de primavera',
@@ -195,7 +209,7 @@ describe('Panel ADMIN: eventos', () => {
         { status: 409 },
       ),
     );
-    render(<AdminEvents />);
+    renderEvents();
     fireEvent.click(
       within(await eventCard('Fiesta de primavera')).getByRole('button', {
         name: 'Cambiar el cargo de Fiesta de primavera',
@@ -230,7 +244,7 @@ describe('Panel ADMIN: eventos', () => {
       ]),
     );
 
-    render(<AdminEvents />);
+    renderEvents();
 
     const card = await eventCard('Fiesta de primavera');
     expect(card).toHaveTextContent('120 de 300 vendidas');
@@ -250,7 +264,7 @@ describe('Panel ADMIN: eventos', () => {
         ]),
       );
 
-      render(<AdminEvents />);
+      renderEvents();
 
       expect(await eventCard('Fiesta de primavera')).toHaveTextContent(
         `Eliminado el 12 oct, 14:05 ${who}`,
@@ -266,7 +280,7 @@ describe('Panel ADMIN: eventos', () => {
       ]),
     );
 
-    render(<AdminEvents />);
+    renderEvents();
 
     const live = await eventCard('Fiesta de primavera');
     expect(
@@ -295,7 +309,7 @@ describe('Panel ADMIN: eventos', () => {
       ]),
     );
 
-    render(<AdminEvents />);
+    renderEvents();
 
     expect(
       within(await eventCard('Fiesta de primavera')).getByRole('link', {
@@ -313,7 +327,7 @@ describe('Panel ADMIN: eventos', () => {
 
   it('dar de baja usa el aviso de la página pública y la tarjeta pasa a eliminada', async () => {
     server(eventsPage([adminEvent()]));
-    render(<AdminEvents />);
+    renderEvents();
     fireEvent.click(
       within(await eventCard('Fiesta de primavera')).getByRole('button', {
         name: 'Dar de baja Fiesta de primavera',
@@ -352,7 +366,7 @@ describe('Panel ADMIN: eventos', () => {
       eventsPage([adminEvent({ deletedAt: at(-1), deletedByNeoPass: false })]),
       Response.json({ id: 'e1', deletedAt: null }),
     );
-    render(<AdminEvents />);
+    renderEvents();
     fireEvent.click(
       within(await eventCard('Fiesta de primavera')).getByRole('button', {
         name: 'Restaurar Fiesta de primavera',
@@ -394,7 +408,7 @@ describe('Panel ADMIN: eventos', () => {
         adminEvent({ startDate: at(-30), endDate: at(-24), ...deleted }),
       ]),
     );
-    render(<AdminEvents />);
+    renderEvents();
     fireEvent.click(
       within(await eventCard('Fiesta de primavera')).getByRole('button', {
         name: 'Restaurar Fiesta de primavera',
@@ -417,7 +431,7 @@ describe('Panel ADMIN: eventos', () => {
         { status: 409 },
       ),
     );
-    render(<AdminEvents />);
+    renderEvents();
     fireEvent.click(
       within(await eventCard('Fiesta de primavera')).getByRole('button', {
         name: 'Restaurar Fiesta de primavera',
@@ -439,7 +453,7 @@ describe('Panel ADMIN: eventos', () => {
   it('si la lista no carga, ofrece reintentar', async () => {
     vi.mocked(apiFetch).mockResolvedValue(new Response(null, { status: 500 }));
 
-    render(<AdminEvents />);
+    renderEvents();
 
     expect(
       await screen.findByText('No pudimos cargar los eventos.'),
