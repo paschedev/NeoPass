@@ -201,13 +201,18 @@ export default function Home() {
         {/* Detrás se asoma la foto del cierre: en PC queda fija y la sección es
             una ventana (el clip-path la recorta), como en el cierre; en celular
             se desplaza con la sección. Oscurecida y fundida arriba y abajo con
-            el fondo de la página, para que se lea. */}
+            el fondo de la página, para que se lea.
+            - El fondo sobra 4 px arriba y abajo: el navegador redondea distinto
+              el recorte de la foto fija y la capa oscura, y en el borde quedaba
+              una fila de foto sin oscurecer (una línea naranja).
+            - Sin desenfoque en las tarjetas: sobre la foto fija se recalcula
+              en cada cuadro del scroll y baja los FPS. */}
         <section
           id="razones"
           aria-labelledby="por-que-neopass"
-          className="relative isolate py-24 border-t border-white/5 [clip-path:inset(0)]"
+          className="relative isolate py-24 [clip-path:inset(0)]"
         >
-          <div aria-hidden="true" className="absolute inset-0 -z-10">
+          <div aria-hidden="true" className="absolute inset-x-0 -inset-y-1 -z-10">
             <div className="absolute inset-0 md:fixed">
               <Image
                 src="/landing/cierre.webp"
@@ -222,7 +227,7 @@ export default function Home() {
             <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-neutral-950 to-transparent" />
           </div>
           <div className="container mx-auto px-4">
-            <div className="reveal text-center mb-16 w-fit max-w-full mx-auto bg-black/40 backdrop-blur-md border border-white/10 rounded-3xl px-6 py-6 md:px-10 md:py-8">
+            <div className="reveal text-center mb-16 w-fit max-w-full mx-auto bg-neutral-950/70 border border-white/10 rounded-3xl px-6 py-6 md:px-10 md:py-8">
               <h2
                 id="por-que-neopass"
                 className="font-outfit text-3xl md:text-4xl font-bold mb-4"
@@ -242,7 +247,7 @@ export default function Home() {
                   <article
                     key={id}
                     aria-labelledby={`razon-${id}`}
-                    className={`reveal group bg-black/50 backdrop-blur-md border border-white/10 rounded-3xl hover:bg-black/60 transition-colors ${styles.card}`}
+                    className={`reveal group bg-neutral-950/70 border border-white/10 rounded-3xl hover:bg-neutral-950/80 transition-colors ${styles.card}`}
                   >
                     <div className="flex items-center gap-4 mb-4">
                       <div
