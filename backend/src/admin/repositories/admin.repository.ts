@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { ORGANIZER_NAME_SELECT } from '../../common/organizer-name';
 import { PrismaService } from '../../prisma/prisma.service';
 
 // What ADMIN sees of every event: no organizer data beyond name and email.
@@ -16,6 +17,51 @@ const ADMIN_EVENT_SELECT = {
   neoPassFeePercentage: true,
   organizer: { select: { name: true, email: true } },
 } satisfies Prisma.EventSelect;
+
+const PERSON_SELECT = { name: true, email: true } satisfies Prisma.UserSelect;
+
+// What support needs to know about a ticket. Never its qrCode: that is what
+// gets people in. The user ids only say whether it changed hands.
+const ADMIN_TICKET_SELECT = {
+  id: true,
+  status: true,
+  usedAt: true,
+  userId: true,
+  user: { select: PERSON_SELECT },
+  ticketType: {
+    select: {
+      name: true,
+      batch: { select: { name: true } },
+      event: {
+        select: {
+          id: true,
+          title: true,
+          status: true,
+          startDate: true,
+          endDate: true,
+          deletedAt: true,
+        },
+      },
+    },
+  },
+  order: {
+    select: {
+      createdAt: true,
+      totalAmount: true,
+      userId: true,
+      user: { select: PERSON_SELECT },
+      promoter: { select: { user: { select: { name: true } } } },
+    },
+  },
+  freeTicketGrant: {
+    select: {
+      recipientEmail: true,
+      recipientName: true,
+      validUntil: true,
+      issuedBy: { select: { name: true } },
+    },
+  },
+} satisfies Prisma.TicketSelect;
 
 @Injectable()
 export class AdminRepository {
@@ -133,6 +179,81 @@ export class AdminRepository {
       data: { deletedAt: null, deletedById: null, deletionContactEmail: null },
     });
     return count === 1;
+  }
+
+  // `search` is the code printed on the PDF (the start of the id) or part of
+  // the email of whoever has the ticket, bought it or got it as a free one.
+  // Both are ILIKE scans, without an index: fine for today's volume.
+  async findTickets({
+    search,
+    skip,
+    take,
+  }: {
+    search?: string;
+    skip: number;
+    take: number;
+  }) {
+    const email = { contains: search, mode: 'insensitive' } as const;
+    const where: Prisma.TicketWhereInput = search
+      ? {
+          OR: [
+            { id: { startsWith: search, mode: 'insensitive' } },
+            { user: { email } },
+            { order: { user: { email } } },
+            { freeTicketGrant: { recipientEmail: email } },
+          ],
+        }
+      : {};
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.ticket.findMany({
+        where,
+        select: ADMIN_TICKET_SELECT,
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        skip,
+        take,
+      }),
+      this.prisma.ticket.count({ where }),
+    ]);
+    return { items, total };
+  }
+
+  // Everything its mail needs, QR included, to send it again as it is.
+  findTicketForResend(id: string) {
+    return this.prisma.ticket.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        qrCode: true,
+        status: true,
+        user: { select: PERSON_SELECT },
+        ticketType: {
+          select: {
+            name: true,
+            event: {
+              select: {
+                id: true,
+                title: true,
+                status: true,
+                startDate: true,
+                endDate: true,
+                deletedAt: true,
+                venueName: true,
+                venueAddress: true,
+                venueCity: true,
+                organizer: { select: ORGANIZER_NAME_SELECT },
+              },
+            },
+          },
+        },
+        freeTicketGrant: {
+          select: {
+            recipientEmail: true,
+            recipientName: true,
+            validUntil: true,
+          },
+        },
+      },
+    });
   }
 
   updateServiceFee(id: string, percentage: number) {
