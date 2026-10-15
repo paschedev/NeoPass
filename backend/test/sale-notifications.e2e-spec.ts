@@ -296,7 +296,7 @@ describe('Avisos de venta', () => {
     });
   });
 
-  it('un pago por otro monto no genera avisos de venta', async () => {
+  it('un pago por más del total no genera avisos de venta', async () => {
     const s = await setup();
     const order = await createOrder(t.prisma, {
       user: s.buyer,
@@ -305,7 +305,7 @@ describe('Avisos de venta', () => {
     mercadoPagoMock.paymentGet.mockResolvedValueOnce({
       status: 'approved',
       external_reference: order.id,
-      transaction_amount: 1,
+      transaction_amount: order.totalAmount.toNumber() + 1,
     });
 
     await new PaymentsProcessor(t.app.get(PaymentsService)).process({

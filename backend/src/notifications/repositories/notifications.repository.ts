@@ -57,6 +57,18 @@ export class NotificationsRepository {
     });
   }
 
+  // While a notice with this key is unread, the same news doesn't open
+  // another one.
+  async createOnce({
+    metadata,
+    ...data
+  }: NewNotification & { openGroupKey: string }) {
+    await this.prisma.notification.createMany({
+      data: [{ ...data, metadata: metadata ?? Prisma.JsonNull }],
+      skipDuplicates: true,
+    });
+  }
+
   async belongsTo(id: string, userId: string) {
     const found = await this.prisma.notification.findFirst({
       where: { id, userId },
