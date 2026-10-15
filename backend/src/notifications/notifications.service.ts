@@ -27,6 +27,10 @@ export class NotificationsService {
     return this.notificationsRepository.create(notification);
   }
 
+  createOnce(notification: NewNotification & { openGroupKey: string }) {
+    return this.notificationsRepository.createOnce(notification);
+  }
+
   // After an order is paid: the event's owner and its co-organizers who can
   // see sales hear about it, and so does the promoter whose link sold it
   // (both notices add up while unread); the buyer gets their confirmation.

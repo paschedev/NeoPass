@@ -8,6 +8,10 @@ export interface PaymentNotificationJob {
   mpUserId?: string;
 }
 
+export interface PaymentPartsCheckJob {
+  orderId: string;
+}
+
 @Processor('payments')
 export class PaymentsProcessor extends WorkerHost {
   private readonly logger = new Logger(PaymentsProcessor.name);
@@ -17,8 +21,13 @@ export class PaymentsProcessor extends WorkerHost {
   }
 
   // Rethrows so BullMQ retries with the queue's backoff.
-  async process(job: Job<PaymentNotificationJob>): Promise<void> {
-    const { paymentId, mpUserId } = job.data;
+  async process(
+    job: Job<PaymentNotificationJob | PaymentPartsCheckJob>,
+  ): Promise<void> {
+    if (job.name === 'check-payment-parts') {
+      return this.checkPaymentParts(job as Job<PaymentPartsCheckJob>);
+    }
+    const { paymentId, mpUserId } = job.data as PaymentNotificationJob;
     try {
       await this.paymentsService.processPaymentNotification(
         paymentId,
@@ -27,6 +36,19 @@ export class PaymentsProcessor extends WorkerHost {
     } catch (error) {
       this.logger.error(
         `Error processing webhook for payment ${paymentId}`,
+        error,
+      );
+      throw error;
+    }
+  }
+
+  private async checkPaymentParts(job: Job<PaymentPartsCheckJob>) {
+    const { orderId } = job.data;
+    try {
+      await this.paymentsService.checkPaymentParts(orderId);
+    } catch (error) {
+      this.logger.error(
+        `Error checking the payment parts of order ${orderId}`,
         error,
       );
       throw error;
