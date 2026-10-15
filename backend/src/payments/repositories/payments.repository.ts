@@ -144,9 +144,42 @@ export class PaymentsRepository {
     return this.cipher.encrypt(token);
   }
 
-  async findPaymentByProviderId(providerPaymentId: string) {
-    return this.prisma.payment.findFirst({
-      where: { providerPaymentId },
+  // Whether this Mercado Pago payment already paid an order, on its own or as
+  // a part of a combined payment.
+  async isPaymentRegistered(providerPaymentId: string) {
+    const payments = await this.prisma.payment.count({
+      where: paidBy(providerPaymentId),
+    });
+    return payments > 0;
+  }
+
+  // Records an approved part of a combined payment and returns the approved
+  // parts of its order. The order row stays locked until the end, so two
+  // parts that arrive at once can't miss each other: the second one sees the
+  // first. Recording the same part again changes nothing.
+  async recordPaymentPart(
+    orderId: string,
+    part: { providerPaymentId: string; amount: number },
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT 1 FROM "Order" WHERE id = ${orderId} FOR UPDATE`;
+      await tx.paymentPart.createMany({
+        data: [{ orderId, ...part }],
+        skipDuplicates: true,
+      });
+      return tx.paymentPart.findMany({
+        where: { orderId, status: 'APPROVED' },
+        select: APPROVED_PART_FIELDS,
+        orderBy: { createdAt: 'asc' },
+      });
+    });
+  }
+
+  async findApprovedPaymentParts(orderId: string) {
+    return this.prisma.paymentPart.findMany({
+      where: { orderId, status: 'APPROVED' },
+      select: APPROVED_PART_FIELDS,
+      orderBy: { createdAt: 'asc' },
     });
   }
 
@@ -190,7 +223,12 @@ export class PaymentsRepository {
     }: {
       orderId: string;
       fromStatus: OrderStatus;
-      payment: { providerPaymentId: string; amount: number };
+      // A combined payment has no single Mercado Pago id: its order's
+      // PaymentParts hold them.
+      payment: {
+        providerPaymentId: string | null;
+        amount: number | Prisma.Decimal;
+      };
       promoterCommission: { promoterId: string; amount: Prisma.Decimal } | null;
     },
     generateTicketsCallback: (tx: Prisma.TransactionClient) => Promise<void>,
@@ -246,12 +284,18 @@ export class PaymentsRepository {
   // Reverses the order paid by a payment that Mercado Pago refunded, charged
   // back or cancelled: the order is cancelled, its tickets are voided, they go
   // back on sale and the promoter loses the commission of that order.
+  // A part of a combined payment stops counting towards its order, and if
+  // the order was already paid with it, the order is reversed the same way.
   // Conditional on PAID so it applies only once. Returns the
   // order id, or null if there was nothing to reverse.
   async refundPaymentTransaction(providerPaymentId: string) {
     return this.prisma.$transaction(async (tx) => {
-      const payment = await tx.payment.findFirst({
+      await tx.paymentPart.updateMany({
         where: { providerPaymentId, status: 'APPROVED' },
+        data: { status: 'REFUNDED' },
+      });
+      const payment = await tx.payment.findFirst({
+        where: { ...paidBy(providerPaymentId), status: 'APPROVED' },
         select: { id: true, orderId: true },
       });
       if (!payment) return null;
@@ -293,4 +337,20 @@ export class PaymentsRepository {
       return payment.orderId;
     });
   }
+}
+
+const APPROVED_PART_FIELDS = {
+  providerPaymentId: true,
+  amount: true,
+} satisfies Prisma.PaymentPartSelect;
+
+// The order's payment made with this Mercado Pago payment: it is the payment
+// itself, or one of the parts of the combined payment.
+function paidBy(providerPaymentId: string): Prisma.PaymentWhereInput {
+  return {
+    OR: [
+      { providerPaymentId },
+      { order: { paymentParts: { some: { providerPaymentId } } } },
+    ],
+  };
 }

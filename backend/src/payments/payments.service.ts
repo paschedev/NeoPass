@@ -9,7 +9,10 @@ import { ConfigService } from '@nestjs/config';
 import { isValidWebhookSignature } from './webhook-signature';
 import { NotificationsService } from '../notifications/notifications.service';
 import { isStockLimitError } from '../prisma/prisma-errors';
-import type { PaymentNotificationJob } from './payments.processor';
+import type {
+  PaymentNotificationJob,
+  PaymentPartsCheckJob,
+} from './payments.processor';
 import { calculatePromoterCommission } from './promoter-commission';
 
 type PreferenceBody = Parameters<Preference['create']>[0]['body'];
@@ -138,7 +141,7 @@ export class PaymentsService {
     // Two passes: if an expiration (or another webhook) changes the order
     // between reading and paying it, the second pass sees the new status.
     for (let pass = 0; pass < 2; pass++) {
-      if (await this.paymentsRepository.findPaymentByProviderId(paymentId)) {
+      if (await this.paymentsRepository.isPaymentRegistered(paymentId)) {
         // Already paid: make sure the tickets mail is queued (a retry after a
         // failed enqueue lands here). Idempotent per order.
         return this.ticketsService.queueOrderTicketsEmail(orderId);
@@ -150,22 +153,15 @@ export class PaymentsService {
         );
         return;
       }
-      if (!sameAmount(amount, order.totalAmount)) {
-        return this.reportPaymentIssue(order, paymentId, 'AMOUNT_MISMATCH', {
-          amount,
-        });
-      }
-      // A cancelled order can also have a payment: it was refunded.
-      if (order.status === 'PAID' || order.payment) {
-        return this.reportPaymentIssue(order, paymentId, 'DUPLICATE_PAYMENT');
-      }
+      const payment = await this.paymentToRegister(order, paymentId, amount);
+      if (!payment) return;
 
       try {
         const paid = await this.paymentsRepository.payOrderTransaction(
           {
             orderId,
             fromStatus: order.status,
-            payment: { providerPaymentId: paymentId, amount },
+            payment,
             promoterCommission: promoterCommissionOf(order),
           },
           (tx) => this.ticketsService.generateTicketsForOrder(orderId, tx),
@@ -185,6 +181,87 @@ export class PaymentsService {
     throw new Error(
       `Order ${orderId} kept changing while processing payment ${paymentId}`,
     );
+  }
+
+  // An hour after the first part of a combined payment: if the order is
+  // still unpaid and its parts don't reach the total, the rest never came.
+  async checkPaymentParts(orderId: string) {
+    const order = await this.paymentsRepository.findOrderForPayment(orderId);
+    if (!order || order.status === 'PAID' || order.payment) return;
+    const parts =
+      await this.paymentsRepository.findApprovedPaymentParts(orderId);
+    const received = sumAmounts(parts);
+    if (parts.length === 0 || received.gte(order.totalAmount)) return;
+
+    const paymentIds = parts.map((part) => part.providerPaymentId);
+    await this.reportPaymentIssue(
+      order,
+      paymentIds.join(' y '),
+      'INCOMPLETE_PAYMENT',
+      { amount: received.toNumber(), parts: paymentIds },
+    );
+  }
+
+  // What this approved payment registers as the order's payment: itself, or
+  // the combined payment it completes. Null if there is nothing to register:
+  // the payment needs review, or it is a part still waiting for the rest.
+  private async paymentToRegister(
+    order: OrderForPayment,
+    paymentId: string,
+    amount: number,
+  ) {
+    const comparison = asAmount(amount).cmp(order.totalAmount);
+    if (comparison > 0 || amount <= 0) {
+      await this.reportPaymentIssue(order, paymentId, 'AMOUNT_MISMATCH', {
+        amount,
+      });
+      return null;
+    }
+    // A cancelled order can also have a payment: it was refunded.
+    if (order.status === 'PAID' || order.payment) {
+      await this.reportPaymentIssue(order, paymentId, 'DUPLICATE_PAYMENT');
+      return null;
+    }
+    if (comparison === 0) return { providerPaymentId: paymentId, amount };
+    return this.combinedPaymentToRegister(order, paymentId, amount);
+  }
+
+  // A buyer who combines payment methods (account money and a card) pays
+  // with one Mercado Pago payment per method, each for part of the total.
+  // The order is paid once its approved parts add up to the total; until
+  // then the part waits, and an hour later the organizer hears about it if
+  // the rest never arrived.
+  private async combinedPaymentToRegister(
+    order: OrderForPayment,
+    paymentId: string,
+    amount: number,
+  ) {
+    const parts = await this.paymentsRepository.recordPaymentPart(order.id, {
+      providerPaymentId: paymentId,
+      amount,
+    });
+    const received = sumAmounts(parts);
+    const comparison = received.cmp(order.totalAmount);
+    if (comparison < 0) {
+      this.logger.warn(
+        `Payment ${paymentId} is part of a combined payment for order ${order.id}: ${received.toFixed(2)} of ${order.totalAmount.toFixed(2)} received`,
+      );
+      const job: PaymentPartsCheckJob = { orderId: order.id };
+      await this.paymentsQueue.add('check-payment-parts', job, {
+        ...PAYMENT_JOB_OPTIONS,
+        delay: PAYMENT_PARTS_WAIT_MS,
+        jobId: `payment-parts-${order.id}`,
+      });
+      return null;
+    }
+    if (comparison > 0) {
+      await this.reportPaymentIssue(order, paymentId, 'AMOUNT_MISMATCH', {
+        amount,
+        parts: parts.map((part) => part.providerPaymentId),
+      });
+      return null;
+    }
+    return { providerPaymentId: null, amount: received };
   }
 
   // The sale is already paid and its tickets are on their way: a notice that
@@ -227,12 +304,13 @@ export class PaymentsService {
   }
 
   // A payment Mercado Pago approved but that cannot be turned into tickets:
-  // it is logged and the organizer gets a notification to refund it by hand.
+  // it is logged and the organizer gets a notification to refund it by hand,
+  // only once even if Mercado Pago notifies the payment again.
   private async reportPaymentIssue(
     order: OrderForPayment,
     paymentId: string,
     reason: PaymentIssueReason,
-    details: Record<string, unknown> = {},
+    details: Prisma.InputJsonObject = {},
   ) {
     this.logger.error(
       `Payment ${paymentId} for order ${order.id} needs review: ${reason}`,
@@ -240,13 +318,14 @@ export class PaymentsService {
     const event = order.orderItems[0]?.ticketType.event;
     if (!event) return;
 
-    await this.notificationsService.create({
+    await this.notificationsService.createOnce({
       userId: event.organizerId,
       type: 'SYSTEM',
       eventId: event.id,
       actionUrl: `/panel/eventos/${event.id}`,
       ...PAYMENT_ISSUE_MESSAGES[reason](paymentId),
       metadata: { reason, orderId: order.id, paymentId, ...details },
+      openGroupKey: `payment-issue:${reason}:${paymentId}`,
     });
   }
 }
@@ -275,8 +354,13 @@ function promoterCommissionOf(order: OrderForPayment) {
 // Statuses that undo money Mercado Pago had approved.
 const REVERSED_PAYMENT_STATUSES = ['refunded', 'charged_back', 'cancelled'];
 
+// How long the first part of a combined payment waits for the rest before the
+// organizer hears about it.
+const PAYMENT_PARTS_WAIT_MS = 60 * 60 * 1000;
+
 type PaymentIssueReason =
   | 'AMOUNT_MISMATCH'
+  | 'INCOMPLETE_PAYMENT'
   | 'DUPLICATE_PAYMENT'
   | 'OUT_OF_STOCK';
 
@@ -288,6 +372,10 @@ const PAYMENT_ISSUE_MESSAGES: Record<
     title: 'Pago con un monto distinto',
     message: `Mercado Pago aprobó el pago ${paymentId} por un monto distinto al de la orden. No se emitieron entradas: revisalo y reembolsalo si corresponde.`,
   }),
+  INCOMPLETE_PAYMENT: (paymentIds) => ({
+    title: 'Pago incompleto',
+    message: `El comprador combinó medios de pago y en una hora llegó solo una parte del total (N.° de operación ${paymentIds} en Mercado Pago). No se emitieron entradas: revisalo en tu Mercado Pago y reembolsalo si corresponde.`,
+  }),
   DUPLICATE_PAYMENT: (paymentId) => ({
     title: 'Pago duplicado',
     message: `La orden ya tenía un pago registrado y Mercado Pago aprobó otro (${paymentId}). No se emitieron entradas nuevas: reembolsalo desde tu cuenta de Mercado Pago.`,
@@ -298,9 +386,14 @@ const PAYMENT_ISSUE_MESSAGES: Record<
   }),
 };
 
-// Mercado Pago reports the amount as a float: compare at cent precision.
-function sameAmount(amount: number, total: Prisma.Decimal) {
-  return new Prisma.Decimal(amount)
-    .toDecimalPlaces(2)
-    .equals(total.toDecimalPlaces(2));
+// Mercado Pago reports amounts as floats: compare them at cent precision.
+function asAmount(amount: number) {
+  return new Prisma.Decimal(amount).toDecimalPlaces(2);
+}
+
+function sumAmounts(parts: { amount: Prisma.Decimal }[]) {
+  return parts.reduce(
+    (sum, part) => sum.plus(part.amount),
+    new Prisma.Decimal(0),
+  );
 }

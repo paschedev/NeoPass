@@ -131,7 +131,8 @@ describe('Estados de la orden al pagar y al vencer', () => {
     expect(await issues(organizer.id)).toEqual([]);
   });
 
-  it('un pago por otro monto no paga la orden y avisa al organizador', async () => {
+  // Uno por menos es parte de un pago combinado: combined-payments.e2e-spec.ts.
+  it('un pago por más del total no paga la orden y avisa al organizador', async () => {
     const { organizer, ticketType, buyer } = await setup();
     const order = await createOrder(t.prisma, {
       user: buyer,
@@ -139,7 +140,7 @@ describe('Estados de la orden al pagar y al vencer', () => {
       quantity: 2,
     });
 
-    await pay('pago-1', order.id, 1);
+    await pay('pago-1', order.id, 2 * PRICE + 1);
 
     expect(await state(order.id, ticketType)).toEqual({
       status: 'PENDING',
@@ -155,7 +156,7 @@ describe('Estados de la orden al pagar y al vencer', () => {
     const { organizer, ticketType, buyer } = await setup();
     const order = await createOrder(t.prisma, { user: buyer, ticketType });
 
-    await pay('pago-1', order.id, 1);
+    await pay('pago-1', order.id, PRICE + 1);
 
     const notification = await t.prisma.notification.findFirstOrThrow({
       where: { userId: organizer.id, type: 'SYSTEM' },

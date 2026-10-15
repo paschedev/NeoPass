@@ -315,9 +315,10 @@ model Order {
   // later change to the commission does not rewrite past sales.
   promoterCommission Decimal?    @db.Decimal(10, 2)
 
-  payment    Payment?
-  orderItems OrderItem[]
-  tickets    Ticket[]
+  payment      Payment?
+  paymentParts PaymentPart[]
+  orderItems   OrderItem[]
+  tickets      Ticket[]
 
   @@index([userId])
   @@index([promoterId])
@@ -340,12 +341,31 @@ model OrderItem {
 model Payment {
   id                String          @id @default(uuid())
   provider          PaymentProvider @default(MERCADO_PAGO)
+  // Null for a combined payment: its Mercado Pago payments are the order's
+  // PaymentParts.
   providerPaymentId String?
   status            PaymentStatus   @default(PENDING)
   amount            Decimal         @db.Decimal(10, 2)
   createdAt         DateTime        @default(now())
 
   orderId String @unique
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  @@index([orderId])
+}
+
+// A Mercado Pago payment approved for less than its order's total: the buyer
+// combined payment methods (account money and a card), and Mercado Pago
+// splits the purchase into one payment per method. The order is paid when its
+// APPROVED parts add up to its total; a refunded part stops counting.
+model PaymentPart {
+  id                String        @id @default(uuid())
+  providerPaymentId String        @unique
+  amount            Decimal       @db.Decimal(10, 2)
+  status            PaymentStatus @default(APPROVED)
+  createdAt         DateTime      @default(now())
+
+  orderId String
   order   Order  @relation(fields: [orderId], references: [id])
 
   @@index([orderId])
@@ -445,7 +465,8 @@ model Notification {
 
   // Notices that add up (sales of an event, of a promoter) share this key
   // while unread: the next one adds to it. Reading it clears the key, so the
-  // next one opens a new notice.
+  // next one opens a new notice. A payment issue uses it so that the same
+  // issue isn't told twice while unread.
   openGroupKey String?
 
   createdAt  DateTime @default(now())
