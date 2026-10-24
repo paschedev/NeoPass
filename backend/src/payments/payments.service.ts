@@ -44,11 +44,11 @@ export class PaymentsService {
   async createPreference(
     orderId: string,
     items: PreferenceItem[],
-    feeAmount: number,
+    marketplaceFee: number,
     sellerToken: string,
   ) {
     // Marketplace: the sale is collected with the organizer's OAuth token and
-    // NeoPass keeps its service fee through marketplace_fee.
+    // NeoPass keeps its share of the service fee through marketplace_fee.
     const preference = new Preference(
       new MercadoPagoConfig({ accessToken: sellerToken }),
     );
@@ -68,7 +68,7 @@ export class PaymentsService {
           pending: `${frontendUrl}/checkout/pending`,
         },
         auto_return: 'approved',
-        ...(feeAmount > 0 && { marketplace_fee: feeAmount }),
+        ...(marketplaceFee > 0 && { marketplace_fee: marketplaceFee }),
         // Webhooks only: without source_news Mercado Pago also sends IPN
         // notifications, which carry no signature and get rejected.
         ...(!isLocalBackend && {

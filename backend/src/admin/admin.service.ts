@@ -83,7 +83,9 @@ export class AdminService {
           sold: tickets.get(event.id)?.sold ?? 0,
           capacity: tickets.get(event.id)?.capacity ?? 0,
           revenue: (money.get(event.id)?.revenue ?? ZERO).toNumber(),
-          serviceFee: (money.get(event.id)?.serviceFee ?? ZERO).toNumber(),
+          marketplaceFee: (
+            money.get(event.id)?.marketplaceFee ?? ZERO
+          ).toNumber(),
         },
       })),
       total,

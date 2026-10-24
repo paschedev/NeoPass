@@ -298,13 +298,17 @@ model DiscountCode {
 }
 
 model Order {
-  id           String      @id @default(uuid())
-  status       OrderStatus @default(PENDING)
-  totalAmount  Decimal     @db.Decimal(10, 2)
-  serviceFee   Decimal     @default(0) @db.Decimal(10, 2)
-  ticketAmount Decimal     @default(0) @db.Decimal(10, 2)
-  createdAt    DateTime    @default(now())
-  expiresAt    DateTime
+  id             String      @id @default(uuid())
+  status         OrderStatus @default(PENDING)
+  totalAmount    Decimal     @db.Decimal(10, 2)
+  // What the buyer paid on top of the tickets and, out of it, what NeoPass
+  // kept (Mercado Pago's marketplace_fee): the rest of the service fee covers
+  // the buyer's third of Mercado Pago's fee (orders/service-fee-split.ts).
+  serviceFee     Decimal     @default(0) @db.Decimal(10, 2)
+  marketplaceFee Decimal     @default(0) @db.Decimal(10, 2)
+  ticketAmount   Decimal     @default(0) @db.Decimal(10, 2)
+  createdAt      DateTime    @default(now())
+  expiresAt      DateTime
 
   userId String
   user   User   @relation(fields: [userId], references: [id])

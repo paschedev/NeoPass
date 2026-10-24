@@ -1,3 +1,5 @@
+import { splitServiceFee } from './service-fee-split';
+
 // Mismo tope que valida el backend (CreateOrderDto).
 export const MAX_TICKETS_PER_ORDER = 10;
 
@@ -14,8 +16,9 @@ const countTickets = (cart: Cart) =>
   Object.values(cart).reduce((sum, quantity) => sum + quantity, 0);
 
 // Desglose que ve el comprador antes de pagar. El cargo se calcula como en
-// el backend: subtotal × % del evento, redondeado a centavos (mitad hacia
-// arriba). Todo en centavos enteros para no arrastrar errores de float.
+// el backend: subtotal × lo que paga el comprador del cargo del evento
+// (splitServiceFee), redondeado a centavos (mitad hacia arriba). Todo en
+// centavos enteros para no arrastrar errores de float.
 export function calculateCheckoutTotals(
   ticketTypes: PricedTicketType[],
   cart: Cart,
@@ -25,7 +28,8 @@ export function calculateCheckoutTotals(
     (sum, type) => sum + (cart[type.id] ?? 0) * toCents(type.price),
     0,
   );
-  const feeBasisPoints = Math.round(Number(feePercentage) * 100);
+  const { buyerPercentage } = splitServiceFee(feePercentage);
+  const feeBasisPoints = Math.round(buyerPercentage * 100);
   const feeCents = Math.round((subtotalCents * feeBasisPoints) / 10_000);
   return {
     tickets: countTickets(cart),

@@ -79,6 +79,7 @@ export class OrdersService {
         userId,
         ticketAmount: checkout.ticketAmount,
         serviceFee: checkout.serviceFee,
+        marketplaceFee: checkout.marketplaceFee,
         totalAmount: checkout.totalAmount,
         promoterId: promoter?.id,
         expiresAt: new Date(now.getTime() + ORDER_PAYMENT_WINDOW_MS),
@@ -105,7 +106,7 @@ export class OrdersService {
       const res = await this.paymentsService.createPreference(
         order.id,
         checkout.mpItems,
-        checkout.serviceFee.toNumber(),
+        checkout.marketplaceFee.toNumber(),
         sellerToken,
       );
       initPoint = res.initPoint || '';

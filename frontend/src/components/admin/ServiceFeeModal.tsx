@@ -106,7 +106,9 @@ function ServiceFeeForm({
             Pasa de {formatPercentage(event.neoPassFeePercentage)} a{' '}
             {formatPercentage(preview.percentage)}: una entrada de{' '}
             {formatCurrency(preview.price)} le cuesta{' '}
-            {formatCurrency(preview.total)} a quien compra.
+            {formatCurrency(preview.total)} a quien compra. NeoPass se queda
+            con {formatCurrency(preview.neoPassFee)} y el organizador recibe{' '}
+            {formatCurrency(preview.organizerNet)} después de Mercado Pago.
           </p>
         )}
       </div>
