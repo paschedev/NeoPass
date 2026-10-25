@@ -29,7 +29,7 @@ const adminEvent = (overrides = {}) => ({
   deletedByNeoPass: null,
   neoPassFeePercentage: '15',
   organizer: { name: 'Productora Sur', email: 'sur@neopass.test' },
-  sales: { sold: 0, capacity: 100, revenue: 0, serviceFee: 0 },
+  sales: { sold: 0, capacity: 100, revenue: 0, marketplaceFee: 0 },
   ...overrides,
 });
 const deleted = { deletedAt: at(-1), deletedByNeoPass: true };
@@ -136,7 +136,7 @@ describe('Panel ADMIN: eventos', () => {
     },
   );
 
-  it('cambiar el cargo muestra cuánto paga quien compra y lo guarda', async () => {
+  it('cambiar el cargo muestra cuánto paga quien compra, cuánto se queda NeoPass y cuánto recibe el organizador, y lo guarda', async () => {
     server(
       eventsPage([adminEvent()]),
       Response.json({ id: 'e1', neoPassFeePercentage: '8.5' }),
@@ -156,7 +156,7 @@ describe('Panel ADMIN: eventos', () => {
       { target: { value: '8,5' } },
     );
     expect(dialog).toHaveTextContent(
-      'Pasa de 15 % a 8,5 %: una entrada de $10.000 le cuesta $10.850 a quien compra.',
+      'Pasa de 15 % a 8,5 %: una entrada de $10.000 le cuesta $11.147 a quien compra. NeoPass se queda con $553 y el organizador recibe $9.703,80 después de Mercado Pago.',
     );
     fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
 
@@ -230,7 +230,7 @@ describe('Panel ADMIN: eventos', () => {
     expect(toast.success).not.toHaveBeenCalled();
   });
 
-  it('muestra las entradas vendidas sobre el total, lo recaudado y el cargo cobrado', async () => {
+  it('muestra las entradas vendidas sobre el total, lo recaudado y lo que se quedó NeoPass', async () => {
     server(
       eventsPage([
         adminEvent({
@@ -238,7 +238,7 @@ describe('Panel ADMIN: eventos', () => {
             sold: 120,
             capacity: 300,
             revenue: 1200000,
-            serviceFee: 96000,
+            marketplaceFee: 96000,
           },
         }),
       ]),
@@ -249,7 +249,7 @@ describe('Panel ADMIN: eventos', () => {
     const card = await eventCard('Fiesta de primavera');
     expect(card).toHaveTextContent('120 de 300 vendidas');
     expect(card).toHaveTextContent('Recaudado $1.200.000');
-    expect(card).toHaveTextContent('Cargo cobrado $96.000');
+    expect(card).toHaveTextContent('Para NeoPass $96.000');
   });
 
   it.each([

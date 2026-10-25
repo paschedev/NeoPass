@@ -7,6 +7,7 @@ export type PendingOrder = {
   userId: string;
   ticketAmount: Prisma.Decimal;
   serviceFee: Prisma.Decimal;
+  marketplaceFee: Prisma.Decimal;
   totalAmount: Prisma.Decimal;
   promoterId?: string;
   expiresAt: Date;

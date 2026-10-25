@@ -18,23 +18,30 @@ describe('calculateCheckoutTotals', () => {
     });
   });
 
-  it('suma las entradas elegidas y agrega el cargo de servicio del evento', () => {
+  it('suma las entradas elegidas y agrega el cargo del evento más el tercio de Mercado Pago del comprador', () => {
+    // Con un cargo del 10 % el comprador paga 13,01 %.
     expect(
       calculateCheckoutTotals([GENERAL, VIP], { general: 2, vip: 1 }, '10.00'),
     ).toEqual({
       tickets: 3,
       subtotal: 4500.5,
-      serviceFee: 450.05,
-      total: 4950.55,
+      serviceFee: 585.52,
+      total: 5086.02,
     });
   });
 
   it('redondea el cargo a centavos hacia arriba en la mitad, como el backend', () => {
-    // 1000,30 × 15 % = 150,045 → 150,05 (no 150,04)
+    // 10,00 × 18,15 % = 1,815 → 1,82 (no 1,81)
     expect(
-      calculateCheckoutTotals([{ id: 'x', price: '1000.30' }], { x: 1 }, '15')
+      calculateCheckoutTotals([{ id: 'x', price: '10.00' }], { x: 1 }, '15')
         .serviceFee,
-    ).toBe(150.05);
+    ).toBe(1.82);
+  });
+
+  it('un evento al 0 % no le suma cargo al comprador', () => {
+    expect(
+      calculateCheckoutTotals([GENERAL], { general: 1 }, '0'),
+    ).toMatchObject({ serviceFee: 0, total: 1000 });
   });
 });
 

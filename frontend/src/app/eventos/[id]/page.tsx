@@ -419,13 +419,7 @@ function EventContent() {
                         <span>{formatCurrency(totals.subtotal)}</span>
                       </div>
                       <div className="flex justify-between text-sm text-neutral-400">
-                        <span>
-                          Cargo de servicio (
-                          {Number(event.neoPassFeePercentage).toLocaleString(
-                            'es-AR',
-                          )}
-                          %)
-                        </span>
+                        <span>Cargo de servicio</span>
                         <span>{formatCurrency(totals.serviceFee)}</span>
                       </div>
                     </>

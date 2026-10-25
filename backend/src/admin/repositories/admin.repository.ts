@@ -99,14 +99,14 @@ export class AdminRepository {
 
   // Tickets sold over capacity, and what paid orders brought in, per event,
   // for a whole page at once. Revenue is what buyers paid for the tickets
-  // (the price at purchase, as the organizer sees it); the service fee is
+  // (the price at purchase, as the organizer sees it); what NeoPass kept is
   // counted once per order, however many ticket types it has.
   async sumSalesByEvent(eventIds: string[]) {
     const sales = {
       tickets: new Map<string, { sold: number; capacity: number }>(),
       money: new Map<
         string,
-        { revenue: Prisma.Decimal; serviceFee: Prisma.Decimal }
+        { revenue: Prisma.Decimal; marketplaceFee: Prisma.Decimal }
       >(),
     };
     if (eventIds.length === 0) return sales;
@@ -121,11 +121,11 @@ export class AdminRepository {
         {
           eventId: string;
           revenue: Prisma.Decimal;
-          serviceFee: Prisma.Decimal;
+          marketplaceFee: Prisma.Decimal;
         }[]
       >`
         SELECT paid."eventId", SUM(paid.revenue) AS revenue,
-          SUM(o."serviceFee") AS "serviceFee"
+          SUM(o."marketplaceFee") AS "marketplaceFee"
         FROM (
           SELECT oi."orderId", tt."eventId",
             SUM(oi."unitPrice" * oi.quantity) AS revenue
@@ -144,8 +144,8 @@ export class AdminRepository {
         capacity: row._sum.stock ?? 0,
       });
     }
-    for (const { eventId, revenue, serviceFee } of moneyRows) {
-      sales.money.set(eventId, { revenue, serviceFee });
+    for (const { eventId, revenue, marketplaceFee } of moneyRows) {
+      sales.money.set(eventId, { revenue, marketplaceFee });
     }
     return sales;
   }

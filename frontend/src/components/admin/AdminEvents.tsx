@@ -35,7 +35,7 @@ function AdminEventCard({
   const now = new Date();
   // Un evento cerrado ya no vende: el backend tampoco deja cambiar su cargo.
   const sells = getEventPhase(event, now) !== 'CLOSED';
-  const { sold, capacity, revenue, serviceFee } = event.sales;
+  const { sold, capacity, revenue, marketplaceFee } = event.sales;
 
   return (
     <article
@@ -65,7 +65,7 @@ function AdminEventCard({
           </p>
           <p className="text-xs text-neutral-300 mt-2 tabular-nums">
             {sold} de {capacity} vendidas · Recaudado {formatCurrency(revenue)}{' '}
-            · Cargo cobrado {formatCurrency(serviceFee)}
+            · Para NeoPass {formatCurrency(marketplaceFee)}
           </p>
           {/* Su renglón queda reservado: dar de baja o restaurar no mueve la lista. */}
           <p className="text-xs text-red-400 mt-1 min-h-4">
