@@ -3,6 +3,7 @@ import { mercadoPagoMock } from './mocks/mercadopago';
 import { authHeader } from './utils/auth';
 import {
   createBatch,
+  createOrder,
   createOrganizerWithEvent,
   createUser,
 } from './utils/factories';
@@ -44,7 +45,7 @@ describe('Checkout', () => {
     return types.reduce((sum, type) => sum + type.reserved, 0);
   }
 
-  it('cobra el cargo de servicio del evento redondeado a centavos', async () => {
+  it('el comprador paga el cargo del evento más su tercio de la comisión de Mercado Pago, redondeado a centavos', async () => {
     const { event, ticketType } = await createOrganizerWithEvent(t.prisma, {
       price: 333.33,
     });
@@ -62,17 +63,61 @@ describe('Checkout', () => {
       where: { id: (res.body as { orderId: string }).orderId },
     });
     expect(order.ticketAmount.toFixed(2)).toBe('333.33');
-    expect(order.serviceFee.toFixed(2)).toBe('50.00');
-    expect(order.totalAmount.toFixed(2)).toBe('383.33');
+    expect(order.serviceFee.toFixed(2)).toBe('60.50');
+    expect(order.marketplaceFee.toFixed(2)).toBe('39.50');
+    expect(order.totalAmount.toFixed(2)).toBe('393.83');
     const [preference] = mercadoPagoMock.preferenceCreate.mock.calls[0] as [
-      { body: { items: MpItem[] } },
+      { body: { items: MpItem[]; marketplace_fee?: number } },
       string,
     ];
     const fee = preference.body.items.find((i) => i.id === 'service_fee');
-    expect(fee?.unit_price).toBe(50);
+    expect(fee?.unit_price).toBe(60.5);
+    expect(preference.body.marketplace_fee).toBe(39.5);
   });
 
-  it('cobra con la cuenta del organizador y le pasa a NeoPass su comisión', async () => {
+  it('si el cargo no alcanza para el tercio de NeoPass, NeoPass no recibe nada y el comprador paga solo su tercio', async () => {
+    const { event, ticketType } = await createOrganizerWithEvent(t.prisma, {
+      price: 10000,
+    });
+    await t.prisma.event.update({
+      where: { id: event.id },
+      data: { neoPassFeePercentage: 2 },
+    });
+    const buyer = await createUser(t.prisma);
+
+    const res = await checkout(buyer, {
+      items: [{ ticketTypeId: ticketType.id, quantity: 1 }],
+    }).expect(201);
+
+    const order = await t.prisma.order.findUniqueOrThrow({
+      where: { id: (res.body as { orderId: string }).orderId },
+    });
+    expect(order.serviceFee.toFixed(2)).toBe('479.00');
+    expect(order.marketplaceFee.toFixed(2)).toBe('0.00');
+    expect(order.totalAmount.toFixed(2)).toBe('10479.00');
+    const [preference] = mercadoPagoMock.preferenceCreate.mock.calls[0] as [
+      { body: { marketplace_fee?: number } },
+      string,
+    ];
+    expect(preference.body.marketplace_fee).toBeUndefined();
+  });
+
+  it('la base no deja que NeoPass se quede con más que el cargo ni con un monto negativo, aunque se cambie por SQL', async () => {
+    const { ticketType } = await createOrganizerWithEvent(t.prisma);
+    const order = await createOrder(t.prisma, {
+      user: await createUser(t.prisma),
+      ticketType,
+    });
+
+    for (const fee of [1, -1]) {
+      await expect(
+        t.prisma
+          .$executeRaw`UPDATE "Order" SET "marketplaceFee" = ${fee} WHERE id = ${order.id}`,
+      ).rejects.toThrow(/Order_marketplaceFee_range/);
+    }
+  });
+
+  it('cobra con la cuenta del organizador y le pasa a NeoPass su parte del cargo', async () => {
     const { event, ticketType } = await createOrganizerWithEvent(t.prisma, {
       price: 1000,
     });
@@ -89,7 +134,7 @@ describe('Checkout', () => {
     const [preference, accessToken] = mercadoPagoMock.preferenceCreate.mock
       .calls[0] as [{ body: { marketplace_fee?: number } }, string];
     expect(accessToken).toBe('TEST-organizer-access-token');
-    expect(preference.body.marketplace_fee).toBe(200);
+    expect(preference.body.marketplace_fee).toBe(139.8);
   });
 
   it('pide a Mercado Pago solo notificaciones firmadas', async () => {

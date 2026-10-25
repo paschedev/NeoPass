@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { apiFetch } from '@/utils/api';
 import EventPage from './page';
 
@@ -41,5 +41,34 @@ describe('Página del evento', () => {
     render(<EventPage />);
 
     expect(await screen.findByText('Organiza Productora Sur')).toBeVisible();
+  });
+
+  it('muestra el cargo de servicio como monto, sin porcentaje, y el total que cobra Mercado Pago', async () => {
+    const onSale = {
+      ...event,
+      ticketBatches: [
+        {
+          id: 'b1',
+          name: 'Primera tanda',
+          saleStatus: 'ON_SALE',
+          publishAt: null,
+          closeAt: null,
+          ticketTypes: [
+            { id: 't1', name: 'General', price: '10000.00', available: 10 },
+          ],
+        },
+      ],
+    };
+    vi.mocked(apiFetch).mockImplementation(async (path) =>
+      path === '/events/e1' ? Response.json(onSale) : Response.json([]),
+    );
+
+    render(<EventPage />);
+    fireEvent.click(await screen.findByRole('button', { name: '+' }));
+
+    const fee = screen.getByText('Cargo de servicio');
+    expect(fee.nextElementSibling).toHaveTextContent('$1.815');
+    expect(screen.queryByText(/Cargo de servicio \(/)).not.toBeInTheDocument();
+    expect(screen.getByText('$11.815')).toBeVisible();
   });
 });

@@ -11,13 +11,13 @@ export interface AdminEvent {
   // Decimal de la base: llega como string ("8.5").
   neoPassFeePercentage: string;
   organizer: { name: string; email: string };
-  // Solo compras pagadas. Recaudado: lo que pagaron por las entradas; el
-  // cargo de servicio es lo que cobró NeoPass. En pesos.
+  // Solo compras pagadas. Recaudado: lo que pagaron por las entradas;
+  // marketplaceFee: lo que se quedó NeoPass del cargo. En pesos.
   sales: {
     sold: number;
     capacity: number;
     revenue: number;
-    serviceFee: number;
+    marketplaceFee: number;
   };
 }
 

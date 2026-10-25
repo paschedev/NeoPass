@@ -25,7 +25,7 @@ type AdminEvent = {
     sold: number;
     capacity: number;
     revenue: number;
-    serviceFee: number;
+    marketplaceFee: number;
   };
 };
 type AdminEventsPage = {
@@ -139,7 +139,7 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
           name: second.organizer.name,
           email: second.organizer.email,
         },
-        sales: { sold: 0, capacity: 100, revenue: 0, serviceFee: 0 },
+        sales: { sold: 0, capacity: 100, revenue: 0, marketplaceFee: 0 },
       });
       expect(
         page.items.find((e) => e.id === first.event.id)?.neoPassFeePercentage,
@@ -223,14 +223,22 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
       return item;
     }
 
-    function chargeFee(orderId: string, serviceFee: number) {
+    function chargeFee(
+      orderId: string,
+      serviceFee: number,
+      marketplaceFee: number,
+    ) {
       return t.prisma.order.update({
         where: { id: orderId },
-        data: { serviceFee, totalAmount: { increment: serviceFee } },
+        data: {
+          serviceFee,
+          marketplaceFee,
+          totalAmount: { increment: serviceFee },
+        },
       });
     }
 
-    it('suma las vendidas sobre el total, lo recaudado y el cargo cobrado contando solo las compras pagadas', async () => {
+    it('suma las vendidas sobre el total, lo recaudado y lo que se quedó NeoPass contando solo las compras pagadas', async () => {
       const { event, ticketType } = await createOrganizerWithEvent(t.prisma, {
         price: 1000,
         stock: 100,
@@ -242,25 +250,25 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
         quantity: 2,
         status: 'PAID',
       });
-      await chargeFee(paid.id, 300);
+      await chargeFee(paid.id, 363, 237);
       for (const status of ['EXPIRED', 'CANCELLED', 'PENDING'] as const) {
         const other = await createOrder(t.prisma, {
           user: buyer,
           ticketType,
           status,
         });
-        await chargeFee(other.id, 150);
+        await chargeFee(other.id, 181.5, 118.5);
       }
 
       expect((await itemOf(event.id)).sales).toEqual({
         sold: 2,
         capacity: 100,
         revenue: 2000,
-        serviceFee: 300,
+        marketplaceFee: 237,
       });
     });
 
-    it('una compra con dos tipos de entrada suma su cargo una sola vez', async () => {
+    it('una compra con dos tipos de entrada suma lo de NeoPass una sola vez', async () => {
       const { event, batch, ticketType } = await createOrganizerWithEvent(
         t.prisma,
         { price: 1000, stock: 100 },
@@ -292,13 +300,13 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
         where: { id: order.id },
         data: { ticketAmount: 4000, totalAmount: 4000 },
       });
-      await chargeFee(order.id, 600);
+      await chargeFee(order.id, 726, 474);
 
       expect((await itemOf(event.id)).sales).toEqual({
         sold: 2,
         capacity: 150,
         revenue: 4000,
-        serviceFee: 600,
+        marketplaceFee: 474,
       });
     });
 
@@ -360,12 +368,13 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
       const order = await t.prisma.order.findUniqueOrThrow({
         where: { id: (started.body as { orderId: string }).orderId },
       });
-      expect(order.serviceFee.toFixed(2)).toBe('85.00');
+      expect(order.serviceFee.toFixed(2)).toBe('114.70');
+      expect(order.marketplaceFee.toFixed(2)).toBe('55.30');
       const preference = lastPreference();
       expect(
         preference.items.find((item) => item.id === 'service_fee')?.unit_price,
-      ).toBe(85);
-      expect(preference.marketplace_fee).toBe(85);
+      ).toBe(114.7);
+      expect(preference.marketplace_fee).toBe(55.3);
     });
 
     it('una compra que ya empezó conserva el cargo con el que se inició', async () => {
@@ -382,8 +391,8 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
       const order = await t.prisma.order.findUniqueOrThrow({
         where: { id: (started.body as { orderId: string }).orderId },
       });
-      expect(order.serviceFee.toFixed(2)).toBe('150.00');
-      expect(order.totalAmount.toFixed(2)).toBe('1150.00');
+      expect(order.serviceFee.toFixed(2)).toBe('181.50');
+      expect(order.totalAmount.toFixed(2)).toBe('1181.50');
     });
 
     it('con 0 % la compra sale sin cargo: Mercado Pago no recibe un ítem de $0 ni marketplace_fee', async () => {

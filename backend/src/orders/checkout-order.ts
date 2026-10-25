@@ -6,6 +6,7 @@ import {
 import { EventStatus, Prisma } from '@prisma/client';
 import { getSaleWindowStatus } from '../events/batch-sale-status';
 import type { PreferenceItem } from '../payments/payments.service';
+import { splitServiceFee } from './service-fee-split';
 
 export type CheckoutTicketType = {
   id: string;
@@ -39,9 +40,10 @@ export type CheckoutOrderItem = {
 const CURRENCY_ID = 'ARS';
 
 // Checks that every requested ticket can be sold right now and prices the
-// order with the database values: the tickets, NeoPass's service fee (rounded
-// to cents) and the items Mercado Pago charges. The stock check here gives the
-// buyer a clear answer; the database CHECK is what prevents overselling.
+// order with the database values: the tickets, the service fee the buyer pays
+// and NeoPass's share of it (both rounded to cents), and the items Mercado Pago
+// charges. The stock check here gives the buyer a clear answer; the database
+// CHECK is what prevents overselling.
 export function buildCheckoutOrder<T extends CheckoutTicketType>(
   items: { ticketTypeId: string; quantity: number }[],
   ticketTypes: T[],
@@ -105,10 +107,16 @@ export function buildCheckoutOrder<T extends CheckoutTicketType>(
   // The DTO already rejects an empty order.
   if (!event) throw new BadRequestException('Elegí al menos una entrada');
 
-  const serviceFee = ticketAmount
-    .mul(event.neoPassFeePercentage)
-    .div(100)
-    .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  const { buyerPercentage, neoPassPercentage } = splitServiceFee(
+    event.neoPassFeePercentage,
+  );
+  const percentOfTickets = (percentage: Prisma.Decimal) =>
+    ticketAmount
+      .mul(percentage)
+      .div(100)
+      .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  const serviceFee = percentOfTickets(buyerPercentage);
+  const marketplaceFee = percentOfTickets(neoPassPercentage);
   // Without a fee (an event at 0 %) Mercado Pago gets no $0 line.
   if (serviceFee.gt(0)) {
     mpItems.push({
@@ -124,6 +132,7 @@ export function buildCheckoutOrder<T extends CheckoutTicketType>(
     event,
     ticketAmount,
     serviceFee,
+    marketplaceFee,
     totalAmount: ticketAmount.add(serviceFee),
     orderItems,
     mpItems,
