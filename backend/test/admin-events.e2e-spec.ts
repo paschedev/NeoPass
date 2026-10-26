@@ -109,7 +109,7 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
         await listEvents(user).expect(403);
         await changeFee(user, event.id, { percentage: 8 }).expect(403);
       }
-      expect(await feeOf(event.id)).toBe('15');
+      expect(await feeOf(event.id)).toBe('12');
     });
   });
 
@@ -143,7 +143,7 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
       });
       expect(
         page.items.find((e) => e.id === first.event.id)?.neoPassFeePercentage,
-      ).toBe('15');
+      ).toBe('12');
     });
 
     it('busca por nombre del evento o por email del organizador, sin importar mayúsculas', async () => {
@@ -391,8 +391,8 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
       const order = await t.prisma.order.findUniqueOrThrow({
         where: { id: (started.body as { orderId: string }).orderId },
       });
-      expect(order.serviceFee.toFixed(2)).toBe('181.50');
-      expect(order.totalAmount.toFixed(2)).toBe('1181.50');
+      expect(order.serviceFee.toFixed(2)).toBe('150.60');
+      expect(order.totalAmount.toFixed(2)).toBe('1150.60');
     });
 
     it('con 0 % la compra sale sin cargo: Mercado Pago no recibe un ítem de $0 ni marketplace_fee', async () => {
@@ -438,7 +438,7 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
 
       await changeFee(await createAdmin(), event.id, body).expect(400);
 
-      expect(await feeOf(event.id)).toBe('15');
+      expect(await feeOf(event.id)).toBe('12');
     });
 
     it('un evento que no existe responde 404', async () => {
@@ -469,16 +469,16 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
           percentage: 8,
         }).expect(409);
 
-        expect(await feeOf(event.id)).toBe('15');
+        expect(await feeOf(event.id)).toBe('12');
       },
     );
   });
 
   describe('la base de datos', () => {
-    it('los eventos nuevos nacen con 15 %', async () => {
+    it('los eventos nuevos nacen con 12 %', async () => {
       const { event } = await createOrganizerWithEvent(t.prisma);
 
-      expect(event.neoPassFeePercentage.toString()).toBe('15');
+      expect(event.neoPassFeePercentage.toString()).toBe('12');
     });
 
     it('rechaza un cargo fuera de 0–100 aunque se cambie por SQL', async () => {
@@ -490,7 +490,7 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
             .$executeRaw`UPDATE "Event" SET "neoPassFeePercentage" = ${fee} WHERE id = ${event.id}`,
         ).rejects.toThrow(/Event_neoPassFeePercentage_range/);
       }
-      expect(await feeOf(event.id)).toBe('15');
+      expect(await feeOf(event.id)).toBe('12');
     });
   });
 });
