@@ -12,7 +12,7 @@ import {
   formatDayMonthTime,
   formatEventRange,
 } from '@/utils/format';
-import { formatPercentage } from '@/utils/service-fee';
+import { formatPercentage, mercadoPagoTermsLabel } from '@/utils/service-fee';
 import toast from '@/utils/toast';
 import AdminListView, { ADMIN_ACTION as ACTION } from './AdminListView';
 import RestoreEventModal from './RestoreEventModal';
@@ -62,6 +62,9 @@ function AdminEventCard({
           </h3>
           <p className="text-xs text-neutral-500 mt-1 break-words">
             {event.organizer.name} · {event.organizer.email}
+          </p>
+          <p className="text-xs text-neutral-500 break-words tabular-nums">
+            {mercadoPagoTermsLabel(event.organizer)}
           </p>
           <p className="text-xs text-neutral-300 mt-2 tabular-nums">
             {sold} de {capacity} vendidas · Recaudado {formatCurrency(revenue)}{' '}

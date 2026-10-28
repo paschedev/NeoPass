@@ -26,6 +26,7 @@ const sales = (overrides: Partial<EventSales['event']> = {}): EventSales => ({
     capacity: 150,
     checkedIn: 1,
     refundedOrders: 2,
+    feeAdjustment: 0,
   },
   batches: [
     {
@@ -87,6 +88,19 @@ describe('EventSalesView', () => {
     ).toBeInTheDocument();
     expect(within(summary).getByText('1 de 3')).toBeInTheDocument();
     expect(within(summary).getByText('2')).toBeInTheDocument();
+    expect(within(summary).queryByText(/ajuste/)).not.toBeInTheDocument();
+  });
+
+  it('si se cobró un ajuste por la comisión de Mercado Pago, lo muestra en lo recaudado', () => {
+    const data = sales();
+    renderView({ ...data, totals: { ...data.totals, feeAdjustment: 80.25 } });
+
+    const summary = screen.getByRole('region', { name: 'Resumen' });
+    expect(
+      within(summary).getByText(
+        'Se descontaron $80,25 de ajuste por la comisión de Mercado Pago.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('muestra cada tanda con su estado y, por tipo de entrada, precio, vendidas, disponibles y recaudado', () => {
