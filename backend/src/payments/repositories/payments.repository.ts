@@ -159,7 +159,11 @@ export class PaymentsRepository {
   // first. Recording the same part again changes nothing.
   async recordPaymentPart(
     orderId: string,
-    part: { providerPaymentId: string; amount: number },
+    part: {
+      providerPaymentId: string;
+      amount: number;
+      mercadoPagoFee: Prisma.Decimal | null;
+    },
   ) {
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT 1 FROM "Order" WHERE id = ${orderId} FOR UPDATE`;
@@ -213,13 +217,15 @@ export class PaymentsRepository {
   // (EXPIRED/CANCELLED) no longer has a reservation: it only adds to `sold`,
   // and the stock CHECK aborts the transaction if there are no tickets left.
   // The promoter's commission is fixed on the order when it is paid, so a
-  // refund takes back exactly that amount.
+  // refund takes back exactly that amount. The organizer's Mercado Pago terms
+  // are updated only if this payment is newer than the one they came from.
   async payOrderTransaction(
     {
       orderId,
       fromStatus,
       payment,
       promoterCommission,
+      organizerTerms,
     }: {
       orderId: string;
       fromStatus: OrderStatus;
@@ -228,8 +234,15 @@ export class PaymentsRepository {
       payment: {
         providerPaymentId: string | null;
         amount: number | Prisma.Decimal;
+        mercadoPagoFee: Prisma.Decimal | null;
       };
       promoterCommission: { promoterId: string; amount: Prisma.Decimal } | null;
+      organizerTerms: {
+        organizerId: string;
+        feeRate: Prisma.Decimal;
+        releaseDays: number | null;
+        approvedAt: Date;
+      } | null;
     },
     generateTicketsCallback: (tx: Prisma.TransactionClient) => Promise<void>,
   ) {
@@ -239,9 +252,29 @@ export class PaymentsRepository {
         data: {
           status: 'PAID',
           promoterCommission: promoterCommission?.amount,
+          mercadoPagoFee: payment.mercadoPagoFee,
         },
       });
       if (count === 0) return false;
+
+      if (organizerTerms) {
+        const { organizerId, feeRate, releaseDays, approvedAt } =
+          organizerTerms;
+        await tx.user.updateMany({
+          where: {
+            id: organizerId,
+            OR: [
+              { mercadoPagoFeeRateAt: null },
+              { mercadoPagoFeeRateAt: { lt: approvedAt } },
+            ],
+          },
+          data: {
+            mercadoPagoFeeRate: feeRate,
+            mercadoPagoReleaseDays: releaseDays,
+            mercadoPagoFeeRateAt: approvedAt,
+          },
+        });
+      }
 
       const items = await tx.orderItem.findMany({ where: { orderId } });
       const hadReservation = fromStatus === 'PENDING';
@@ -342,6 +375,7 @@ export class PaymentsRepository {
 const APPROVED_PART_FIELDS = {
   providerPaymentId: true,
   amount: true,
+  mercadoPagoFee: true,
 } satisfies Prisma.PaymentPartSelect;
 
 // The order's payment made with this Mercado Pago payment: it is the payment
