@@ -79,6 +79,7 @@ import {
   promoterFreeTicketTerms,
   promoterFreeTicketsNotice,
 } from './promoter-free-tickets';
+import { splitServiceFee } from '../orders/service-fee-split';
 
 // Role names as the organizer reads them (errors and notices in their panel).
 const STAFF_ROLE_LABEL: Record<StaffRole, string> = {
@@ -402,9 +403,16 @@ export class EventsService {
       .filter(
         ({ saleStatus }) => saleStatus !== 'HIDDEN' && saleStatus !== 'ENDED',
       );
-    const { organizer, ...publicEvent } = event;
+    // The buyer sees only what they pay on top of the tickets: NeoPass's fee
+    // and the organizer's Mercado Pago rate stay out of the public page.
+    const { organizer, neoPassFeePercentage, ...publicEvent } = event;
+    const { buyerPercentage } = splitServiceFee(
+      neoPassFeePercentage,
+      organizer.mercadoPagoFeeRate,
+    );
     return {
       ...publicEvent,
+      buyerFeePercentage: buyerPercentage,
       organizerName: organizerDisplayName(organizer),
       ticketBatches,
     };

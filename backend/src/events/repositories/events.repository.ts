@@ -79,7 +79,9 @@ export class EventsRepository {
         venuePlaceId: true,
         status: true,
         neoPassFeePercentage: true,
-        organizer: { select: ORGANIZER_NAME_SELECT },
+        organizer: {
+          select: { ...ORGANIZER_NAME_SELECT, mercadoPagoFeeRate: true },
+        },
         // Hidden batches never leave the database on the public endpoint.
         ticketBatches: {
           where: { isVisible: true },

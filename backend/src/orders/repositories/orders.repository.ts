@@ -41,6 +41,7 @@ export class OrdersRepository {
               select: {
                 mercadoPagoAccessToken: true,
                 mercadoPagoTokenExpiresAt: true,
+                mercadoPagoFeeRate: true,
               },
             },
           },
