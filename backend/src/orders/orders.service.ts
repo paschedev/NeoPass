@@ -12,6 +12,8 @@ import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { MAX_TICKETS_PER_ORDER } from './dto/create-order.dto';
 import { buildCheckoutOrder } from './checkout-order';
+import { adjustmentCapOf, feeAdjustmentFor } from './fee-adjustment';
+import { Prisma } from '@prisma/client';
 import { hasUsableMercadoPagoToken } from '../payments/mercadopago-token';
 import { MercadoPagoTokenCipher } from '../payments/mercadopago-token-cipher';
 import type { ExpireOrderJob } from './orders.processor';
@@ -73,18 +75,29 @@ export class OrdersService {
       : null;
 
     // 1. Reserve the stock and create the order in PENDING
-    let order: { id: string };
+    // The sale also collects part of what the organizer owes NeoPass for
+    // absorbing less than their third of Mercado Pago's fee in past sales.
+    const adjustmentCap = adjustmentCapOf(
+      checkout.ticketAmount,
+      checkout.serviceFee,
+    );
+    let order: { id: string; marketplaceFee: Prisma.Decimal };
     try {
-      order = await this.ordersRepository.createPendingOrder({
-        userId,
-        ticketAmount: checkout.ticketAmount,
-        serviceFee: checkout.serviceFee,
-        marketplaceFee: checkout.marketplaceFee,
-        totalAmount: checkout.totalAmount,
-        promoterId: promoter?.id,
-        expiresAt: new Date(now.getTime() + ORDER_PAYMENT_WINDOW_MS),
-        items: checkout.orderItems,
-      });
+      order = await this.ordersRepository.createPendingOrder(
+        {
+          userId,
+          ticketAmount: checkout.ticketAmount,
+          serviceFee: checkout.serviceFee,
+          marketplaceFee: checkout.marketplaceFee,
+          totalAmount: checkout.totalAmount,
+          promoterId: promoter?.id,
+          expiresAt: new Date(now.getTime() + ORDER_PAYMENT_WINDOW_MS),
+          items: checkout.orderItems,
+          organizerId: organizer.id,
+        },
+        (balance, reserved) =>
+          feeAdjustmentFor(balance, reserved, adjustmentCap),
+      );
     } catch (error) {
       if (isStockLimitError(error)) {
         throw new ConflictException(
@@ -106,7 +119,7 @@ export class OrdersService {
       const res = await this.paymentsService.createPreference(
         order.id,
         checkout.mpItems,
-        checkout.marketplaceFee.toNumber(),
+        order.marketplaceFee.toNumber(),
         sellerToken,
       );
       initPoint = res.initPoint || '';

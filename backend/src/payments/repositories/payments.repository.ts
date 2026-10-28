@@ -195,6 +195,9 @@ export class PaymentsRepository {
         status: true,
         totalAmount: true,
         ticketAmount: true,
+        serviceFee: true,
+        marketplaceFee: true,
+        feeAdjustment: true,
         payment: { select: { id: true } },
         promoter: {
           select: { id: true, commissionType: true, commissionValue: true },
@@ -219,6 +222,8 @@ export class PaymentsRepository {
   // The promoter's commission is fixed on the order when it is paid, so a
   // refund takes back exactly that amount. The organizer's Mercado Pago terms
   // are updated only if this payment is newer than the one they came from.
+  // Their balance with NeoPass takes the sale's deviation and drops what the
+  // sale collected, never below zero.
   async payOrderTransaction(
     {
       orderId,
@@ -226,6 +231,7 @@ export class PaymentsRepository {
       payment,
       promoterCommission,
       organizerTerms,
+      feeDeviation,
     }: {
       orderId: string;
       fromStatus: OrderStatus;
@@ -243,6 +249,7 @@ export class PaymentsRepository {
         releaseDays: number | null;
         approvedAt: Date;
       } | null;
+      feeDeviation: Prisma.Decimal | null;
     },
     generateTicketsCallback: (tx: Prisma.TransactionClient) => Promise<void>,
   ) {
@@ -253,9 +260,12 @@ export class PaymentsRepository {
           status: 'PAID',
           promoterCommission: promoterCommission?.amount,
           mercadoPagoFee: payment.mercadoPagoFee,
+          feeDeviation,
         },
       });
       if (count === 0) return false;
+
+      await moveFeeBalance(tx, orderId, 'pay');
 
       if (organizerTerms) {
         const { organizerId, feeRate, releaseDays, approvedAt } =
@@ -339,6 +349,7 @@ export class PaymentsRepository {
       });
       if (count === 0) return null;
 
+      await moveFeeBalance(tx, payment.orderId, 'refund');
       await tx.payment.update({
         where: { id: payment.id },
         data: { status: 'REFUNDED' },
@@ -370,6 +381,29 @@ export class PaymentsRepository {
       return payment.orderId;
     });
   }
+}
+
+// The organizer's balance with NeoPass after one of their sales is paid
+// (adds its deviation, drops what it collected) or refunded (undoes both,
+// assuming Mercado Pago returns the marketplace_fee: VER-08). Never below
+// zero: a deviation in the organizer's favor lowers a debt, it never leaves
+// them credit. It runs before any ticket type is touched, so it locks the
+// organizer's row in the same order as a checkout.
+function moveFeeBalance(
+  tx: Prisma.TransactionClient,
+  orderId: string,
+  change: 'pay' | 'refund',
+) {
+  const sign = change === 'pay' ? 1 : -1;
+  return tx.$executeRaw`
+    UPDATE "User" u
+    SET "mercadoPagoFeeBalance" = GREATEST(0, u."mercadoPagoFeeBalance"
+      + ${sign} * (COALESCE(o."feeDeviation", 0) - o."feeAdjustment"))
+    FROM "Order" o
+    JOIN "OrderItem" oi ON oi."orderId" = o.id
+    JOIN "TicketType" tt ON tt.id = oi."ticketTypeId"
+    JOIN "Event" e ON e.id = tt."eventId"
+    WHERE o.id = ${orderId} AND u.id = e."organizerId"`;
 }
 
 const APPROVED_PART_FIELDS = {

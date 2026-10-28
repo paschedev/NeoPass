@@ -19,6 +19,7 @@ import {
   releaseDaysOf,
   sumMercadoPagoFees,
 } from './mercado-pago-fee';
+import { feeDeviationOf } from '../orders/fee-adjustment';
 
 type PreferenceBody = Parameters<Preference['create']>[0]['body'];
 export type PreferenceItem = PreferenceBody['items'][number];
@@ -175,6 +176,10 @@ export class PaymentsService {
             payment,
             promoterCommission: promoterCommissionOf(order),
             organizerTerms: organizerTermsOf(order, payment, paymentData),
+            feeDeviation: feeDeviationOf({
+              ...order,
+              mercadoPagoFee: payment.mercadoPagoFee,
+            }),
           },
           (tx) => this.ticketsService.generateTicketsForOrder(orderId, tx),
         );
