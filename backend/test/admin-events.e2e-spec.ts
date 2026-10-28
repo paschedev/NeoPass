@@ -357,11 +357,11 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
       }).expect(200);
       expect(res.body).toEqual({ id: event.id, neoPassFeePercentage: '8.5' });
 
+      // Con 8,5 % y la tasa al instante, el comprador paga 11,47 %.
       const publicPage = await http().get(`/events/${event.id}`).expect(200);
       expect(
-        (publicPage.body as { neoPassFeePercentage: string })
-          .neoPassFeePercentage,
-      ).toBe('8.5');
+        (publicPage.body as { buyerFeePercentage: string }).buyerFeePercentage,
+      ).toBe('11.47');
 
       const buyer = await createUser(t.prisma);
       const started = await checkout(buyer, ticketType.id).expect(201);

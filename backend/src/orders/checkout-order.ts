@@ -27,6 +27,7 @@ export type CheckoutTicketType = {
     endDate: Date;
     deletedAt: Date | null;
     neoPassFeePercentage: Prisma.Decimal;
+    organizer: { mercadoPagoFeeRate: Prisma.Decimal | null };
   };
 };
 
@@ -109,6 +110,7 @@ export function buildCheckoutOrder<T extends CheckoutTicketType>(
 
   const { buyerPercentage, neoPassPercentage } = splitServiceFee(
     event.neoPassFeePercentage,
+    event.organizer.mercadoPagoFeeRate,
   );
   const percentOfTickets = (percentage: Prisma.Decimal) =>
     ticketAmount

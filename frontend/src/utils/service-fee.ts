@@ -41,12 +41,12 @@ const toCents = (amount: number) => Math.round(amount * 100);
 // mismo redondeo que la página del evento), lo que se queda NeoPass y lo que
 // recibe el organizador después de la comisión de Mercado Pago.
 export function serviceFeeExample(percentage: number) {
+  const { buyerPercentage, neoPassPercentage } = splitServiceFee(percentage);
   const { serviceFee, total } = calculateCheckoutTotals(
     [{ id: 'ejemplo', price: EXAMPLE_PRICE }],
     { ejemplo: 1 },
-    percentage,
+    buyerPercentage,
   );
-  const { neoPassPercentage } = splitServiceFee(percentage);
   const neoPassCents = Math.round(
     (toCents(EXAMPLE_PRICE) * Math.round(neoPassPercentage * 100)) / 10_000,
   );
