@@ -135,6 +135,13 @@ model User {
   mercadoPagoUserId         String?
   mercadoPagoRefreshToken   String?
   mercadoPagoTokenExpiresAt DateTime?
+  // What Mercado Pago really charges this organizer, learned from their
+  // latest paid sale (it depends on the release term they chose): the fee as
+  // a fraction of the payment, the days until the money is released and when
+  // that payment was approved, so an older one never overwrites it.
+  mercadoPagoFeeRate        Decimal?  @db.Decimal(6, 5)
+  mercadoPagoReleaseDays    Int?
+  mercadoPagoFeeRateAt      DateTime?
 
   // Password Reset (the token is stored as a SHA-256 hash)
   passwordResetToken   String?   @unique
@@ -307,6 +314,9 @@ model Order {
   serviceFee     Decimal     @default(0) @db.Decimal(10, 2)
   marketplaceFee Decimal     @default(0) @db.Decimal(10, 2)
   ticketAmount   Decimal     @default(0) @db.Decimal(10, 2)
+  // Mercado Pago's fee on the payment, as it reported it (financing of
+  // interest-free installments excluded). Null if it didn't report it.
+  mercadoPagoFee Decimal?    @db.Decimal(10, 2)
   createdAt      DateTime    @default(now())
   expiresAt      DateTime
 
@@ -366,6 +376,7 @@ model PaymentPart {
   id                String        @id @default(uuid())
   providerPaymentId String        @unique
   amount            Decimal       @db.Decimal(10, 2)
+  mercadoPagoFee    Decimal?      @db.Decimal(10, 2)
   status            PaymentStatus @default(APPROVED)
   createdAt         DateTime      @default(now())
 

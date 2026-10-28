@@ -14,6 +14,11 @@ import type {
   PaymentPartsCheckJob,
 } from './payments.processor';
 import { calculatePromoterCommission } from './promoter-commission';
+import {
+  mercadoPagoFeeOf,
+  releaseDaysOf,
+  sumMercadoPagoFees,
+} from './mercado-pago-fee';
 
 type PreferenceBody = Parameters<Preference['create']>[0]['body'];
 export type PreferenceItem = PreferenceBody['items'][number];
@@ -137,6 +142,7 @@ export class PaymentsService {
     }
 
     const amount = paymentData.transaction_amount ?? 0;
+    const mercadoPagoFee = mercadoPagoFeeOf(paymentData);
 
     // Two passes: if an expiration (or another webhook) changes the order
     // between reading and paying it, the second pass sees the new status.
@@ -153,7 +159,12 @@ export class PaymentsService {
         );
         return;
       }
-      const payment = await this.paymentToRegister(order, paymentId, amount);
+      const payment = await this.paymentToRegister(
+        order,
+        paymentId,
+        amount,
+        mercadoPagoFee,
+      );
       if (!payment) return;
 
       try {
@@ -163,6 +174,7 @@ export class PaymentsService {
             fromStatus: order.status,
             payment,
             promoterCommission: promoterCommissionOf(order),
+            organizerTerms: organizerTermsOf(order, payment, paymentData),
           },
           (tx) => this.ticketsService.generateTicketsForOrder(orderId, tx),
         );
@@ -209,6 +221,7 @@ export class PaymentsService {
     order: OrderForPayment,
     paymentId: string,
     amount: number,
+    mercadoPagoFee: Prisma.Decimal | null,
   ) {
     const comparison = asAmount(amount).cmp(order.totalAmount);
     if (comparison > 0 || amount <= 0) {
@@ -222,8 +235,15 @@ export class PaymentsService {
       await this.reportPaymentIssue(order, paymentId, 'DUPLICATE_PAYMENT');
       return null;
     }
-    if (comparison === 0) return { providerPaymentId: paymentId, amount };
-    return this.combinedPaymentToRegister(order, paymentId, amount);
+    if (comparison === 0) {
+      return { providerPaymentId: paymentId, amount, mercadoPagoFee };
+    }
+    return this.combinedPaymentToRegister(
+      order,
+      paymentId,
+      amount,
+      mercadoPagoFee,
+    );
   }
 
   // A buyer who combines payment methods (account money and a card) pays
@@ -235,10 +255,12 @@ export class PaymentsService {
     order: OrderForPayment,
     paymentId: string,
     amount: number,
+    mercadoPagoFee: Prisma.Decimal | null,
   ) {
     const parts = await this.paymentsRepository.recordPaymentPart(order.id, {
       providerPaymentId: paymentId,
       amount,
+      mercadoPagoFee,
     });
     const received = sumAmounts(parts);
     const comparison = received.cmp(order.totalAmount);
@@ -261,7 +283,11 @@ export class PaymentsService {
       });
       return null;
     }
-    return { providerPaymentId: null, amount: received };
+    return {
+      providerPaymentId: null,
+      amount: received,
+      mercadoPagoFee: sumMercadoPagoFees(parts),
+    };
   }
 
   // The sale is already paid and its tickets are on their way: a notice that
@@ -335,6 +361,32 @@ type MercadoPagoPayment = Awaited<ReturnType<Payment['get']>>;
 type OrderForPayment = NonNullable<
   Awaited<ReturnType<PaymentsRepository['findOrderForPayment']>>
 >;
+
+// What Mercado Pago charges the order's organizer, as this payment shows it:
+// its fee as a fraction of what was paid and the release term they chose.
+// Null if Mercado Pago didn't report a fee, so a gap never erases them.
+function organizerTermsOf(
+  order: OrderForPayment,
+  payment: {
+    amount: number | Prisma.Decimal;
+    mercadoPagoFee: Prisma.Decimal | null;
+  },
+  paymentData: MercadoPagoPayment,
+) {
+  const organizerId = order.orderItems[0]?.ticketType.event.organizerId;
+  const { mercadoPagoFee } = payment;
+  if (!organizerId || !mercadoPagoFee?.gt(0) || !paymentData.date_approved) {
+    return null;
+  }
+  return {
+    organizerId,
+    feeRate: mercadoPagoFee
+      .div(payment.amount)
+      .toDecimalPlaces(5, Prisma.Decimal.ROUND_HALF_UP),
+    releaseDays: releaseDaysOf(paymentData),
+    approvedAt: new Date(paymentData.date_approved),
+  };
+}
 
 // What the order's promoter earns with it, if it came through a promoter.
 function promoterCommissionOf(order: OrderForPayment) {
