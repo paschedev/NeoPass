@@ -1,6 +1,7 @@
 import * as bcrypt from 'bcrypt';
 import request from 'supertest';
 import { createUser } from './utils/factories';
+import { ACCEPTED_LEGAL } from './utils/legal';
 import { mockTurnstile } from './utils/network';
 import { createTestApp, TestApp } from './utils/test-app';
 import { resetDb } from './utils/test-database';
@@ -75,6 +76,7 @@ describe('Captcha en el login y el registro', () => {
         email: 'ana@neopass.test',
         password: PASSWORD,
         role: 'CUSTOMER',
+        ...ACCEPTED_LEGAL,
       })
       .expect(400);
 

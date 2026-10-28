@@ -6,9 +6,14 @@ import {
   IsOptional,
   IsIn,
   Matches,
+  Equals,
 } from 'class-validator';
 import { EmailField } from '../../common/email-field.decorator';
 import { NoNeoPassName } from '../../common/brand-name';
+import { CURRENT_LEGAL_VERSIONS } from '../../legal/legal-documents';
+
+const TERMS_MESSAGE =
+  'Aceptá la versión vigente de los Términos de uso y la Política de privacidad';
 
 export class RegisterUserDto {
   @IsString({ message: 'El nombre debe ser un texto' })
@@ -42,6 +47,20 @@ export class RegisterUserDto {
   @IsString({ message: 'Completá la verificación de seguridad' })
   captchaToken?: string;
 
+  // The versions of the legal texts the person accepted; a missing or older
+  // one means they never saw the texts in force.
+  @Equals(CURRENT_LEGAL_VERSIONS.TERMS, { message: TERMS_MESSAGE })
+  termsVersion: number;
+
+  @Equals(CURRENT_LEGAL_VERSIONS.PRIVACY, { message: TERMS_MESSAGE })
+  privacyVersion: number;
+
+  @ValidateIf((o) => o.role === 'ORGANIZER')
+  @Equals(CURRENT_LEGAL_VERSIONS.ORGANIZER_TERMS, {
+    message: 'Aceptá la versión vigente de los Términos para organizadores',
+  })
+  organizerTermsVersion?: number;
+
   // Organizer specific fields
   @ValidateIf((o) => o.role === 'ORGANIZER')
   @IsString({ message: 'El teléfono debe ser un texto' })
@@ -51,7 +70,7 @@ export class RegisterUserDto {
   })
   phone: string;
 
-  @ValidateIf((o) => o.role === 'ORGANIZER')
+  @ValidateIf((o: RegisterUserDto) => o.role === 'ORGANIZER')
   @IsOptional()
   @IsString({ message: 'El nombre de la productora debe ser un texto' })
   @MaxLength(50, {

@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import request from 'supertest';
 import { authHeader } from './utils/auth';
 import { createUser } from './utils/factories';
+import { ACCEPTED_LEGAL } from './utils/legal';
 import { mockTurnstile } from './utils/network';
 import { createTestApp, TestApp } from './utils/test-app';
 import { resetDb } from './utils/test-database';
@@ -43,14 +44,18 @@ describe('Confirmar y cambiar el correo', () => {
 
   function register(email = 'ana@neopass.test') {
     mockTurnstile(true);
-    return http().post('/auth/register').set('X-Forwarded-For', ip).send({
-      firstName: 'Ana',
-      lastName: 'Pérez',
-      email,
-      password: PASSWORD,
-      role: 'CUSTOMER',
-      captchaToken: 'captcha-de-prueba',
-    });
+    return http()
+      .post('/auth/register')
+      .set('X-Forwarded-For', ip)
+      .send({
+        firstName: 'Ana',
+        lastName: 'Pérez',
+        email,
+        password: PASSWORD,
+        role: 'CUSTOMER',
+        captchaToken: 'captcha-de-prueba',
+        ...ACCEPTED_LEGAL,
+      });
   }
 
   async function userWithPassword(data: Parameters<typeof createUser>[1] = {}) {
