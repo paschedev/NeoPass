@@ -35,7 +35,11 @@ function server(routes: Record<string, () => Response> = {}) {
 const emailInput = () => screen.getByLabelText('Correo');
 const confirmEmailInput = () => screen.getByLabelText('Repetí tu correo');
 
-function fillForm(email: string, confirmEmail: string) {
+const consent = () =>
+  screen.getByRole('checkbox', { name: /Soy mayor de 18 años/ });
+
+function fillForm(email: string, confirmEmail: string, { accept = true } = {}) {
+  if (accept) fireEvent.click(consent());
   fireEvent.change(screen.getByPlaceholderText('Juan'), {
     target: { value: 'Juan' },
   });
@@ -128,6 +132,97 @@ describe('Registro', () => {
 
     await waitFor(() => expect(apiFetch).toHaveBeenCalled());
     expect(sentBody()).toMatchObject({ email: longEmail });
+  });
+
+  describe('términos y privacidad', () => {
+    const organizerBox = () =>
+      screen.getByRole('checkbox', { name: 'Soy productor / organizador' });
+
+    it('sin aceptar no crea la cuenta y marca la casilla', async () => {
+      render(<RegistroPage />);
+      fillForm('juan@gmail.com', 'juan@gmail.com', { accept: false });
+
+      createAccount();
+
+      await waitFor(() =>
+        expect(consent()).toHaveAttribute('aria-invalid', 'true'),
+      );
+      expect(consent()).not.toBeChecked();
+      expect(apiFetch).not.toHaveBeenCalled();
+    });
+
+    it('quien compra acepta los Términos de uso y la Política de privacidad, que abren en otra pestaña', async () => {
+      render(<RegistroPage />);
+
+      expect(consent()).toHaveAccessibleName(
+        'Soy mayor de 18 años y acepto los Términos de uso y la Política de privacidad, incluida la transferencia de mis datos a EE. UU.',
+      );
+      for (const [name, href] of [
+        ['Términos de uso', '/terminos'],
+        ['Política de privacidad', '/privacidad'],
+      ]) {
+        const link = screen.getByRole('link', { name });
+        expect(link).toHaveAttribute('href', href);
+        expect(link).toHaveAttribute('target', '_blank');
+      }
+      expect(
+        screen.queryByRole('link', { name: 'Términos para organizadores' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText(/AGENCIA DE ACCESO A LA INFORMACIÓN PÚBLICA/),
+      ).toBeInTheDocument();
+      expect(screen.getByText(/en forma gratuita a intervalos/)).toBeVisible();
+
+      fillForm('juan@gmail.com', 'juan@gmail.com');
+      createAccount();
+
+      await waitFor(() => expect(apiFetch).toHaveBeenCalled());
+      expect(sentBody()).toMatchObject({ termsVersion: 1, privacyVersion: 1 });
+      expect(sentBody()).not.toHaveProperty('organizerTermsVersion');
+    });
+
+    it('al marcar organizador la misma casilla suma sus términos y hay que volver a aceptarla', () => {
+      render(<RegistroPage />);
+      fireEvent.click(consent());
+
+      fireEvent.click(organizerBox());
+
+      expect(consent()).not.toBeChecked();
+      expect(consent()).toHaveAccessibleName(
+        'Soy mayor de 18 años y acepto los Términos de uso, los Términos para organizadores y la Política de privacidad, incluida la transferencia de mis datos a EE. UU.',
+      );
+      expect(
+        screen.getByRole('link', { name: 'Términos para organizadores' }),
+      ).toHaveAttribute('href', '/terminos/organizadores');
+      expect(screen.getAllByRole('checkbox')).toHaveLength(2);
+
+      fireEvent.click(consent());
+      fireEvent.click(organizerBox());
+
+      expect(consent()).toBeChecked();
+      expect(
+        screen.queryByRole('link', { name: 'Términos para organizadores' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('quien organiza manda también la versión de sus términos', async () => {
+      render(<RegistroPage />);
+      fireEvent.click(organizerBox());
+      fireEvent.change(screen.getByPlaceholderText('11 2345 6789'), {
+        target: { value: '1123456789' },
+      });
+      fillForm('juan@gmail.com', 'juan@gmail.com');
+
+      createAccount();
+
+      await waitFor(() => expect(apiFetch).toHaveBeenCalled());
+      expect(sentBody()).toMatchObject({
+        role: 'ORGANIZER',
+        termsVersion: 1,
+        privacyVersion: 1,
+        organizerTermsVersion: 1,
+      });
+    });
   });
 
   describe('después de crear la cuenta', () => {

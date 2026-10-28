@@ -12,6 +12,8 @@ import { toE164Phone } from '@/utils/phone';
 import PhoneInput from '@/components/forms/PhoneInput';
 import PasswordInput from '@/components/forms/PasswordInput';
 import RegistrationEmailStep from '@/components/account/RegistrationEmailStep';
+import LegalConsentText from '@/components/legal/LegalConsentText';
+import { acceptedLegalVersions, DATA_PROTECTION_NOTICES } from '@/utils/legal';
 import { saveSession, type SessionUser } from '@/hooks/useCurrentUser';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
@@ -45,6 +47,7 @@ const registerSchema = z
     phonePrefix: z.string(),
     phoneNumber: z.string().optional(),
     companyName: z.string().max(50, 'Máximo 50 caracteres').optional(),
+    acceptLegal: z.boolean(),
   })
   .superRefine((data, ctx) => {
     if (!sameEmail(data.email, data.confirmEmail)) {
@@ -59,6 +62,13 @@ const registerSchema = z
         code: 'custom',
         message: 'Las contraseñas no coinciden',
         path: ['confirmPassword'],
+      });
+    }
+    if (!data.acceptLegal) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Aceptá los términos para crear tu cuenta',
+        path: ['acceptLegal'],
       });
     }
     if (data.isOrganizer) {
@@ -113,6 +123,7 @@ export default function RegistroPage() {
       phonePrefix: '+54',
       phoneNumber: '',
       companyName: '',
+      acceptLegal: false,
     },
   });
 
@@ -155,6 +166,7 @@ export default function RegistroPage() {
       password: data.password,
       captchaToken,
       role: data.isOrganizer ? 'ORGANIZER' : 'CUSTOMER',
+      ...acceptedLegalVersions(data.isOrganizer),
     };
 
     if (data.isOrganizer) {
@@ -413,7 +425,11 @@ export default function RegistroPage() {
                   type="checkbox"
                   id="isOrganizer"
                   checked={value}
-                  onChange={(e) => onChange(e.target.checked)}
+                  onChange={(e) => {
+                    onChange(e.target.checked);
+                    // Lo aceptado no incluía los términos para organizadores.
+                    if (e.target.checked) setValue('acceptLegal', false);
+                  }}
                   className="w-5 h-5 accent-indigo-500 rounded cursor-pointer"
                 />
               )}
@@ -484,6 +500,44 @@ export default function RegistroPage() {
               </div>
             </div>
           )}
+
+          {/* Una sola casilla con los textos que corresponden: si falta,
+              el recuadro se pone rojo sin sumar líneas. */}
+          <div
+            className={`mt-6 flex items-start gap-3 border p-4 rounded-xl transition-colors ${errors.acceptLegal ? 'border-red-500 bg-red-500/10' : 'border-white/10 bg-white/5'}`}
+          >
+            <Controller
+              name="acceptLegal"
+              control={control}
+              render={({ field: { value, onChange, ...field } }) => (
+                <input
+                  {...field}
+                  type="checkbox"
+                  id="acceptLegal"
+                  checked={value}
+                  onChange={(e) => onChange(e.target.checked)}
+                  aria-invalid={!!errors.acceptLegal}
+                  aria-describedby="acceptLegal-error"
+                  className="mt-0.5 w-5 h-5 shrink-0 accent-indigo-500 rounded cursor-pointer"
+                />
+              )}
+            />
+            <label
+              htmlFor="acceptLegal"
+              className="text-sm text-white cursor-pointer select-none"
+            >
+              <LegalConsentText isOrganizer={isOrganizer} />
+            </label>
+            <span id="acceptLegal-error" className="sr-only">
+              {errors.acceptLegal?.message}
+            </span>
+          </div>
+
+          <div className="space-y-2 text-xs text-neutral-500 leading-relaxed">
+            {DATA_PROTECTION_NOTICES.map((notice) => (
+              <p key={notice}>{notice}</p>
+            ))}
+          </div>
 
           {mounted && process.env.NODE_ENV === 'production' && (
             <div className="flex flex-col items-center justify-center mt-6">

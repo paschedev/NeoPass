@@ -19,6 +19,10 @@ import { isUniqueViolation } from '../prisma/prisma-errors';
 import { BRAND_NAME_MESSAGE, mentionsNeoPass } from '../common/brand-name';
 import { isOwnAvatarUrl } from './avatar-url';
 import { EmailConfirmationService } from './email-confirmation.service';
+import {
+  CURRENT_LEGAL_VERSIONS,
+  legalDocumentsFor,
+} from '../legal/legal-documents';
 
 const EMAIL_TAKEN = 'El correo electrónico ya existe';
 
@@ -147,6 +151,13 @@ export class AuthService {
       passwordHash: hashedPassword,
       role: data.role as any,
       emailCode: { create: record },
+      // Saved with the account: the DTO only lets the versions in force in.
+      legalAcceptances: {
+        create: legalDocumentsFor(data.role).map((document) => ({
+          document,
+          version: CURRENT_LEGAL_VERSIONS[document],
+        })),
+      },
     };
 
     if (data.role === 'ORGANIZER') {

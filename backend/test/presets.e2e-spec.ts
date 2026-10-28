@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { authHeader } from './utils/auth';
 import { createUser } from './utils/factories';
+import { ACCEPTED_ORGANIZER_LEGAL } from './utils/legal';
 import { mockTurnstile } from './utils/network';
 import { createTestApp, TestApp } from './utils/test-app';
 import { resetDb } from './utils/test-database';
@@ -29,6 +30,7 @@ describe('Presets de entradas', () => {
         role: 'ORGANIZER',
         phone: '+541123456789',
         captchaToken: 'captcha-de-prueba',
+        ...ACCEPTED_ORGANIZER_LEGAL,
       })
       .expect(201);
 
