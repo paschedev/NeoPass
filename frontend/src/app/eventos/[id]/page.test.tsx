@@ -25,7 +25,7 @@ const event = {
   longitude: null,
   venuePlaceId: null,
   status: 'PUBLISHED',
-  neoPassFeePercentage: '15',
+  buyerFeePercentage: '18.15',
   organizerName: 'Productora Sur',
   ticketBatches: [],
 };
@@ -43,9 +43,10 @@ describe('Página del evento', () => {
     expect(await screen.findByText('Organiza Productora Sur')).toBeVisible();
   });
 
-  it('muestra el cargo de servicio como monto, sin porcentaje, y el total que cobra Mercado Pago', async () => {
-    const onSale = {
+  function onSale(buyerFeePercentage: string) {
+    return {
       ...event,
+      buyerFeePercentage,
       ticketBatches: [
         {
           id: 'b1',
@@ -59,8 +60,11 @@ describe('Página del evento', () => {
         },
       ],
     };
+  }
+
+  it('muestra el cargo de servicio como monto, sin porcentaje, y el total que cobra Mercado Pago', async () => {
     vi.mocked(apiFetch).mockImplementation(async (path) =>
-      path === '/events/e1' ? Response.json(onSale) : Response.json([]),
+      path === '/events/e1' ? Response.json(onSale('18.15')) : Response.json([]),
     );
 
     render(<EventPage />);
@@ -70,5 +74,19 @@ describe('Página del evento', () => {
     expect(fee.nextElementSibling).toHaveTextContent('$1.815');
     expect(screen.queryByText(/Cargo de servicio \(/)).not.toBeInTheDocument();
     expect(screen.getByText('$11.815')).toBeVisible();
+  });
+
+  it('calcula el cargo con el porcentaje que informa el evento para el comprador', async () => {
+    // Un organizador que cobra a 35 días: el comprador paga 10,67 %.
+    vi.mocked(apiFetch).mockImplementation(async (path) =>
+      path === '/events/e1' ? Response.json(onSale('10.67')) : Response.json([]),
+    );
+
+    render(<EventPage />);
+    fireEvent.click(await screen.findByRole('button', { name: '+' }));
+
+    const fee = screen.getByText('Cargo de servicio');
+    expect(fee.nextElementSibling).toHaveTextContent('$1.067');
+    expect(screen.getByText('$11.067')).toBeVisible();
   });
 });

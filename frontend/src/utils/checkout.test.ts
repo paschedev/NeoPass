@@ -10,7 +10,7 @@ const VIP = { id: 'vip', price: '2500.50' };
 
 describe('calculateCheckoutTotals', () => {
   it('con el carrito vacío todo es cero', () => {
-    expect(calculateCheckoutTotals([GENERAL], {}, '15')).toEqual({
+    expect(calculateCheckoutTotals([GENERAL], {}, '18.15')).toEqual({
       tickets: 0,
       subtotal: 0,
       serviceFee: 0,
@@ -18,10 +18,10 @@ describe('calculateCheckoutTotals', () => {
     });
   });
 
-  it('suma las entradas elegidas y agrega el cargo del evento más el tercio de Mercado Pago del comprador', () => {
-    // Con un cargo del 10 % el comprador paga 13,01 %.
+  it('suma las entradas elegidas y agrega el porcentaje que paga el comprador', () => {
+    // Un evento al 10 % con la tasa al instante: el comprador paga 13,01 %.
     expect(
-      calculateCheckoutTotals([GENERAL, VIP], { general: 2, vip: 1 }, '10.00'),
+      calculateCheckoutTotals([GENERAL, VIP], { general: 2, vip: 1 }, '13.01'),
     ).toEqual({
       tickets: 3,
       subtotal: 4500.5,
@@ -33,12 +33,12 @@ describe('calculateCheckoutTotals', () => {
   it('redondea el cargo a centavos hacia arriba en la mitad, como el backend', () => {
     // 10,00 × 18,15 % = 1,815 → 1,82 (no 1,81)
     expect(
-      calculateCheckoutTotals([{ id: 'x', price: '10.00' }], { x: 1 }, '15')
+      calculateCheckoutTotals([{ id: 'x', price: '10.00' }], { x: 1 }, '18.15')
         .serviceFee,
     ).toBe(1.82);
   });
 
-  it('un evento al 0 % no le suma cargo al comprador', () => {
+  it('si el comprador no paga cargo, el total son las entradas', () => {
     expect(
       calculateCheckoutTotals([GENERAL], { general: 1 }, '0'),
     ).toMatchObject({ serviceFee: 0, total: 1000 });

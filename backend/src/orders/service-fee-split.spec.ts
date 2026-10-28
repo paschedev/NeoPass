@@ -43,6 +43,14 @@ describe('splitServiceFee', () => {
     },
   );
 
+  it('con la tasa real de un organizador que cobra a 35 días, los tercios son más chicos', () => {
+    // 1,49 % + IVA = 1,803 %: el tercio es 0,67 puntos en vez de 3,01.
+    const split = splitServiceFee('10', '0.01803');
+
+    expect(split.buyerPercentage.toString()).toBe('10.67');
+    expect(split.neoPassPercentage.toString()).toBe('9.33');
+  });
+
   it('si el cargo no alcanza para su tercio, NeoPass se queda sin nada y el comprador paga solo su parte', () => {
     const split = splitServiceFee('2');
 

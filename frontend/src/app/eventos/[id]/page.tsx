@@ -149,7 +149,7 @@ function EventContent() {
   const totals = calculateCheckoutTotals(
     (event.ticketBatches || []).flatMap((b: any) => b.ticketTypes || []),
     cart,
-    event.neoPassFeePercentage,
+    event.buyerFeePercentage,
   );
 
   return (
