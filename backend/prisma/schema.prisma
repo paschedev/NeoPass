@@ -142,6 +142,10 @@ model User {
   mercadoPagoFeeRate        Decimal?  @db.Decimal(6, 5)
   mercadoPagoReleaseDays    Int?
   mercadoPagoFeeRateAt      DateTime?
+  // What the organizer owes NeoPass for absorbing less than their third of
+  // Mercado Pago's fee (orders/fee-adjustment.ts). It is collected on their
+  // next sales, on top of NeoPass's share; it never goes below zero.
+  mercadoPagoFeeBalance     Decimal   @default(0) @db.Decimal(10, 2)
 
   // Password Reset (the token is stored as a SHA-256 hash)
   passwordResetToken   String?   @unique
@@ -317,6 +321,11 @@ model Order {
   // Mercado Pago's fee on the payment, as it reported it (financing of
   // interest-free installments excluded). Null if it didn't report it.
   mercadoPagoFee Decimal?    @db.Decimal(10, 2)
+  // Part of marketplaceFee that collects the organizer's balance, fixed at
+  // checkout; and how much less than their third of Mercado Pago's real fee
+  // the organizer absorbed in this sale (negative: more), fixed when paid.
+  feeAdjustment  Decimal     @default(0) @db.Decimal(10, 2)
+  feeDeviation   Decimal?    @db.Decimal(10, 2)
   createdAt      DateTime    @default(now())
   expiresAt      DateTime
 
