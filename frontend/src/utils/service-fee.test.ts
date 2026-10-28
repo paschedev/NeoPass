@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   formatPercentage,
+  mercadoPagoTermsLabel,
   parsePercentage,
   serviceFeeExample,
   serviceFeeSchema,
@@ -83,6 +84,46 @@ describe('serviceFeeExample', () => {
       neoPassFee: 0,
       organizerNet: 9201.4,
     });
+  });
+});
+
+describe('mercadoPagoTermsLabel', () => {
+  const terms = (overrides = {}) => ({
+    mercadoPagoReleaseDays: 0,
+    mercadoPagoFeeRate: '0.07986',
+    mercadoPagoFeeBalance: '0',
+    ...overrides,
+  });
+
+  it('dice el plazo de cobro y la tasa real del organizador', () => {
+    expect(mercadoPagoTermsLabel(terms())).toBe(
+      'Mercado Pago: cobra al instante · 7,986 %',
+    );
+    expect(
+      mercadoPagoTermsLabel(
+        terms({ mercadoPagoReleaseDays: 1, mercadoPagoFeeRate: '0.0532' }),
+      ),
+    ).toBe('Mercado Pago: cobra a 1 día · 5,32 %');
+  });
+
+  it('suma lo que el organizador le debe a NeoPass', () => {
+    expect(
+      mercadoPagoTermsLabel(
+        terms({
+          mercadoPagoReleaseDays: 35,
+          mercadoPagoFeeRate: '0.01803',
+          mercadoPagoFeeBalance: '93.23',
+        }),
+      ),
+    ).toBe('Mercado Pago: cobra a 35 días · 1,803 % · Debe $93,23');
+  });
+
+  it('sin ventas registradas no hay plazo ni tasa', () => {
+    expect(
+      mercadoPagoTermsLabel(
+        terms({ mercadoPagoReleaseDays: null, mercadoPagoFeeRate: null }),
+      ),
+    ).toBe('Mercado Pago: sin ventas todavía');
   });
 });
 

@@ -167,6 +167,7 @@ export class PaymentsService {
         mercadoPagoFee,
       );
       if (!payment) return;
+      const organizerTerms = organizerTermsOf(order, payment, paymentData);
 
       try {
         const paid = await this.paymentsRepository.payOrderTransaction(
@@ -175,7 +176,7 @@ export class PaymentsService {
             fromStatus: order.status,
             payment,
             promoterCommission: promoterCommissionOf(order),
-            organizerTerms: organizerTermsOf(order, payment, paymentData),
+            organizerTerms,
             feeDeviation: feeDeviationOf({
               ...order,
               mercadoPagoFee: payment.mercadoPagoFee,
@@ -188,6 +189,11 @@ export class PaymentsService {
             `Order ${orderId} marked as PAID and tickets generated.`,
           );
           await this.ticketsService.queueOrderTicketsEmail(orderId);
+          await this.notifyReleaseTermChange(
+            organizerTerms,
+            paid.previousReleaseDays,
+            paymentId,
+          );
           return this.notifySale(orderId);
         }
       } catch (error) {
@@ -295,6 +301,45 @@ export class PaymentsService {
     };
   }
 
+  // A payment showed that the organizer changed their release term (not the
+  // first time we learn it): they hear that Mercado Pago's fee is now split
+  // with the new one. Like the sale notice, a failure is logged, not retried.
+  private async notifyReleaseTermChange(
+    terms: ReturnType<typeof organizerTermsOf>,
+    previousReleaseDays: number | null | undefined,
+    paymentId: string,
+  ) {
+    const releaseDays = terms?.releaseDays;
+    if (
+      !terms ||
+      releaseDays == null ||
+      previousReleaseDays == null ||
+      releaseDays === previousReleaseDays
+    ) {
+      return;
+    }
+    try {
+      await this.notificationsService.createOnce({
+        userId: terms.organizerId,
+        type: 'SYSTEM',
+        title: 'Cambió tu plazo de cobro',
+        message: `Mercado Pago ahora te acredita las ventas ${releaseTermText(releaseDays)}. Repartimos su comisión según lo que te cobra: si alguna venta se cobró con el plazo anterior, la diferencia se ajusta en tus próximas ventas.`,
+        metadata: {
+          reason: 'RELEASE_TERM_CHANGE',
+          paymentId,
+          releaseDays,
+          previousReleaseDays,
+        },
+        openGroupKey: `release-term:${paymentId}`,
+      });
+    } catch (error) {
+      this.logger.error(
+        `Could not notify the release term change of payment ${paymentId}`,
+        error instanceof Error ? error.stack : String(error),
+      );
+    }
+  }
+
   // The sale is already paid and its tickets are on their way: a notice that
   // cannot be saved is logged, never retried, so it can't hold up or repeat
   // the sale.
@@ -391,6 +436,12 @@ function organizerTermsOf(
     releaseDays: releaseDaysOf(paymentData),
     approvedAt: new Date(paymentData.date_approved),
   };
+}
+
+// "al instante", "en 1 día", "en 35 días".
+function releaseTermText(days: number) {
+  if (days === 0) return 'al instante';
+  return `en ${days} ${days === 1 ? 'día' : 'días'}`;
 }
 
 // What the order's promoter earns with it, if it came through a promoter.

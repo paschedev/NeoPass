@@ -1,3 +1,5 @@
+import type { MercadoPagoTerms } from '@/utils/service-fee';
+
 // Un evento como lo ve el panel ADMIN (GET /admin/events).
 export interface AdminEvent {
   id: string;
@@ -10,7 +12,7 @@ export interface AdminEvent {
   deletedByNeoPass: boolean | null;
   // Decimal de la base: llega como string ("8.5").
   neoPassFeePercentage: string;
-  organizer: { name: string; email: string };
+  organizer: { name: string; email: string } & MercadoPagoTerms;
   // Solo compras pagadas. Recaudado: lo que pagaron por las entradas;
   // marketplaceFee: lo que se quedó NeoPass del cargo. En pesos.
   sales: {

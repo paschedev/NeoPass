@@ -361,6 +361,19 @@ export class EventsRepository {
     });
   }
 
+  // What the event's paid orders collected from the organizer's balance for
+  // absorbing less than their third of Mercado Pago's fee.
+  async sumPaidFeeAdjustment(eventId: string) {
+    const { _sum } = await this.prisma.order.aggregate({
+      where: {
+        status: 'PAID',
+        orderItems: { some: { ticketType: { eventId } } },
+      },
+      _sum: { feeAdjustment: true },
+    });
+    return _sum.feeAdjustment ?? new Prisma.Decimal(0);
+  }
+
   // Face value of the tickets of every paid order of the organizer's events,
   // as charged: a later price change doesn't rewrite it.
   async sumPaidTicketAmountForOrganizer(organizerId: string) {

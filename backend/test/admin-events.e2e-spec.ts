@@ -20,7 +20,13 @@ type AdminEvent = {
   deletedAt: string | null;
   deletedByNeoPass: boolean | null;
   neoPassFeePercentage: string;
-  organizer: { name: string; email: string };
+  organizer: {
+    name: string;
+    email: string;
+    mercadoPagoReleaseDays: number | null;
+    mercadoPagoFeeRate: string | null;
+    mercadoPagoFeeBalance: string;
+  };
   sales: {
     sold: number;
     capacity: number;
@@ -138,12 +144,38 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
         organizer: {
           name: second.organizer.name,
           email: second.organizer.email,
+          mercadoPagoReleaseDays: null,
+          mercadoPagoFeeRate: null,
+          mercadoPagoFeeBalance: '0',
         },
         sales: { sold: 0, capacity: 100, revenue: 0, marketplaceFee: 0 },
       });
       expect(
         page.items.find((e) => e.id === first.event.id)?.neoPassFeePercentage,
       ).toBe('12');
+    });
+
+    it('muestra cómo le cobra Mercado Pago a cada organizador y cuánto le debe a NeoPass', async () => {
+      const { organizer, event } = await createOrganizerWithEvent(t.prisma);
+      await t.prisma.user.update({
+        where: { id: organizer.id },
+        data: {
+          mercadoPagoReleaseDays: 35,
+          mercadoPagoFeeRate: 0.01803,
+          mercadoPagoFeeBalance: 93.23,
+        },
+      });
+
+      const res = await listEvents(await createAdmin()).expect(200);
+
+      const item = (res.body as AdminEventsPage).items.find(
+        (e) => e.id === event.id,
+      );
+      expect(item?.organizer).toMatchObject({
+        mercadoPagoReleaseDays: 35,
+        mercadoPagoFeeRate: '0.01803',
+        mercadoPagoFeeBalance: '93.23',
+      });
     });
 
     it('busca por nombre del evento o por email del organizador, sin importar mayúsculas', async () => {
@@ -196,13 +228,19 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
       expect(second.items[1].title).toBe('Evento de prueba');
     });
 
-    it('no expone datos sensibles del organizador', async () => {
+    it('no expone datos sensibles del organizador: ni tokens de Mercado Pago ni contraseña', async () => {
       await createOrganizerWithEvent(t.prisma);
 
       const res = await listEvents(await createAdmin()).expect(200);
 
       const organizer = (res.body as AdminEventsPage).items[0].organizer;
-      expect(Object.keys(organizer).sort()).toEqual(['email', 'name']);
+      expect(Object.keys(organizer).sort()).toEqual([
+        'email',
+        'mercadoPagoFeeBalance',
+        'mercadoPagoFeeRate',
+        'mercadoPagoReleaseDays',
+        'name',
+      ]);
     });
 
     it('rechaza una búsqueda o una página inválidas', async () => {

@@ -627,11 +627,13 @@ export class EventsService {
   // ticket type.
   async getEventSales(eventId: string, userId: string) {
     const { event } = await this.findForTeam(eventId, userId, 'VIEW_SALES');
-    const [revenueByTicketType, checkedIn, refundedOrders] = await Promise.all([
-      this.eventsRepository.sumPaidRevenueByTicketType(eventId),
-      this.eventsRepository.countCheckedInTickets(eventId),
-      this.eventsRepository.countRefundedOrders(eventId),
-    ]);
+    const [revenueByTicketType, checkedIn, refundedOrders, feeAdjustment] =
+      await Promise.all([
+        this.eventsRepository.sumPaidRevenueByTicketType(eventId),
+        this.eventsRepository.countCheckedInTickets(eventId),
+        this.eventsRepository.countRefundedOrders(eventId),
+        this.eventsRepository.sumPaidFeeAdjustment(eventId),
+      ]);
     const { totals, batches } = buildEventSales(
       event,
       revenueByTicketType,
@@ -647,7 +649,12 @@ export class EventsService {
         venueName: event.venueName,
         venueAddress: event.venueAddress,
       },
-      totals: { ...totals, checkedIn, refundedOrders },
+      totals: {
+        ...totals,
+        checkedIn,
+        refundedOrders,
+        feeAdjustment: feeAdjustment.toNumber(),
+      },
       batches,
     };
   }
