@@ -38,7 +38,18 @@ export default function EventSalesView({ sales }: { sales: EventSales }) {
         <SummaryCard
           label="Recaudado"
           value={formatCurrency(totals.revenue)}
-          detail="Lo que pagaron los compradores por las entradas. Mercado Pago descuenta su comisión al acreditarte."
+          detail={
+            <>
+              Lo que pagaron los compradores por las entradas. Mercado Pago
+              descuenta su comisión al acreditarte.
+              {totals.feeAdjustment > 0 && (
+                <span className="block mt-1">
+                  Se descontaron {formatCurrency(totals.feeAdjustment)} de
+                  ajuste por la comisión de Mercado Pago.
+                </span>
+              )}
+            </>
+          }
         />
         <SummaryCard
           label="Entradas vendidas"

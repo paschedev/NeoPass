@@ -64,6 +64,9 @@ export interface EventSales {
     capacity: number;
     checkedIn: number;
     refundedOrders: number;
+    // Lo que NeoPass descontó de las ventas pagadas por la comisión de
+    // Mercado Pago que el organizador no absorbió. En pesos.
+    feeAdjustment: number;
   };
   batches: {
     id: string;

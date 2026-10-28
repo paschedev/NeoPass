@@ -1,3 +1,4 @@
+import { OrderStatus } from '@prisma/client';
 import request from 'supertest';
 import { authHeader } from './utils/auth';
 import {
@@ -30,6 +31,7 @@ type EventSales = {
     capacity: number;
     checkedIn: number;
     refundedOrders: number;
+    feeAdjustment: number;
   };
   batches: {
     name: string;
@@ -96,6 +98,7 @@ describe('Detalle de ventas del evento para el organizador', () => {
       capacity: 150,
       checkedIn: 0,
       refundedOrders: 0,
+      feeAdjustment: 0,
     });
     expect(
       body.batches.map(({ name, saleStatus, ticketTypes }) => ({
@@ -194,6 +197,35 @@ describe('Detalle de ventas del evento para el organizador', () => {
       sold: 0,
       refundedOrders: 1,
     });
+  });
+
+  it('informa el ajuste por la comisión de Mercado Pago que se cobró en las ventas pagadas', async () => {
+    const { organizer, event, ticketType } = await createOrganizerWithEvent(
+      t.prisma,
+      { price: 1000 },
+    );
+    const buyer = await createUser(t.prisma);
+    const withAdjustment = async (status: OrderStatus, adjustment: number) => {
+      const order = await createOrder(t.prisma, {
+        user: buyer,
+        ticketType,
+        quantity: 1,
+        status,
+      });
+      await t.prisma.order.update({
+        where: { id: order.id },
+        data: { feeAdjustment: adjustment, marketplaceFee: adjustment },
+      });
+    };
+    await withAdjustment('PAID', 50);
+    await withAdjustment('PAID', 30.25);
+    // Ni una compra en curso ni una devuelta descuentan nada.
+    await withAdjustment('PENDING', 20);
+    await withAdjustment('CANCELLED', 40);
+
+    const body = await sales(organizer, event.id);
+
+    expect(body.totals.feeAdjustment).toBe(80.25);
   });
 
   it('cuenta las entradas que ya ingresaron', async () => {

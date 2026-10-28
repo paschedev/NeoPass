@@ -28,7 +28,13 @@ const adminEvent = (overrides = {}) => ({
   deletedAt: null,
   deletedByNeoPass: null,
   neoPassFeePercentage: '15',
-  organizer: { name: 'Productora Sur', email: 'sur@neopass.test' },
+  organizer: {
+    name: 'Productora Sur',
+    email: 'sur@neopass.test',
+    mercadoPagoReleaseDays: null,
+    mercadoPagoFeeRate: null,
+    mercadoPagoFeeBalance: '0',
+  },
   sales: { sold: 0, capacity: 100, revenue: 0, marketplaceFee: 0 },
   ...overrides,
 });
@@ -72,6 +78,31 @@ describe('Panel ADMIN: eventos', () => {
     expect(card).toHaveTextContent('PUBLICADO');
     expect(card).toHaveTextContent('Cargo: 15 %');
     expect(apiFetch).toHaveBeenCalledWith('/admin/events?page=1');
+  });
+
+  it('muestra cómo le cobra Mercado Pago al organizador y cuánto le debe a NeoPass', async () => {
+    server(
+      eventsPage([
+        adminEvent({
+          organizer: {
+            name: 'Productora Sur',
+            email: 'sur@neopass.test',
+            mercadoPagoReleaseDays: 35,
+            mercadoPagoFeeRate: '0.01803',
+            mercadoPagoFeeBalance: '93.23',
+          },
+        }),
+        adminEvent({ id: 'e2', title: 'Fiesta nueva' }),
+      ]),
+    );
+    renderEvents();
+
+    expect(await eventCard('Fiesta de primavera')).toHaveTextContent(
+      'Mercado Pago: cobra a 35 días · 1,803 % · Debe $93,23',
+    );
+    expect(await eventCard('Fiesta nueva')).toHaveTextContent(
+      'Mercado Pago: sin ventas todavía',
+    );
   });
 
   it('busca por nombre del evento o email del organizador', async () => {

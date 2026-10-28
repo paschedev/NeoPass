@@ -169,6 +169,85 @@ describe('Comisión real de Mercado Pago', () => {
     });
   });
 
+  describe('aviso de cambio de plazo', () => {
+    const NOTICE_TITLE = 'Cambió tu plazo de cobro';
+    const ADJUSTMENT_NOTE =
+      'Repartimos su comisión según lo que te cobra: si alguna venta se cobró con el plazo anterior, la diferencia se ajusta en tus próximas ventas.';
+
+    function notices(organizerId: string) {
+      return t.prisma.notification.findMany({
+        where: { userId: organizerId, title: NOTICE_TITLE },
+      });
+    }
+
+    async function moreOrders(count: number) {
+      const { organizer, ticketType, buyer, order } = await pendingOrder();
+      const others = [];
+      for (let i = 0; i < count; i++) {
+        others.push(
+          await createOrder(t.prisma, { user: buyer, ticketType, quantity: 2 }),
+        );
+      }
+      return { organizer, orders: [order, ...others] };
+    }
+
+    it('si el organizador pasa a cobrar a 35 días, recibe un aviso una sola vez', async () => {
+      const { organizer, orders } = await moreOrders(2);
+      const at35Days = (approvedAt: string, releaseAt: string) => ({
+        fee_details: [mercadoPagoFee(36.06)],
+        date_approved: approvedAt,
+        money_release_date: releaseAt,
+      });
+
+      await pay('pay-1', orders[0].id);
+      // La primera vez que conocemos su plazo no hay nada que avisar.
+      expect(await notices(organizer.id)).toHaveLength(0);
+
+      await pay(
+        'pay-2',
+        orders[1].id,
+        at35Days(
+          '2026-10-27T16:00:00.000-03:00',
+          '2026-12-01T16:00:00.000-03:00',
+        ),
+      );
+      await pay(
+        'pay-3',
+        orders[2].id,
+        at35Days(
+          '2026-10-27T17:00:00.000-03:00',
+          '2026-12-01T17:00:00.000-03:00',
+        ),
+      );
+
+      const sent = await notices(organizer.id);
+      expect(sent).toHaveLength(1);
+      expect(sent[0]).toMatchObject({
+        type: 'SYSTEM',
+        message: `Mercado Pago ahora te acredita las ventas en 35 días. ${ADJUSTMENT_NOTE}`,
+      });
+    });
+
+    it('si vuelve a cobrar al instante, el aviso lo dice', async () => {
+      const { organizer, order } = await pendingOrder();
+      await t.prisma.user.update({
+        where: { id: organizer.id },
+        data: {
+          mercadoPagoFeeRate: 0.01803,
+          mercadoPagoReleaseDays: 35,
+          mercadoPagoFeeRateAt: new Date('2026-10-20T15:00:00.000-03:00'),
+        },
+      });
+
+      await pay('pay-1', order.id);
+
+      const [notice] = await notices(organizer.id);
+      expect(notice.message).toBe(
+        `Mercado Pago ahora te acredita las ventas al instante. ${ADJUSTMENT_NOTE}`,
+      );
+    });
+  });
+
   it('un pago sin comisión informada no cambia la tasa del organizador', async () => {
     const { organizer, order } = await pendingOrder();
     await t.prisma.user.update({

@@ -223,7 +223,9 @@ export class PaymentsRepository {
   // refund takes back exactly that amount. The organizer's Mercado Pago terms
   // are updated only if this payment is newer than the one they came from.
   // Their balance with NeoPass takes the sale's deviation and drops what the
-  // sale collected, never below zero.
+  // sale collected, never below zero. Returns false if the order wasn't paid
+  // here, or the release term the organizer had before, if this payment
+  // updated it.
   async payOrderTransaction(
     {
       orderId,
@@ -267,10 +269,17 @@ export class PaymentsRepository {
 
       await moveFeeBalance(tx, orderId, 'pay');
 
+      // The release term the organizer had before this payment updated it;
+      // undefined if it didn't (an older payment, or no fee reported).
+      let previousReleaseDays: number | null | undefined;
       if (organizerTerms) {
         const { organizerId, feeRate, releaseDays, approvedAt } =
           organizerTerms;
-        await tx.user.updateMany({
+        const before = await tx.user.findUniqueOrThrow({
+          where: { id: organizerId },
+          select: { mercadoPagoReleaseDays: true },
+        });
+        const { count: updated } = await tx.user.updateMany({
           where: {
             id: organizerId,
             OR: [
@@ -284,6 +293,7 @@ export class PaymentsRepository {
             mercadoPagoFeeRateAt: approvedAt,
           },
         });
+        if (updated > 0) previousReleaseDays = before.mercadoPagoReleaseDays;
       }
 
       const items = await tx.orderItem.findMany({ where: { orderId } });
@@ -320,7 +330,7 @@ export class PaymentsRepository {
         });
       }
 
-      return true;
+      return { previousReleaseDays };
     });
   }
 

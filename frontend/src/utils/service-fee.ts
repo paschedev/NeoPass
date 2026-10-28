@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { calculateCheckoutTotals } from './checkout';
+import { formatCurrency } from './format';
 import { MERCADO_PAGO_FEE_RATE, splitServiceFee } from './service-fee-split';
 
 // Un porcentaje como lo escribe alguien en Argentina: "8", "8,5" o "8.5".
@@ -63,4 +64,34 @@ export function serviceFeeExample(percentage: number) {
 // "8.5" (un Decimal de la API) → "8,5 %".
 export function formatPercentage(value: string | number): string {
   return `${Number(value).toLocaleString('es-AR')} %`;
+}
+
+// Cómo le cobra Mercado Pago a un organizador, según su última venta, y lo
+// que le debe a NeoPass por absorber menos que su tercio de la comisión.
+// Decimales de la base: llegan como string.
+export interface MercadoPagoTerms {
+  mercadoPagoReleaseDays: number | null;
+  mercadoPagoFeeRate: string | null;
+  mercadoPagoFeeBalance: string;
+}
+
+// "Mercado Pago: cobra a 35 días · 1,803 % · Debe $93,23".
+export function mercadoPagoTermsLabel({
+  mercadoPagoReleaseDays: days,
+  mercadoPagoFeeRate: rate,
+  mercadoPagoFeeBalance: balance,
+}: MercadoPagoTerms): string {
+  const parts = ['Mercado Pago: sin ventas todavía'];
+  if (rate !== null) {
+    const term =
+      days === null
+        ? 'plazo sin datos'
+        : days === 0
+          ? 'al instante'
+          : `a ${days} ${days === 1 ? 'día' : 'días'}`;
+    parts[0] = `Mercado Pago: cobra ${term}`;
+    parts.push(formatPercentage((Number(rate) * 100).toFixed(3)));
+  }
+  if (Number(balance) > 0) parts.push(`Debe ${formatCurrency(balance)}`);
+  return parts.join(' · ');
 }

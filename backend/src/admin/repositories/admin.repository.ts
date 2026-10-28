@@ -3,8 +3,9 @@ import { Prisma } from '@prisma/client';
 import { ORGANIZER_NAME_SELECT } from '../../common/organizer-name';
 import { PrismaService } from '../../prisma/prisma.service';
 
-// What ADMIN sees of every event: no organizer data beyond name and email.
-// The ids only say who deleted it; the service doesn't pass them on.
+// What ADMIN sees of every event: of its organizer, name, email and how
+// Mercado Pago charges them (release term, real rate and what they owe
+// NeoPass). The ids only say who deleted it; the service doesn't pass them on.
 const ADMIN_EVENT_SELECT = {
   id: true,
   title: true,
@@ -15,7 +16,15 @@ const ADMIN_EVENT_SELECT = {
   deletedById: true,
   organizerId: true,
   neoPassFeePercentage: true,
-  organizer: { select: { name: true, email: true } },
+  organizer: {
+    select: {
+      name: true,
+      email: true,
+      mercadoPagoReleaseDays: true,
+      mercadoPagoFeeRate: true,
+      mercadoPagoFeeBalance: true,
+    },
+  },
 } satisfies Prisma.EventSelect;
 
 const PERSON_SELECT = { name: true, email: true } satisfies Prisma.UserSelect;
