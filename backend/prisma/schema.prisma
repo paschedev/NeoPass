@@ -108,6 +108,13 @@ enum TicketCategory {
   VIP
 }
 
+// The legal texts published at /terminos, /privacidad and /terminos/organizadores.
+enum LegalDocument {
+  TERMS
+  PRIVACY
+  ORGANIZER_TERMS
+}
+
 model User {
   id              String    @id @default(uuid())
   email           String    @unique
@@ -167,6 +174,21 @@ model User {
   ticketPresets              TicketPreset[]    @relation("OrganizerPresets")
   notifications              Notification[]
   emailCode                  EmailCode?
+  legalAcceptances           LegalAcceptance[]
+}
+
+// Which version of each legal text an account accepted, and when: the proof
+// of consent (src/legal/legal-documents.ts). Accounts created before the
+// texts existed have none.
+model LegalAcceptance {
+  id         String        @id @default(uuid())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  document   LegalDocument
+  version    Int
+  acceptedAt DateTime      @default(now())
+
+  @@unique([userId, document, version])
 }
 
 // The code that confirms an email, one per account at a time: asking for

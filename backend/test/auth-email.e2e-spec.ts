@@ -1,6 +1,7 @@
 import request from 'supertest';
 import { UserRepository } from '../src/auth/repositories/user.repository';
 import { createUser } from './utils/factories';
+import { ACCEPTED_LEGAL } from './utils/legal';
 import { mockTurnstile } from './utils/network';
 import { createTestApp, TestApp } from './utils/test-app';
 import { resetDb } from './utils/test-database';
@@ -24,14 +25,17 @@ describe('Un email por cuenta, sin importar mayúsculas ni cómo se escribe un G
 
   function register(email: string) {
     mockTurnstile(true);
-    return request(server()).post('/auth/register').send({
-      firstName: 'Ana',
-      lastName: 'Pérez',
-      email,
-      password: PASSWORD,
-      role: 'CUSTOMER',
-      captchaToken: 'captcha-de-prueba',
-    });
+    return request(server())
+      .post('/auth/register')
+      .send({
+        firstName: 'Ana',
+        lastName: 'Pérez',
+        email,
+        password: PASSWORD,
+        role: 'CUSTOMER',
+        captchaToken: 'captcha-de-prueba',
+        ...ACCEPTED_LEGAL,
+      });
   }
 
   function login(email: string) {

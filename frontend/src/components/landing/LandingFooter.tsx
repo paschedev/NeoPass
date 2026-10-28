@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import Wordmark from '@/components/Wordmark';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { LEGAL_DOCUMENTS } from '@/utils/legal';
 import { isOrganizer } from '@/utils/roles';
 import { SUPPORT_EMAIL } from '@/utils/support';
 
@@ -11,6 +12,18 @@ const TITLE = 'text-sm font-semibold text-white mb-4';
 const LINK = 'text-neutral-300 hover:text-white transition-colors';
 
 const INSTAGRAM_URL = 'https://www.instagram.com/neopass.ar/';
+
+// La Ventanilla Única Federal, con el texto que exige la Res. 274/2021.
+const CONSUMER_DEFENSE_URL =
+  'https://www.argentina.gob.ar/produccion/defensadelconsumidor/formulario';
+
+// Hasta que exista el pedido en la plataforma, el botón de arrepentimiento
+// abre un correo a soporte con lo que necesitamos para encontrar la compra.
+const WITHDRAWAL_SUBJECT = encodeURIComponent('Botón de arrepentimiento');
+const WITHDRAWAL_BODY = encodeURIComponent(
+  'Quiero revocar mi compra.\nEvento:\nFecha de la compra:\n',
+);
+const WITHDRAWAL_HREF = `mailto:${SUPPORT_EMAIL}?subject=${WITHDRAWAL_SUBJECT}&body=${WITHDRAWAL_BODY}`;
 
 // lucide-react ya no trae logos de marcas: este sigue su trazo.
 function InstagramIcon() {
@@ -55,7 +68,7 @@ export default function LandingFooter() {
       </div>
 
       <div className="container mx-auto px-4 pt-40 md:pt-64 pb-10">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-10">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-10">
           <div className="col-span-2 md:col-span-1 flex flex-col items-start">
             <Wordmark className="text-3xl text-white" />
             <a
@@ -133,6 +146,36 @@ export default function LandingFooter() {
               {SUPPORT_EMAIL}
             </a>
           </div>
+
+          <nav aria-labelledby="pie-legal" className="col-span-2 md:col-span-1">
+            <h2 id="pie-legal" className={TITLE}>
+              Legal
+            </h2>
+            <ul className="space-y-3">
+              {(['TERMS', 'ORGANIZER_TERMS', 'PRIVACY'] as const).map((key) => (
+                <li key={key}>
+                  <Link href={LEGAL_DOCUMENTS[key].href} className={LINK}>
+                    {LEGAL_DOCUMENTS[key].title}
+                  </Link>
+                </li>
+              ))}
+              <li>
+                <a href={WITHDRAWAL_HREF} className={LINK}>
+                  Botón de arrepentimiento
+                </a>
+              </li>
+              <li>
+                <a
+                  href={CONSUMER_DEFENSE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={LINK}
+                >
+                  Defensa de las y los Consumidores. Para reclamos ingrese aquí
+                </a>
+              </li>
+            </ul>
+          </nav>
         </div>
 
         <p className="mt-12 pt-6 border-t border-white/10 text-sm text-neutral-400">

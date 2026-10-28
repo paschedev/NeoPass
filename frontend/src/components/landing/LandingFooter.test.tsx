@@ -84,6 +84,33 @@ describe('Pie de la landing', () => {
     expect(instagram).toHaveAttribute('rel', 'noopener noreferrer');
   });
 
+  it('lleva a los textos legales, al botón de arrepentimiento y a Defensa del Consumidor', () => {
+    const footer = renderFooter();
+
+    for (const [name, href] of [
+      ['Términos de uso', '/terminos'],
+      ['Términos para organizadores', '/terminos/organizadores'],
+      ['Política de privacidad', '/privacidad'],
+    ]) {
+      expect(footer.getByRole('link', { name })).toHaveAttribute('href', href);
+    }
+    expect(
+      footer
+        .getByRole('link', { name: 'Botón de arrepentimiento' })
+        .getAttribute('href'),
+    ).toMatch(
+      /^mailto:soporte@neopass\.ar\?subject=Bot%C3%B3n%20de%20arrepentimiento/,
+    );
+    const consumerDefense = footer.getByRole('link', {
+      name: 'Defensa de las y los Consumidores. Para reclamos ingrese aquí',
+    });
+    expect(consumerDefense).toHaveAttribute(
+      'href',
+      'https://www.argentina.gob.ar/produccion/defensadelconsumidor/formulario',
+    );
+    expect(consumerDefense).toHaveAttribute('target', '_blank');
+  });
+
   it('tiene el correo de soporte', () => {
     const footer = renderFooter();
 
