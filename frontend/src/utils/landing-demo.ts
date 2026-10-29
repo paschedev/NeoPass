@@ -2,7 +2,7 @@ import type { StaffOverview } from '@/components/panel/types';
 import type { MyStaff } from '@/components/staff/types';
 
 // Datos inventados para la demo de la landing: el staff de una productora y
-// el panel de Lucía, una de sus RPPs, que también vende para otra. Las
+// el panel de Lucía, una de sus RRPP, que también vende para otra. Las
 // fechas se arman desde hoy, así la demo nunca muestra eventos pasados.
 
 function daysFrom(now: Date, days: number, hour: number): string {

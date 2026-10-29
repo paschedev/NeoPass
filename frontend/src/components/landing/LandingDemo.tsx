@@ -17,7 +17,7 @@ type Tab = 'organizer' | 'promoter';
 
 const TABS: [Tab, string][] = [
   ['organizer', 'Organizador'],
-  ['promoter', 'RPP'],
+  ['promoter', 'RRPP'],
 ];
 
 const noop = () => {};

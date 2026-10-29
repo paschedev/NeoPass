@@ -333,7 +333,7 @@ describe('Historial del evento: cada cambio queda con quién lo hizo', () => {
     });
   });
 
-  describe('pagos a RPPs', () => {
+  describe('pagos a RRPP', () => {
     it('registrar un pago queda con el monto y a quién', async () => {
       const s = await scenario();
 
@@ -502,7 +502,7 @@ describe('Historial del evento: cada cambio queda con quién lo hizo', () => {
         },
       ],
       [
-        'registrar un pago a un RPP',
+        'registrar un pago a un RRPP',
         (s) =>
           call(
             s.member,

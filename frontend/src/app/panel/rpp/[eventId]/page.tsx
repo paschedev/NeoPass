@@ -23,7 +23,7 @@ import CopyLinkButton from '@/components/ui/CopyLinkButton';
 import PromoterPaymentsSummary from '@/components/rpp/PromoterPaymentsSummary';
 import FreeTickets from '@/components/panel/event-detail/FreeTickets';
 
-// Lo que necesita el RPP para mandar sus QR free; null si el dueño no se los
+// Lo que necesita el RRPP para mandar sus QR free; null si el dueño no se los
 // dio.
 interface PromoterFreeTicketsAccess {
   limit: number;

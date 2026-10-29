@@ -21,7 +21,7 @@ const PAY_PATH = '/events/organizer/e1/promoters/s1/payments';
 const rocio = (overrides = {}) => ({
   id: 's1',
   status: 'ACCEPTED',
-  name: 'Rocío RPP',
+  name: 'Rocío RRPP',
   email: 'rocio@neopass.test',
   commissionType: 'PERCENTAGE',
   commissionValue: 10,
@@ -59,12 +59,12 @@ const paymentCalls = () =>
 describe('PromoterPayouts', () => {
   afterEach(() => vi.clearAllMocks());
 
-  it('muestra cada RPP con lo vendido, lo ganado, lo pagado y el saldo', async () => {
+  it('muestra cada RRPP con lo vendido, lo ganado, lo pagado y el saldo', async () => {
     server({ lists: [[rocio({ totalPaid: 50, balance: 150 })]] });
 
     render(<PromoterPayouts eventId="e1" />);
 
-    const row = await screen.findByRole('row', { name: /Rocío RPP/ });
+    const row = await screen.findByRole('row', { name: /Rocío RRPP/ });
     expect(row).toHaveTextContent('2');
     expect(row).toHaveTextContent('$2.000');
     expect(row).toHaveTextContent('$200');
@@ -72,20 +72,20 @@ describe('PromoterPayouts', () => {
     expect(row).toHaveTextContent('$150');
   });
 
-  it('un evento sin RPPs lo dice', async () => {
+  it('un evento sin RRPP lo dice', async () => {
     server({ lists: [[]] });
 
     render(<PromoterPayouts eventId="e1" />);
 
     expect(
-      await screen.findByText('Este evento no tiene RPPs.'),
+      await screen.findByText('Este evento no tiene RRPP.'),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Invitar scanner o RPP' }),
+      screen.queryByRole('button', { name: 'Invitar scanner o RRPP' }),
     ).not.toBeInTheDocument();
   });
 
-  it('con un evento abierto a invitaciones, ofrece invitar scanners o RPPs, nunca co-organizadores', async () => {
+  it('con un evento abierto a invitaciones, ofrece invitar scanners o RRPP, nunca co-organizadores', async () => {
     server({ lists: [[]] });
 
     render(
@@ -95,7 +95,7 @@ describe('PromoterPayouts', () => {
       />,
     );
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Invitar scanner o RPP' }),
+      await screen.findByRole('button', { name: 'Invitar scanner o RRPP' }),
     );
 
     const dialog = screen.getByRole('dialog');
@@ -107,7 +107,7 @@ describe('PromoterPayouts', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('solo el dueño puede habilitar QR free al invitar un RPP', async () => {
+  it('solo el dueño puede habilitar QR free al invitar un RRPP', async () => {
     server({ lists: [[]] });
     const { unmount } = render(
       <PromoterPayouts
@@ -117,7 +117,7 @@ describe('PromoterPayouts', () => {
       />,
     );
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Invitar scanner o RPP' }),
+      await screen.findByRole('button', { name: 'Invitar scanner o RRPP' }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Promotor' }));
     expect(
@@ -132,7 +132,7 @@ describe('PromoterPayouts', () => {
       />,
     );
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Invitar scanner o RPP' }),
+      await screen.findByRole('button', { name: 'Invitar scanner o RRPP' }),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Promotor' }));
     expect(
@@ -147,7 +147,7 @@ describe('PromoterPayouts', () => {
     render(<PromoterPayouts eventId="e1" />);
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Registrar pago a Rocío RPP' }),
+      await screen.findByRole('button', { name: 'Registrar pago a Rocío RRPP' }),
     );
     const dialog = screen.getByRole('dialog');
     const amount = within(dialog).getByLabelText('Monto');
@@ -181,7 +181,7 @@ describe('PromoterPayouts', () => {
     render(<PromoterPayouts eventId="e1" />);
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Registrar pago a Rocío RPP' }),
+      await screen.findByRole('button', { name: 'Registrar pago a Rocío RRPP' }),
     );
     const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText('Monto'), {
@@ -208,7 +208,7 @@ describe('PromoterPayouts', () => {
     render(<PromoterPayouts eventId="e1" />);
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Registrar pago a Rocío RPP' }),
+      await screen.findByRole('button', { name: 'Registrar pago a Rocío RRPP' }),
     );
     fireEvent.click(
       within(screen.getByRole('dialog')).getByRole('button', {
@@ -224,18 +224,18 @@ describe('PromoterPayouts', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
-  it('un RPP sin saldo no ofrece registrar pagos', async () => {
+  it('un RRPP sin saldo no ofrece registrar pagos', async () => {
     server({ lists: [[rocio({ totalPaid: 200, balance: 0 })]] });
 
     render(<PromoterPayouts eventId="e1" />);
 
-    await screen.findByRole('row', { name: /Rocío RPP/ });
+    await screen.findByRole('row', { name: /Rocío RRPP/ });
     expect(
       screen.queryByRole('button', { name: /registrar pago/i }),
     ).not.toBeInTheDocument();
   });
 
-  it('muestra el historial de pagos de cada RPP', async () => {
+  it('muestra el historial de pagos de cada RRPP', async () => {
     server({
       lists: [
         [
@@ -256,10 +256,10 @@ describe('PromoterPayouts', () => {
     render(<PromoterPayouts eventId="e1" />);
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'Ver pagos a Rocío RPP (1)' }),
+      await screen.findByRole('button', { name: 'Ver pagos a Rocío RRPP (1)' }),
     );
 
-    const history = screen.getByRole('list', { name: 'Pagos a Rocío RPP' });
+    const history = screen.getByRole('list', { name: 'Pagos a Rocío RRPP' });
     expect(history).toHaveTextContent('$150');
     expect(history).toHaveTextContent('Transferencia');
     expect(history).toHaveTextContent('2 oct');

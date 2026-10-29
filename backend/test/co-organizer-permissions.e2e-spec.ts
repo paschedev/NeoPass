@@ -27,7 +27,7 @@ const DENIED_MESSAGE: Record<EventPermission, string> = {
   VIEW_SALES: 'No tenés permiso para ver ventas y recaudación',
   SEND_FREE_TICKETS: 'No tenés permiso para mandar QR free',
   VIEW_ATTENDEES: 'No tenés permiso para ver y exportar la lista del público',
-  MANAGE_STAFF: 'No tenés permiso para manejar el staff y los pagos a RPPs',
+  MANAGE_STAFF: 'No tenés permiso para manejar el staff y los pagos a RRPP',
 };
 
 type TicketTypeView = { id: string; sold?: number; reserved?: number };
@@ -245,13 +245,13 @@ describe('Co-organizadores: permisos sobre el evento', () => {
       200,
     ],
     [
-      'ver los RPPs',
+      'ver los RRPP',
       'MANAGE_STAFF',
       (s, u) => get(u, `/events/organizer/${s.event.id}/promoters`),
       200,
     ],
     [
-      'registrar un pago a un RPP',
+      'registrar un pago a un RRPP',
       'MANAGE_STAFF',
       (s, u) =>
         post(

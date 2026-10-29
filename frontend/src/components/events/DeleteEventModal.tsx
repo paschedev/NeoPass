@@ -101,7 +101,7 @@ export default function DeleteEventModal({
               )}
               <li>
                 Las ventas siguen registradas: tus métricas, el historial del
-                staff y las comisiones y pagos de los RPP no cambian.
+                staff y las comisiones y pagos de los RRPP no cambian.
               </li>
             </>
           ) : (

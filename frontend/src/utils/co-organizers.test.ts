@@ -65,7 +65,7 @@ describe('qué puede hacer quien está en sesión', () => {
       'No tenés permiso para ver ventas y recaudación',
     );
     expect(permissionDeniedMessage('MANAGE_STAFF')).toBe(
-      'No tenés permiso para manejar el staff y los pagos a RPPs',
+      'No tenés permiso para manejar el staff y los pagos a RRPP',
     );
     expect(permissionDeniedMessage('VIEW_ATTENDEES')).toBe(
       'No tenés permiso para ver y exportar la lista del público',

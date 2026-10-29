@@ -233,7 +233,7 @@ describe('Avisos de venta', () => {
     }
   });
 
-  describe('al RPP', () => {
+  describe('al RRPP', () => {
     it('la venta con su link le avisa cuántas vendió y cuánto ganó, y se acumula igual', async () => {
       const s = await setup();
       const rpp = await addStaff(s.event.id, { role: 'PROMOTER' });

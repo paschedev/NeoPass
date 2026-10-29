@@ -4,12 +4,12 @@ import { useEffect, useState } from 'react';
 import { Star } from 'lucide-react';
 
 // Abre la frase de marca y después rotan cosas que el código cumple: la
-// venta se acredita en la cuenta de Mercado Pago del organizador, cada RPP
+// venta se acredita en la cuenta de Mercado Pago del organizador, cada RRPP
 // vende con su link y su comisión, y el equipo manda QR free.
 const PHRASES = [
   'La nueva era de los eventos',
   'Cobrás directo en tu Mercado Pago',
-  'RPPs con link y comisión',
+  'RRPP con link y comisión',
   'QR free para tus invitados',
 ];
 

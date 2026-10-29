@@ -85,12 +85,12 @@ describe('staffCounts', () => {
           managers: [person(), person()],
         }),
       ),
-    ).toBe('2 RPPs · 1 scanner · 2 co-organizadores · 1 pendiente');
+    ).toBe('2 RRPP · 1 scanner · 2 co-organizadores · 1 pendiente');
     expect(
       staffCounts(
         group({ promoters: [person()], scanners: [person(), person()] }),
       ),
-    ).toBe('1 RPP · 2 scanners');
+    ).toBe('1 RRPP · 2 scanners');
   });
 
   it('un evento sin staff lo dice', () => {

@@ -4,7 +4,7 @@ import type { StaffOverview } from '../types';
 
 const CARD = 'bg-neutral-900 border rounded-2xl p-5';
 
-// Arriba de la pestaña: cuánto les debés a tus RPPs entre todos tus eventos,
+// Arriba de la pestaña: cuánto les debés a tus RRPP entre todos tus eventos,
 // cuánto ya les pagaste y cuánta gente trabaja en lo que viene.
 export default function StaffSummary({
   totals,
@@ -20,13 +20,13 @@ export default function StaffSummary({
       className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4"
     >
       <div className={`${CARD} col-span-2 lg:col-span-1 border-amber-500/20`}>
-        <p className="text-sm text-neutral-400">Les debés a tus RPPs</p>
+        <p className="text-sm text-neutral-400">Les debés a tus RRPP</p>
         <p className="font-outfit text-3xl font-bold text-amber-300 tabular-nums mt-1">
           {formatCurrency(totals.owed)}
         </p>
         <p className="text-xs text-neutral-500 mt-1">
           {totals.owed > 0
-            ? `${counted(totals.promotersOwed, 'RPP', 'RPPs')} · ${counted(totals.eventsOwed, 'evento', 'eventos')}`
+            ? `${counted(totals.promotersOwed, 'RRPP', 'RRPP')} · ${counted(totals.eventsOwed, 'evento', 'eventos')}`
             : 'Estás al día'}
         </p>
       </div>

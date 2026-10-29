@@ -61,7 +61,7 @@ describe('Landing', () => {
 
     expect(order).toHaveTextContent('Control total');
     expect(order).toHaveTextContent('tandas');
-    expect(order).toHaveTextContent('RPPs');
+    expect(order).toHaveTextContent('RRPP');
     expect(order).not.toHaveTextContent(/cobr|plata|dinero|pag|comisi|\$/i);
   });
 

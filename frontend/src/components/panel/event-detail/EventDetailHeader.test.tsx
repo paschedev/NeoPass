@@ -128,7 +128,7 @@ describe('EventDetailHeader', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('quien organiza puede copiar el link de la página pública, sin código de RPP', async () => {
+  it('quien organiza puede copiar el link de la página pública, sin código de RRPP', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', {
       value: { writeText },

@@ -30,8 +30,8 @@ function Tile({
   );
 }
 
-// Página Staff: los eventos donde la persona trabaja como RPP, scanner o
-// co-organizador, sus números como RPP y las invitaciones que tiene que responder.
+// Página Staff: los eventos donde la persona trabaja como RRPP, scanner o
+// co-organizador, sus números como RRPP y las invitaciones que tiene que responder.
 export default function MyStaffEvents() {
   const [data, setData] = useState<MyStaff | null>(null);
   const [failed, setFailed] = useState(false);
@@ -109,7 +109,7 @@ export function MyStaffEventsView({
 
       {totals && (
         <section
-          aria-label="Tus números como RPP"
+          aria-label="Tus números como RRPP"
           className="grid grid-cols-2 lg:grid-cols-4 gap-3"
         >
           <Tile label="Te deben" value={formatCurrency(totals.owed)} accent />
@@ -126,7 +126,7 @@ export function MyStaffEventsView({
             Todavía no trabajás en ningún evento
           </h3>
           <p className="text-sm text-neutral-500">
-            Cuando un organizador te invite como RPP o scanner y aceptes, el
+            Cuando un organizador te invite como RRPP o scanner y aceptes, el
             evento va a aparecer acá.
           </p>
         </div>

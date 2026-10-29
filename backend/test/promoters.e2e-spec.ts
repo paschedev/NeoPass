@@ -24,7 +24,7 @@ type PromoterEventStats = {
   recentSales: { commission: number }[];
 };
 
-describe('RPP', () => {
+describe('RRPP', () => {
   let t: TestApp;
 
   beforeAll(async () => {
@@ -121,7 +121,7 @@ describe('RPP', () => {
   }
 
   describe('clicks del link', () => {
-    it('una visita desde el link de un RPP aceptado del evento suma un click', async () => {
+    it('una visita desde el link de un RRPP aceptado del evento suma un click', async () => {
       const { event } = await createOrganizerWithEvent(t.prisma);
       const { staff } = await addStaff(event.id);
 
@@ -163,7 +163,7 @@ describe('RPP', () => {
       expect(await clicks(staff.id)).toBe(0);
     });
 
-    it('el link de un RPP de otro evento no suma clicks', async () => {
+    it('el link de un RRPP de otro evento no suma clicks', async () => {
       const { event } = await createOrganizerWithEvent(t.prisma);
       const other = await createOrganizerWithEvent(t.prisma);
       const { staff } = await addStaff(other.event.id);
@@ -186,15 +186,15 @@ describe('RPP', () => {
       expect(await clicks(staff.id)).toBe(0);
     });
 
-    it('un link de RPP inválido no rompe la página del evento', async () => {
+    it('un link de RRPP inválido no rompe la página del evento', async () => {
       const { event } = await createOrganizerWithEvent(t.prisma);
 
       await visit(event.id, 'no-es-un-rpp').expect(200);
     });
   });
 
-  // La lista de eventos y los totales del RPP están en my-staff.e2e-spec.ts.
-  describe('panel del RPP', () => {
+  // La lista de eventos y los totales del RRPP están en my-staff.e2e-spec.ts.
+  describe('panel del RRPP', () => {
     it.each(['PENDING', 'REJECTED'] as const)(
       'las estadísticas de un evento con la invitación %s dan 404',
       async (status) => {
@@ -274,7 +274,7 @@ describe('RPP', () => {
       expect(stats.totalEarned).toBe(100);
     });
 
-    it('una devolución le resta al RPP la comisión de esa venta', async () => {
+    it('una devolución le resta al RRPP la comisión de esa venta', async () => {
       const { event, ticketType } = await createOrganizerWithEvent(t.prisma, {
         price: 1000,
       });

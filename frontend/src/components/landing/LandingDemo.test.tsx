@@ -27,14 +27,14 @@ describe('Demo de la landing', () => {
     expect(apiFetch).not.toHaveBeenCalled();
   });
 
-  it('la pestaña RPP muestra el panel de un RPP con varios eventos', () => {
+  it('la pestaña RRPP muestra el panel de un RRPP con varios eventos', () => {
     render(<LandingDemo />);
 
-    fireEvent.click(screen.getByRole('tab', { name: 'RPP' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'RRPP' }));
 
-    const panel = screen.getByRole('tabpanel', { name: 'RPP' });
+    const panel = screen.getByRole('tabpanel', { name: 'RRPP' });
     expect(
-      within(panel).getByRole('region', { name: 'Tus números como RPP' }),
+      within(panel).getByRole('region', { name: 'Tus números como RRPP' }),
     ).toHaveTextContent('Te deben');
     expect(within(panel).getByText('Techno Night')).toBeInTheDocument();
     expect(within(panel).getByText('Beach Sunset')).toBeInTheDocument();
@@ -56,9 +56,9 @@ describe('Demo de la landing', () => {
       within(organizer).getByText('Fiesta de Primavera'),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('tab', { name: 'RPP' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'RRPP' }));
 
-    const promoter = screen.getByRole('tabpanel', { name: 'RPP' });
+    const promoter = screen.getByRole('tabpanel', { name: 'RRPP' });
     expect(
       within(promoter).getByRole('article', { name: 'Techno Night' }),
     ).toBeInTheDocument();
@@ -74,10 +74,10 @@ describe('Demo de la landing', () => {
     expect(screen.getAllByRole('tabpanel', { hidden: true })).toHaveLength(2);
     expect(screen.getByRole('tabpanel')).toHaveAccessibleName('Organizador');
 
-    fireEvent.click(screen.getByRole('tab', { name: 'RPP' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'RRPP' }));
 
     expect(screen.getAllByRole('tabpanel', { hidden: true })).toHaveLength(2);
-    expect(screen.getByRole('tabpanel')).toHaveAccessibleName('RPP');
+    expect(screen.getByRole('tabpanel')).toHaveAccessibleName('RRPP');
   });
 
   it('es una vitrina: el panel se mira pero no se puede tocar', () => {

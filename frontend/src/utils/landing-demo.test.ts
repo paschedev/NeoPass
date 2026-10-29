@@ -15,7 +15,7 @@ describe('Datos de ejemplo de la landing', () => {
     }
   });
 
-  it('los números del organizador cierran: la deuda total suma lo que se le debe a cada RPP', () => {
+  it('los números del organizador cierran: la deuda total suma lo que se le debe a cada RRPP', () => {
     const { totals, events } = organizerDemo(now);
     const owedByEvent = events.map((event) =>
       event.promoters.reduce((sum, promoter) => sum + promoter.balance, 0),
@@ -25,7 +25,7 @@ describe('Datos de ejemplo de la landing', () => {
     expect(totals.owed).toBe(owedByEvent.reduce((sum, owed) => sum + owed, 0));
   });
 
-  it('los números del RPP cierran: los totales suman lo de cada evento', () => {
+  it('los números del RRPP cierran: los totales suman lo de cada evento', () => {
     const { promoterTotals, events } = promoterDemo(now);
     const sum = (pick: (event: (typeof events)[number]) => number) =>
       events.reduce((total, event) => total + pick(event), 0);

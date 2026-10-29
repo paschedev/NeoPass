@@ -21,7 +21,7 @@ const EMPTY_BOX =
   'text-center py-12 px-6 bg-white/[0.02] rounded-3xl border border-white/5 border-dashed';
 
 // Pestaña "Mi staff" del panel del organizador: el staff de cada evento y
-// lo que se les debe a los RPPs (en total, por evento y a cada uno).
+// lo que se les debe a los RRPP (en total, por evento y a cada uno).
 export default function StaffTab({
   refreshKey,
   onInvite,
@@ -138,7 +138,7 @@ export default function StaffTab({
 
         {active.length === 0 && filter === 'owed' && (
           <p className={`${EMPTY_BOX} text-sm text-neutral-400`}>
-            No les debés nada a tus RPPs.
+            No les debés nada a tus RRPP.
           </p>
         )}
 
@@ -196,7 +196,7 @@ export default function StaffTab({
             Mi staff
           </h2>
           <p className="text-sm text-neutral-400">
-            Tu equipo en cada evento y lo que les debés a tus RPPs.
+            Tu equipo en cada evento y lo que les debés a tus RRPP.
           </p>
         </div>
         <button

@@ -99,7 +99,7 @@ const region = (name: string) => screen.findByRole('region', { name });
 describe('Detalle del evento', () => {
   afterEach(() => vi.clearAllMocks());
 
-  it('quien organiza ve todo: ventas, ingreso, RPPs, QR free, público, co-organizadores e historial', async () => {
+  it('quien organiza ve todo: ventas, ingreso, RRPP, QR free, público, co-organizadores e historial', async () => {
     server(OWNER);
 
     render(<EventDetailPage />);
@@ -110,12 +110,12 @@ describe('Detalle del evento', () => {
     expect(await region('Resumen')).toBeInTheDocument();
     const doors = await region('Ingreso en puerta');
     expect(await within(doors).findByText('0 de 0')).toBeInTheDocument();
-    const promoters = await region('RPPs');
+    const promoters = await region('RRPP');
     expect(
-      await within(promoters).findByText('Este evento no tiene RPPs.'),
+      await within(promoters).findByText('Este evento no tiene RRPP.'),
     ).toBeInTheDocument();
     expect(
-      within(promoters).getByRole('button', { name: 'Invitar scanner o RPP' }),
+      within(promoters).getByRole('button', { name: 'Invitar scanner o RRPP' }),
     ).toBeInTheDocument();
     const freeTickets = await region('QR free');
     expect(
@@ -148,8 +148,8 @@ describe('Detalle del evento', () => {
 
     expect(await region('Resumen')).toBeInTheDocument();
     expect(await region('Ingreso en puerta')).toBeInTheDocument();
-    expect(await region('RPPs')).toHaveTextContent(
-      'No tenés permiso para manejar el staff y los pagos a RPPs',
+    expect(await region('RRPP')).toHaveTextContent(
+      'No tenés permiso para manejar el staff y los pagos a RRPP',
     );
     expect(await region('QR free')).toHaveTextContent(
       'No tenés permiso para mandar QR free',

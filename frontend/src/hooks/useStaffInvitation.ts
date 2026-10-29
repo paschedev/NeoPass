@@ -8,7 +8,7 @@ import { useCurrentUser } from './useCurrentUser';
 
 export type InvitationOutcome = 'done' | 'already-processed' | 'failed';
 
-// Aceptar o rechazar una invitación de staff (RPP, scanner o co-organizador), desde
+// Aceptar o rechazar una invitación de staff (RRPP, scanner o co-organizador), desde
 // una notificación (que queda leída) o desde la página Staff. Cada pantalla
 // actualiza su lista según el resultado.
 export function useStaffInvitation() {
@@ -44,7 +44,7 @@ export function useStaffInvitation() {
         // 409: ya estaba aceptada o rechazada
         return res.status === 409 ? 'already-processed' : 'failed';
       }
-      // Aceptar suma el rol de RPP o scanner: la navegación lo muestra al instante
+      // Aceptar suma el rol de RRPP o scanner: la navegación lo muestra al instante
       if (action === 'accept') await refresh();
       if (notificationId) {
         await apiFetch(`/notifications/${notificationId}/read`, {

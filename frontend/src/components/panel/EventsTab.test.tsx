@@ -109,7 +109,7 @@ describe('EventsTab', () => {
     expect(screen.getByText('CANCELADO')).toBeInTheDocument();
   });
 
-  it('"Copiar link" copia la página pública del evento, sin código de RPP', async () => {
+  it('"Copiar link" copia la página pública del evento, sin código de RRPP', async () => {
     vi.useFakeTimers({ now, toFake: ['Date'] });
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', {

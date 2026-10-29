@@ -17,7 +17,7 @@ const PERMISSION_PHRASE: Record<EventPermission, string> = {
   VIEW_SALES: 'ver ventas y recaudación',
   SEND_FREE_TICKETS: 'mandar QR free',
   VIEW_ATTENDEES: 'ver y exportar la lista del público',
-  MANAGE_STAFF: 'manejar el staff y los pagos a RPPs',
+  MANAGE_STAFF: 'manejar el staff y los pagos a RRPP',
 };
 
 const sortPermissions = (permissions: EventPermission[]) =>
@@ -34,7 +34,7 @@ export function permissionsError(
     permissions.includes('MANAGE_STAFF') &&
     !permissions.includes('VIEW_SALES')
   ) {
-    return 'Para manejar el staff y los pagos a RPPs también tiene que poder ver las ventas';
+    return 'Para manejar el staff y los pagos a RRPP también tiene que poder ver las ventas';
   }
   return null;
 }
