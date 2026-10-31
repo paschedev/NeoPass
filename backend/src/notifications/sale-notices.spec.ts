@@ -33,7 +33,7 @@ describe('textos de los avisos de venta', () => {
     });
   });
 
-  describe('ventas del RPP', () => {
+  describe('ventas del RRPP', () => {
     it('dice cuántas vendió con su link y cuánto ganó', () => {
       expect(
         promoterSalesNotice('Fiesta X', { tickets: 3, amount: pesos('4500') }),

@@ -122,7 +122,7 @@ describe('Panel ADMIN: tickets', () => {
       ? await t.prisma.eventStaff.create({
           data: {
             eventId: created.event.id,
-            userId: (await createUser(t.prisma, { name: 'RPP Lucía' })).id,
+            userId: (await createUser(t.prisma, { name: 'RRPP Lucía' })).id,
             role: 'PROMOTER',
             status: 'ACCEPTED',
           },
@@ -221,7 +221,7 @@ describe('Panel ADMIN: tickets', () => {
   });
 
   describe('lo que muestra de cada entrada', () => {
-    it('una entrada comprada con link de RPP y transferida trae evento, tipo, tanda, dueño, comprador y compra', async () => {
+    it('una entrada comprada con link de RRPP y transferida trae evento, tipo, tanda, dueño, comprador y compra', async () => {
       const admin = await createAdmin();
       const { event, ticket, order } = await purchasedTicket({
         transferred: true,
@@ -251,7 +251,7 @@ describe('Panel ADMIN: tickets', () => {
             type: 'PURCHASE',
             purchasedAt: order.createdAt.toISOString(),
             total: 1000,
-            promoterName: 'RPP Lucía',
+            promoterName: 'RRPP Lucía',
           },
         },
       ]);

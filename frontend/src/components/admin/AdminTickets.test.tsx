@@ -117,7 +117,7 @@ describe('Panel ADMIN: tickets', () => {
     expect(onSearch).toHaveBeenCalledWith('1a2b3c4d');
   });
 
-  it('una entrada transferida dice quién la compró y por qué RPP', async () => {
+  it('una entrada transferida dice quién la compró y por qué RRPP', async () => {
     server(
       ticketsPage([
         adminTicket({
@@ -137,7 +137,7 @@ describe('Panel ADMIN: tickets', () => {
     const card = await ticketCard();
     expect(card).toHaveTextContent('La compró');
     expect(card).toHaveTextContent('Juan Gómez · juan@example.com');
-    expect(card).toHaveTextContent('$24.000 en total · RPP Lucía');
+    expect(card).toHaveTextContent('$24.000 en total · RRPP Lucía');
   });
 
   it('un QR free dice quién lo mandó y hasta qué hora deja entrar', async () => {

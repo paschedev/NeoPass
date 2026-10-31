@@ -49,7 +49,7 @@ export function lacksDoorStaff(
   );
 }
 
-// "1 RPP", "3 RPPs".
+// "1 RRPP", "3 RRPP".
 export const counted = (count: number, one: string, many: string) =>
   `${count} ${count === 1 ? one : many}`;
 
@@ -61,7 +61,7 @@ export function staffCounts(
     (person) => person.status === 'PENDING',
   ).length;
   const parts = [
-    promoters.length && counted(promoters.length, 'RPP', 'RPPs'),
+    promoters.length && counted(promoters.length, 'RRPP', 'RRPP'),
     scanners.length && counted(scanners.length, 'scanner', 'scanners'),
     managers.length &&
       counted(managers.length, 'co-organizador', 'co-organizadores'),
@@ -95,7 +95,7 @@ export function promoterDebtState({
   return totalEarned > 0 ? 'settled' : 'no-sales';
 }
 
-// La línea extra de la tarjeta de un RPP cuando también se le debe en otros
+// La línea extra de la tarjeta de un RRPP cuando también se le debe en otros
 // eventos del organizador.
 export function otherEventsDebt({
   balance,

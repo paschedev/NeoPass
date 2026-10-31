@@ -47,7 +47,7 @@ function EventDebt({ event }: { event: StaffEventGroupData }) {
   if (event.promoters.length === 0) {
     const hasStaff = event.scanners.length + event.managers.length > 0;
     return hasStaff ? (
-      <span className="text-xs text-neutral-500">Sin RPPs</span>
+      <span className="text-xs text-neutral-500">Sin RRPP</span>
     ) : null;
   }
   if (event.owed > 0) {
@@ -101,7 +101,7 @@ function PeopleBlock({
   );
 }
 
-// Un evento con su staff: RPPs (con lo que se les debe y sus QR free),
+// Un evento con su staff: RRPP (con lo que se les debe y sus QR free),
 // scanners y co-organizadores.
 export default function StaffEventGroup({
   event,
@@ -198,7 +198,7 @@ export default function StaffEventGroup({
         <div id={contentId}>
           {event.promoters.length > 0 && (
             <div className="mt-6">
-              <h4 className={BLOCK_TITLE}>RPPs · {event.promoters.length}</h4>
+              <h4 className={BLOCK_TITLE}>RRPP · {event.promoters.length}</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
                 {event.promoters.map((promoter) => (
                   <PromoterCard

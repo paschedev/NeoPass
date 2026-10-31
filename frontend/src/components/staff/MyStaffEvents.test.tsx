@@ -98,7 +98,7 @@ describe('MyStaffEvents', () => {
     const fiesta = await card('Fiesta Bresh');
     expect(fiesta).toHaveTextContent('Próximo');
     expect(fiesta).toHaveTextContent('sáb, 10 oct, 23:59');
-    expect(fiesta).toHaveTextContent('RPP');
+    expect(fiesta).toHaveTextContent('RRPP');
     expect(fiesta).toHaveTextContent('Scanner');
     expect(fiesta).toHaveTextContent('Niceto Club');
     expect(fiesta).toHaveTextContent('Organiza Organizadora');
@@ -110,7 +110,7 @@ describe('MyStaffEvents', () => {
     );
   });
 
-  it('como RPP muestra la comisión, lo vendido, lo ganado y lo que le deben, y lleva a sus ventas', async () => {
+  it('como RRPP muestra la comisión, lo vendido, lo ganado y lo que le deben, y lleva a sus ventas', async () => {
     server([myStaff()]);
 
     render(<MyStaffEvents />);
@@ -126,7 +126,7 @@ describe('MyStaffEvents', () => {
     ).toHaveAttribute('href', '/panel/rpp/e1');
   });
 
-  it('como RPP con QR free muestra cuántos le quedan y lleva a mandarlos mientras el evento no terminó', async () => {
+  it('como RRPP con QR free muestra cuántos le quedan y lleva a mandarlos mientras el evento no terminó', async () => {
     server([
       myStaff({
         events: [
@@ -164,7 +164,7 @@ describe('MyStaffEvents', () => {
     expect(await card('Sunset')).not.toHaveTextContent('QR free');
   });
 
-  it('la invitación de RPP dice cuántos QR free vas a poder mandar y de qué tipos', async () => {
+  it('la invitación de RRPP dice cuántos QR free vas a poder mandar y de qué tipos', async () => {
     server([
       myStaff({
         invitations: [
@@ -324,12 +324,12 @@ describe('MyStaffEvents', () => {
     ).toHaveTextContent('Vas a poder: Escanear · Editar info');
   });
 
-  it('arriba muestra los totales de RPP solo si tiene roles de RPP', async () => {
+  it('arriba muestra los totales de RRPP solo si tiene roles de RRPP', async () => {
     server([myStaff()]);
     const { unmount } = render(<MyStaffEvents />);
 
     const totals = await screen.findByRole('region', {
-      name: 'Tus números como RPP',
+      name: 'Tus números como RRPP',
     });
     expect(totals).toHaveTextContent('Te deben$21.800');
     expect(totals).toHaveTextContent('Te pagaron$20.000');
@@ -346,7 +346,7 @@ describe('MyStaffEvents', () => {
     render(<MyStaffEvents />);
     await card('Fiesta Bresh');
     expect(
-      screen.queryByRole('region', { name: 'Tus números como RPP' }),
+      screen.queryByRole('region', { name: 'Tus números como RRPP' }),
     ).toBeNull();
   });
 
@@ -397,7 +397,7 @@ describe('MyStaffEvents', () => {
       name: 'Invitaciones pendientes',
     });
     expect(pending).toHaveTextContent('Techno Sunset');
-    expect(pending).toHaveTextContent('RPP · $1.500 por entrada');
+    expect(pending).toHaveTextContent('RRPP · $1.500 por entrada');
     expect(pending).toHaveTextContent('Organiza Otra organizadora');
     fireEvent.click(within(pending).getByRole('button', { name: 'Aceptar' }));
 

@@ -42,7 +42,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-// Lo que te deben en este evento, visto desde el RPP.
+// Lo que te deben en este evento, visto desde el RRPP.
 function Owed({ balance }: { balance: number }) {
   if (balance > 0) {
     return (
@@ -83,7 +83,7 @@ function PromoterRole({
   return (
     <div className="mt-4 bg-black/30 rounded-2xl p-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-semibold text-neutral-400">Como RPP</p>
+        <p className="text-xs font-semibold text-neutral-400">Como RRPP</p>
         {commission && (
           <span className="px-2 py-1 rounded-md text-[11px] font-medium bg-indigo-500/15 text-indigo-300">
             {commission}

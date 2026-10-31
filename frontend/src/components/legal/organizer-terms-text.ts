@@ -270,12 +270,12 @@ export const ORGANIZER_TERMS_TEXT: LegalText = {
           items: [
             {
               content: [
-                'Los co-organizadores, RPP y personas que escanean entradas los sumás vos, con los permisos que les des, y actúan bajo tu responsabilidad.',
+                'Los co-organizadores, RRPP y personas que escanean entradas los sumás vos, con los permisos que les des, y actúan bajo tu responsabilidad.',
               ],
             },
             {
               content: [
-                'Las comisiones de los RPP las pactás y pagás vos. NeoPass solo te ayuda a registrarlas.',
+                'Las comisiones de los RRPP las pactás y pagás vos. NeoPass solo te ayuda a registrarlas.',
               ],
             },
           ],

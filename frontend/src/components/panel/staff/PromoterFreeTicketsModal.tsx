@@ -161,7 +161,7 @@ function FreeTicketsForm({
   );
 }
 
-// Da, cambia o quita los QR free de un RPP en un evento. Solo lo usa el dueño
+// Da, cambia o quita los QR free de un RRPP en un evento. Solo lo usa el dueño
 // (pestaña Mi staff); bajar el tope no anula lo que ya mandó.
 export default function PromoterFreeTicketsModal({
   target,

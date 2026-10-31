@@ -13,7 +13,7 @@ import {
 const FIELD =
   'w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500';
 
-// Anota un pago a un RPP: propone el saldo y acepta pagos parciales.
+// Anota un pago a un RRPP: propone el saldo y acepta pagos parciales.
 export default function RegisterPaymentForm({
   promoterName,
   balance,

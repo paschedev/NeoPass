@@ -76,7 +76,7 @@ function event(
 const ids = (list: { id: string }[]) => list.map((item) => item.id);
 
 describe('buildStaffOverview', () => {
-  it('suma lo que se le debe a cada RPP, a cada evento y en total, al centavo', () => {
+  it('suma lo que se le debe a cada RRPP, a cada evento y en total, al centavo', () => {
     const ana = member('ana', 'Ana', { earned: '200.10', paid: '100' });
     const beto = member('beto', 'Beto', { earned: '0.20' });
     const otherEvent = member('caro', 'Caro', { earned: '0.10' });
@@ -106,7 +106,7 @@ describe('buildStaffOverview', () => {
     });
   });
 
-  it('un RPP pagado de más (una devolución bajó lo ganado) no achica la deuda con los demás', () => {
+  it('un RRPP pagado de más (una devolución bajó lo ganado) no achica la deuda con los demás', () => {
     const overpaid = member('ana', 'Ana', { earned: '100', paid: '150' });
     const owed = member('beto', 'Beto', { earned: '80' });
 
@@ -124,7 +124,7 @@ describe('buildStaffOverview', () => {
     expect(overview.totals).toMatchObject({ owed: 80, promotersOwed: 1 });
   });
 
-  it('cada RPP trae lo que se le debe entre todos los eventos del organizador', () => {
+  it('cada RRPP trae lo que se le debe entre todos los eventos del organizador', () => {
     const overview = buildStaffOverview(
       [
         event('a', 3, [member('ana', 'Ana', { earned: '100' })]),
@@ -150,7 +150,7 @@ describe('buildStaffOverview', () => {
     });
   });
 
-  it('las entradas vendidas de cada RPP salen de lo que vendió con órdenes pagadas', () => {
+  it('las entradas vendidas de cada RRPP salen de lo que vendió con órdenes pagadas', () => {
     const ana = member('ana', 'Ana');
     const beto = member('beto', 'Beto');
 
@@ -197,7 +197,7 @@ describe('buildStaffOverview', () => {
     ]);
   });
 
-  it('ordena el staff: RPPs aceptados por vendidas, después pendientes y rechazados; scanners y encargados por nombre', () => {
+  it('ordena el staff: RRPP aceptados por vendidas, después pendientes y rechazados; scanners y encargados por nombre', () => {
     const pocas = member('u1', 'Zoe');
     const muchas = member('u2', 'Yamila');
     const empate = member('u3', 'Abril');
@@ -279,7 +279,7 @@ describe('buildStaffOverview', () => {
     });
   });
 
-  it('un evento sin RPPs no debe nada y muestra los datos de su staff', () => {
+  it('un evento sin RRPP no debe nada y muestra los datos de su staff', () => {
     const overview = buildStaffOverview(
       [event('a', 3, [scanner('ana', 'Ana')]), event('b', 4)],
       new Map(),

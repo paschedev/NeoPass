@@ -21,7 +21,7 @@ export interface MyPromoterRole {
   totalPaid: number;
   // Negativo si le pagaron de más (una devolución bajó lo que ganó).
   balance: number;
-  // Null si no puede mandar QR free como RPP.
+  // Null si no puede mandar QR free como RRPP.
   freeTickets: PromoterFreeTickets | null;
 }
 
@@ -40,7 +40,7 @@ export interface MyStaffEvent {
   longitude: number | null;
   venuePlaceId: string | null;
   organizerName: string;
-  // Lo que le deben como RPP en este evento.
+  // Lo que le deben como RRPP en este evento.
   owed: number;
   roles: StaffRoleName[];
   promoter: MyPromoterRole | null;

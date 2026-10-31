@@ -40,6 +40,6 @@ describe('Panel del organizador', () => {
     expect(
       await screen.findByRole('button', { name: 'Mi staff' }),
     ).toBeInTheDocument();
-    expect(screen.queryByText('Staff & RPPs')).toBeNull();
+    expect(screen.queryByText('Staff & RRPP')).toBeNull();
   });
 });

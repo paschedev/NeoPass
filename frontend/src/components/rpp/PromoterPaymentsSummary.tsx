@@ -1,6 +1,6 @@
 import { formatCurrency, formatDayMonthTime } from '@/utils/format';
 
-// Lo que el organizador le pagó al RPP por un evento (los pagos pasan por fuera
+// Lo que el organizador le pagó al RRPP por un evento (los pagos pasan por fuera
 // de NeoPass; el organizador los anota) y lo que todavía le debe.
 export default function PromoterPaymentsSummary({
   totalPaid,

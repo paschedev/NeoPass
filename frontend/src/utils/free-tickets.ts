@@ -124,7 +124,7 @@ export function freeTicketTypeOptions(
 
 // Por qué no se pueden mandar QR free de este evento, o null si se puede. El
 // servidor aplica las mismas reglas. "restricted": quien manda tiene una
-// lista de tipos permitidos (co-organizador o RPP), así que si no queda
+// lista de tipos permitidos (co-organizador o RRPP), así que si no queda
 // ninguno, lo pide.
 export function freeTicketsBlockedReason(
   event: { status: string; startDate: string; endDate: string },

@@ -277,7 +277,7 @@ function EventContent() {
                 <Ticket className="w-6 h-6 text-indigo-400" /> Comprar entradas
               </h3>
 
-              {/* RPP Selector */}
+              {/* RRPP Selector */}
               <div className="mb-6 bg-black/40 p-4 rounded-xl border border-white/5">
                 <label className="flex items-center gap-2 text-sm font-medium text-neutral-300 mb-2">
                   <Users className="w-4 h-4 text-purple-400" />

@@ -28,11 +28,11 @@ describe('Etiqueta del hero', () => {
     expect(screen.getByText(BRAND)).toBeVisible();
   });
 
-  it('cuenta lo que el producto hace: cobro directo, RPPs con link y QR free', () => {
+  it('cuenta lo que el producto hace: cobro directo, RRPP con link y QR free', () => {
     render(<HeroBadge />);
 
     expect(screen.getByText(PAYOUT)).toBeInTheDocument();
-    expect(screen.getByText('RPPs con link y comisión')).toBeInTheDocument();
+    expect(screen.getByText('RRPP con link y comisión')).toBeInTheDocument();
     expect(screen.getByText('QR free para tus invitados')).toBeInTheDocument();
   });
 

@@ -124,7 +124,7 @@ describe('Staff del organizador agrupado por evento', () => {
     return { user: member, staff };
   }
 
-  it('agrupa el staff por evento con lo que se le debe a cada RPP, a cada evento y en total', async () => {
+  it('agrupa el staff por evento con lo que se le debe a cada RRPP, a cada evento y en total', async () => {
     const { organizer, event } = await createOrganizerWithEvent(t.prisma);
     const past = await createEvent(organizer.id, 'Fiesta pasada', -10);
     const ana = await addStaff(event.id, 'Ana', {
@@ -167,7 +167,7 @@ describe('Staff del organizador agrupado por evento', () => {
     expect(JSON.stringify(body)).not.toMatch(/passwordHash|mercadoPago/i);
   });
 
-  it('las entradas vendidas de cada RPP cuentan solo órdenes pagadas', async () => {
+  it('las entradas vendidas de cada RRPP cuentan solo órdenes pagadas', async () => {
     const { organizer, event, ticketType } = await createOrganizerWithEvent(
       t.prisma,
     );
@@ -198,7 +198,7 @@ describe('Staff del organizador agrupado por evento', () => {
     expect(body.events[0].promoters[0].ticketsSold).toBe(5);
   });
 
-  it('un pago registrado baja la deuda del RPP, la del evento y la total', async () => {
+  it('un pago registrado baja la deuda del RRPP, la del evento y la total', async () => {
     const { organizer, event } = await createOrganizerWithEvent(t.prisma);
     const ana = await addStaff(event.id, 'Ana', { earned: '300' });
     await addStaff(event.id, 'Beto', { earned: '100' });

@@ -113,7 +113,7 @@ const eventGroup = (title: string) =>
 describe('StaffTab', () => {
   afterEach(() => vi.clearAllMocks());
 
-  it('muestra el resumen: lo que les debés a tus RPPs, lo que ya pagaste y el staff activo', async () => {
+  it('muestra el resumen: lo que les debés a tus RRPP, lo que ya pagaste y el staff activo', async () => {
     server([
       overview([group()], {
         owed: 85300,
@@ -131,9 +131,9 @@ describe('StaffTab', () => {
     const summary = await screen.findByRole('region', {
       name: 'Resumen del staff',
     });
-    expect(summary).toHaveTextContent('Les debés a tus RPPs');
+    expect(summary).toHaveTextContent('Les debés a tus RRPP');
     expect(summary).toHaveTextContent('$85.300');
-    expect(summary).toHaveTextContent('2 RPPs · 3 eventos');
+    expect(summary).toHaveTextContent('2 RRPP · 3 eventos');
     expect(summary).toHaveTextContent('$114.000');
     expect(summary).toHaveTextContent('57% de $199.300 en comisiones');
     expect(summary).toHaveTextContent('9 personas');
@@ -155,7 +155,7 @@ describe('StaffTab', () => {
     const fiesta = await eventGroup('Fiesta Bresh');
     expect(fiesta).toHaveTextContent('Próximo');
     expect(fiesta).toHaveTextContent('sáb, 10 oct, 23:59');
-    expect(fiesta).toHaveTextContent('2 RPPs · 1 scanner');
+    expect(fiesta).toHaveTextContent('2 RRPP · 1 scanner');
     expect(fiesta).toHaveTextContent('Deuda del evento');
     expect(fiesta).toHaveTextContent('$43.600');
     expect(
@@ -163,7 +163,7 @@ describe('StaffTab', () => {
     ).toHaveTextContent('Martín Pérez');
   });
 
-  it('la tarjeta del RPP muestra lo vendido, lo ganado, lo pagado, lo que se le debe y el total entre eventos', async () => {
+  it('la tarjeta del RRPP muestra lo vendido, lo ganado, lo pagado, lo que se le debe y el total entre eventos', async () => {
     server([overview([group()])]);
 
     renderTab();
@@ -177,7 +177,7 @@ describe('StaffTab', () => {
     expect(card).toHaveTextContent('En total le debés $29.000 en 2 eventos');
   });
 
-  it('un RPP al día lo dice y no ofrece registrar pagos; uno pagado de más lo aclara', async () => {
+  it('un RRPP al día lo dice y no ofrece registrar pagos; uno pagado de más lo aclara', async () => {
     server([
       overview([
         group({
@@ -291,7 +291,7 @@ describe('StaffTab', () => {
     fireEvent.click(screen.getByRole('button', { name: /Con deuda/ }));
 
     expect(
-      screen.getByText('No les debés nada a tus RPPs.'),
+      screen.getByText('No les debés nada a tus RRPP.'),
     ).toBeInTheDocument();
   });
 
@@ -335,7 +335,7 @@ describe('StaffTab', () => {
     expect(fiesta).toHaveTextContent('$21.800');
   });
 
-  it('registrar un pago lo anota en el evento del RPP y recarga los montos', async () => {
+  it('registrar un pago lo anota en el evento del RRPP y recarga los montos', async () => {
     server([
       overview([group()]),
       overview([
@@ -406,7 +406,7 @@ describe('StaffTab', () => {
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
 
-  it('muestra el historial de pagos de cada RPP', async () => {
+  it('muestra el historial de pagos de cada RRPP', async () => {
     server([overview([group()])]);
     renderTab();
 
@@ -423,7 +423,7 @@ describe('StaffTab', () => {
     expect(history).toHaveTextContent('$20.000');
   });
 
-  describe('QR free de un RPP', () => {
+  describe('QR free de un RRPP', () => {
     const GENERAL = { limit: 10, sent: 3, types: ['General'] };
     const withFreeTickets = (overrides = {}) =>
       group({
@@ -435,7 +435,7 @@ describe('StaffTab', () => {
         .mocked(apiFetch)
         .mock.calls.filter(([path]) => path === FREE_TICKETS_PATH);
 
-    it('la tarjeta del RPP dice cuántos QR free mandó de los que puede y de qué tipos', async () => {
+    it('la tarjeta del RRPP dice cuántos QR free mandó de los que puede y de qué tipos', async () => {
       server([overview([withFreeTickets()])]);
       renderTab();
 
@@ -539,7 +539,7 @@ describe('StaffTab', () => {
       ]);
     });
 
-    it('a un RPP sin QR free se los puede dar, siempre con una cantidad máxima y al menos un tipo', async () => {
+    it('a un RRPP sin QR free se los puede dar, siempre con una cantidad máxima y al menos un tipo', async () => {
       server(
         [overview([group()])],
         Response.json({ id: 's1', freeTicketLimit: 5 }),

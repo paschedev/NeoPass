@@ -1,6 +1,6 @@
 import { eventLink } from './share';
 
-// El link de venta de un RPP para un evento: la compra hecha desde ahí le
+// El link de venta de un RRPP para un evento: la compra hecha desde ahí le
 // suma la comisión.
 export function rppLink(origin: string, eventId: string, staffId: string) {
   return `${eventLink(origin, eventId)}?rpp=${staffId}`;

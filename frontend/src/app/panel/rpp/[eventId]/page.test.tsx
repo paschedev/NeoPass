@@ -65,7 +65,7 @@ const grant = {
   issuedBy: { name: 'Sofía' },
 };
 
-// Las métricas del RPP, sus envíos de QR free y el resultado de mandar uno.
+// Las métricas del RRPP, sus envíos de QR free y el resultado de mandar uno.
 function server(promoterStats: object) {
   vi.mocked(apiFetch).mockImplementation(async (path, init) => {
     if (path === STATS_PATH) return Response.json(promoterStats);
@@ -88,7 +88,7 @@ async function copyButton() {
   return screen.findByRole('button', { name: 'Copiar link' });
 }
 
-describe('Métricas del RPP en un evento', () => {
+describe('Métricas del RRPP en un evento', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.clearAllMocks();
@@ -187,7 +187,7 @@ describe('Métricas del RPP en un evento', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('"Copiar link" copia el link de venta del RPP y el botón confirma que quedó copiado', async () => {
+  it('"Copiar link" copia el link de venta del RRPP y el botón confirma que quedó copiado', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     withClipboard(writeText);
 

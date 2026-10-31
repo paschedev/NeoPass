@@ -21,7 +21,7 @@ export function canScan(user: RoleFlags | null): boolean {
   return isOrganizer(user) || !!user?.isCurrentlyScanner;
 }
 
-// Quien trabaja o trabajó como staff de un evento: RPP alguna vez (por su
+// Quien trabaja o trabajó como staff de un evento: RRPP alguna vez (por su
 // historial de plata) o scanner o co-organizador de un evento vigente. Un
 // organizador lo ve solo si trabaja como staff de eventos ajenos.
 export function canSeeStaffPanel(user: RoleFlags | null): boolean {

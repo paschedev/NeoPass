@@ -69,7 +69,7 @@ describe('InviteStaffModal', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Co-organizador' }));
     fireEvent.click(
-      screen.getByRole('checkbox', { name: /Staff y pagos a RPPs/ }),
+      screen.getByRole('checkbox', { name: /Staff y pagos a RRPP/ }),
     );
     expect(
       screen.getByRole('checkbox', { name: /Ver ventas y recaudación/ }),
@@ -92,7 +92,7 @@ describe('InviteStaffModal', () => {
     });
   });
 
-  it('el dueño invita a un RPP que puede mandar QR free hasta una cantidad máxima, de los tipos que tilde', async () => {
+  it('el dueño invita a un RRPP que puede mandar QR free hasta una cantidad máxima, de los tipos que tilde', async () => {
     mockApi();
     const onInvited = vi.fn();
     render(
@@ -213,7 +213,7 @@ describe('InviteStaffModal', () => {
     ).toBe(false);
   });
 
-  it('quien no es el dueño no puede habilitar QR free a un RPP', () => {
+  it('quien no es el dueño no puede habilitar QR free a un RRPP', () => {
     render(
       <InviteStaffModal
         open
