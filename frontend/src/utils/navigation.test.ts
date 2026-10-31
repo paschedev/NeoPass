@@ -28,7 +28,7 @@ describe('getNavItems', () => {
     ]);
   });
 
-  it('un RPP que no escanea ve Staff y no el QR', () => {
+  it('un RRPP que no escanea ve Staff y no el QR', () => {
     expect(ids({ role: 'CUSTOMER', hasBeenRpp: true })).toEqual([
       'eventos',
       'staff',
@@ -37,7 +37,7 @@ describe('getNavItems', () => {
     ]);
   });
 
-  it('un RPP que además escanea tiene el QR en el centro', () => {
+  it('un RRPP que además escanea tiene el QR en el centro', () => {
     expect(
       ids({ role: 'CUSTOMER', hasBeenRpp: true, isCurrentlyScanner: true }),
     ).toEqual(['eventos', 'staff', 'scanner', 'tickets', 'ajustes']);
@@ -93,7 +93,7 @@ describe('getHomePath', () => {
     expect(getHomePath({ role })).toBe('/panel');
   });
 
-  it('el resto entra a sus tickets, aunque escanee o sea RPP', () => {
+  it('el resto entra a sus tickets, aunque escanee o sea RRPP', () => {
     expect(getHomePath({ role: 'CUSTOMER' })).toBe('/panel/tickets');
     expect(
       getHomePath({

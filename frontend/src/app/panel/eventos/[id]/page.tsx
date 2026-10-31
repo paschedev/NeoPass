@@ -50,7 +50,7 @@ async function loadEvent(id: string): Promise<Loaded> {
 }
 
 // Detalle del evento para quien lo organiza o lo co-organiza: ventas, ingreso
-// en puerta, RPPs, QR free, público y, solo para el dueño,
+// en puerta, RRPP, QR free, público y, solo para el dueño,
 // co-organizadores e historial. Un co-organizador ve bloqueado lo que no
 // tiene permitido.
 export default function EventDetailPage() {
@@ -143,7 +143,7 @@ function EventSections({
           canGrantFreeTickets={access.role === 'OWNER'}
         />
       ) : (
-        <LockedSection title="RPPs" permission="MANAGE_STAFF" />
+        <LockedSection title="RRPP" permission="MANAGE_STAFF" />
       )}
       {can(access, 'SEND_FREE_TICKETS') ? (
         <FreeTickets

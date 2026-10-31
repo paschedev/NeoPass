@@ -38,7 +38,7 @@ function originText(origin: NonNullable<AdminTicket['origin']>) {
   return [
     `Compra del ${formatDayMonthTime(origin.purchasedAt)}`,
     `${formatCurrency(origin.total)} en total`,
-    origin.promoterName && `RPP ${origin.promoterName}`,
+    origin.promoterName && `RRPP ${origin.promoterName}`,
   ]
     .filter(Boolean)
     .join(' · ');

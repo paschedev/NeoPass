@@ -1,4 +1,4 @@
-// La página pública del evento, sin código de RPP: lo que se venda desde ahí
+// La página pública del evento, sin código de RRPP: lo que se venda desde ahí
 // no le suma comisión a nadie.
 export function eventLink(origin: string, eventId: string) {
   return `${origin}/eventos/${eventId}`;

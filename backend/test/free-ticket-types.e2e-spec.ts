@@ -108,14 +108,14 @@ describe('Tipos de entrada que cada uno puede regalar como QR free', () => {
     return { ...created, owner: created.organizer, general, vip, laterGeneral };
   }
 
-  // RPP que aceptó, con 10 QR free de los tipos dados.
+  // RRPP que aceptó, con 10 QR free de los tipos dados.
   async function promoter(
     owner: User,
     eventId: string,
     freeTicketTypes: string[],
     user?: User,
   ) {
-    const rpp = user ?? (await createUser(t.prisma, { name: 'Rocío RPP' }));
+    const rpp = user ?? (await createUser(t.prisma, { name: 'Rocío RRPP' }));
     const invited = await invite(owner, eventId, {
       userId: rpp.id,
       ...rppTerms,
@@ -160,7 +160,7 @@ describe('Tipos de entrada que cada uno puede regalar como QR free', () => {
     ).freeTicketTypes;
 
   describe('al mandar', () => {
-    it('un RPP con General la manda y no puede mandar VIP, sin gastar su tope', async () => {
+    it('un RRPP con General la manda y no puede mandar VIP, sin gastar su tope', async () => {
       const s = await eventWithTypes();
       const { rpp } = await promoter(s.owner, s.event.id, ['General']);
 
@@ -205,7 +205,7 @@ describe('Tipos de entrada que cada uno puede regalar como QR free', () => {
       expect(await storedTypes(staffId)).toEqual(['General']);
     });
 
-    it('quien también es RPP del evento manda con su regla de co-organizador', async () => {
+    it('quien también es RRPP del evento manda con su regla de co-organizador', async () => {
       const s = await eventWithTypes();
       const both = await createUser(t.prisma);
       await coOrganizer(s.owner, s.event.id, ['VIP'], both);
@@ -271,7 +271,7 @@ describe('Tipos de entrada que cada uno puede regalar como QR free', () => {
       ['con la lista vacía', [], NO_TYPES],
       ['con un tipo que el evento no tiene', ['General', 'Mesa'], UNKNOWN_TYPE],
     ])(
-      'invitar a un RPP con QR free %s da error',
+      'invitar a un RRPP con QR free %s da error',
       async (_case, freeTicketTypes, message) => {
         const s = await eventWithTypes();
         const rpp = await createUser(t.prisma);
@@ -356,7 +356,7 @@ describe('Tipos de entrada que cada uno puede regalar como QR free', () => {
       ).toEqual([]);
     });
 
-    it('quitarle los QR free a un RPP borra sus tipos', async () => {
+    it('quitarle los QR free a un RRPP borra sus tipos', async () => {
       const s = await eventWithTypes();
       const { staffId } = await promoter(s.owner, s.event.id, ['General']);
 
@@ -390,7 +390,7 @@ describe('Tipos de entrada que cada uno puede regalar como QR free', () => {
         })
       ).map((notification) => notification.message);
       expect(messages).toEqual([
-        `Te invitaron como promotor (RPP) al evento "${s.event.title}", con 10% de comisión por entrada y hasta 10 QR free de General y VIP.`,
+        `Te invitaron como promotor (RRPP) al evento "${s.event.title}", con 10% de comisión por entrada y hasta 10 QR free de General y VIP.`,
         `Ahora podés mandar hasta 5 QR free de General en "${s.event.title}".`,
       ]);
 
@@ -402,12 +402,12 @@ describe('Tipos de entrada que cada uno puede regalar como QR free', () => {
         })
       ).map((entry) => entry.summary);
       expect(history).toEqual([
-        'Invitó a Rocío RPP como promotor (RPP), con 10% de comisión por entrada y hasta 10 QR free de General y VIP.',
+        'Invitó a Rocío RRPP como promotor (RRPP), con 10% de comisión por entrada y hasta 10 QR free de General y VIP.',
         'Invitó a Ana Pérez a co-organizar. Va a poder escanear y mandar QR free de VIP.',
       ]);
     });
 
-    it('el dueño ve los tipos de cada RPP y de cada co-organizador', async () => {
+    it('el dueño ve los tipos de cada RRPP y de cada co-organizador', async () => {
       const s = await eventWithTypes();
       const { staffId: rppId } = await promoter(s.owner, s.event.id, [
         'General',
@@ -435,7 +435,7 @@ describe('Tipos de entrada que cada uno puede regalar como QR free', () => {
       ).toEqual(['General', 'VIP']);
     });
 
-    it('el RPP ve sus tipos en Staff y su formulario trae solo esos', async () => {
+    it('el RRPP ve sus tipos en Staff y su formulario trae solo esos', async () => {
       const s = await eventWithTypes();
       const { rpp } = await promoter(s.owner, s.event.id, ['General']);
       const pending = await createUser(t.prisma);

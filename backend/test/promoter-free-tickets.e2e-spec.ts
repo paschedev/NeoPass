@@ -35,9 +35,9 @@ type PromoterStatsBody = {
 
 const NO_PERMISSION = 'No tenés permiso para mandar QR free';
 const OWNER_ONLY =
-  'Solo quien organiza el evento puede habilitar QR free a un RPP';
+  'Solo quien organiza el evento puede habilitar QR free a un RRPP';
 
-describe('QR free de los RPPs', () => {
+describe('QR free de los RRPP', () => {
   let t: TestApp;
 
   beforeAll(async () => {
@@ -112,10 +112,10 @@ describe('QR free de los RPPs', () => {
     }),
   });
 
-  // Evento con un RPP que aceptó la invitación, con o sin QR free.
+  // Evento con un RRPP que aceptó la invitación, con o sin QR free.
   async function promoterScenario(freeTicketLimit?: number) {
     const created = await createOrganizerWithEvent(t.prisma);
-    const rpp = await createUser(t.prisma, { name: 'Rocío RPP' });
+    const rpp = await createUser(t.prisma, { name: 'Rocío RRPP' });
     const invited = await invite(created.organizer, created.event.id, {
       userId: rpp.id,
       ...rppTerms(freeTicketLimit),
@@ -174,7 +174,7 @@ describe('QR free de los RPPs', () => {
       await send(rpp, created.event.id, created.ticketType.id, 3).expect(201);
     });
 
-    it('un RPP sin QR free no puede mandar', async () => {
+    it('un RRPP sin QR free no puede mandar', async () => {
       const s = await promoterScenario();
 
       const res = await send(s.rpp, s.event.id, s.ticketType.id).expect(403);
@@ -205,7 +205,7 @@ describe('QR free de los RPPs', () => {
       );
     });
 
-    it('un co-organizador con permiso de staff invita RPPs, pero no les puede dar QR free', async () => {
+    it('un co-organizador con permiso de staff invita RRPP, pero no les puede dar QR free', async () => {
       const created = await createOrganizerWithEvent(t.prisma);
       const manager = await coOrganizer(created.organizer, created.event.id, [
         'VIEW_SALES',
@@ -363,7 +363,7 @@ describe('QR free de los RPPs', () => {
       await send(s.rpp, s.event.id, s.ticketType.id).expect(201);
     });
 
-    it('al RPP que ya aceptó le llega una notificación con el cambio', async () => {
+    it('al RRPP que ya aceptó le llega una notificación con el cambio', async () => {
       const s = await promoterScenario(5);
 
       await setQuota(s.organizer, s.event.id, s.staffId, {
@@ -410,7 +410,7 @@ describe('QR free de los RPPs', () => {
       await setQuota(s.organizer, s.event.id, s.staffId, body).expect(400);
     });
 
-    it('no cambia el de alguien que no es RPP del evento ni en un evento terminado', async () => {
+    it('no cambia el de alguien que no es RRPP del evento ni en un evento terminado', async () => {
       const s = await promoterScenario(5);
       const scanner = await createUser(t.prisma);
       const invited = await invite(s.organizer, s.event.id, {
@@ -438,7 +438,7 @@ describe('QR free de los RPPs', () => {
   });
 
   describe('lo que ve cada uno', () => {
-    it('el dueño y el RPP ven cuántos QR free mandó y su tope; sin permiso, nada', async () => {
+    it('el dueño y el RRPP ven cuántos QR free mandó y su tope; sin permiso, nada', async () => {
       const s = await promoterScenario(5);
       const other = await createUser(t.prisma);
       const otherInvite = await invite(s.organizer, s.event.id, {
@@ -478,7 +478,7 @@ describe('QR free de los RPPs', () => {
       });
     });
 
-    it('en sus métricas, el RPP con QR free ve su tope, las fechas del evento y sus tipos de entrada en todas las tandas', async () => {
+    it('en sus métricas, el RRPP con QR free ve su tope, las fechas del evento y sus tipos de entrada en todas las tandas', async () => {
       const s = await promoterScenario(5);
       const hidden = await createBatch(t.prisma, {
         eventId: s.event.id,
@@ -510,7 +510,7 @@ describe('QR free de los RPPs', () => {
       });
     });
 
-    it('un RPP sin QR free no ve los tipos de entrada en sus métricas', async () => {
+    it('un RRPP sin QR free no ve los tipos de entrada en sus métricas', async () => {
       const s = await promoterScenario();
 
       const stats = (await promoterStats(s.rpp, s.event.id).expect(200))
@@ -519,7 +519,7 @@ describe('QR free de los RPPs', () => {
       expect(stats.freeTickets).toBeNull();
     });
 
-    it('si además es co-organizador con QR free, como RPP no tiene un segundo cupo', async () => {
+    it('si además es co-organizador con QR free, como RRPP no tiene un segundo cupo', async () => {
       const s = await promoterScenario(2);
       await coOrganizer(s.organizer, s.event.id, ['SEND_FREE_TICKETS'], s.rpp);
 
@@ -536,7 +536,7 @@ describe('QR free de los RPPs', () => {
       expect(mine.events[0].promoter?.freeTickets).toBeNull();
     });
 
-    it('si es co-organizador sin QR free, como RPP sigue con su cupo', async () => {
+    it('si es co-organizador sin QR free, como RRPP sigue con su cupo', async () => {
       const s = await promoterScenario(2);
       await coOrganizer(s.organizer, s.event.id, ['VIEW_SALES'], s.rpp);
 

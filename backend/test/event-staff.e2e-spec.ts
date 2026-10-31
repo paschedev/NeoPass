@@ -104,7 +104,7 @@ describe('staff de un evento', () => {
     });
 
     it.each([
-      ['PROMOTER', 'promotor (RPP)', ', con 10% de comisión por entrada.'],
+      ['PROMOTER', 'promotor (RRPP)', ', con 10% de comisión por entrada.'],
       ['SCANNER', 'scanner', '.'],
       ['MANAGER', 'co-organizador', '. Vas a poder escanear.'],
     ] as const)(

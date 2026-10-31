@@ -88,10 +88,10 @@ const STAFF_ROLE_LABEL: Record<StaffRole, string> = {
   MANAGER: 'co-organizador',
 };
 
-// The invitee reads it first: "RPP" is what their panel is called.
+// The invitee reads it first: "RRPP" is what their panel is called.
 const INVITED_ROLE_LABEL: Record<StaffRole, string> = {
   ...STAFF_ROLE_LABEL,
-  PROMOTER: 'promotor (RPP)',
+  PROMOTER: 'promotor (RRPP)',
 };
 
 // A free ticket belongs to no account: its attendee is whoever it was sent to.
@@ -861,7 +861,7 @@ export class EventsService {
       role === 'PROMOTER' ? (freeTicketLimit ?? null) : null;
     if (promoterLimit !== null && access.role !== 'OWNER') {
       throw new ForbiddenException(
-        'Solo quien organiza el evento puede habilitar QR free a un RPP',
+        'Solo quien organiza el evento puede habilitar QR free a un RRPP',
       );
     }
     // Nobody can work an event that is over: a promoter couldn't sell anymore.
@@ -1091,7 +1091,7 @@ export class EventsService {
     );
     if (access.role !== 'OWNER') {
       throw new ForbiddenException(
-        'Solo quien organiza el evento puede habilitar QR free a un RPP',
+        'Solo quien organiza el evento puede habilitar QR free a un RRPP',
       );
     }
     if (getEventPhase(event, new Date()) === 'CLOSED') {
@@ -1101,7 +1101,7 @@ export class EventsService {
     }
     const staff = await this.eventsRepository.findEventStaffById(staffId);
     if (!staff || staff.event.id !== eventId || staff.role !== 'PROMOTER') {
-      throw new NotFoundException('RPP no encontrado');
+      throw new NotFoundException('RRPP no encontrado');
     }
     if (staff.status === 'REJECTED') {
       throw new ConflictException(
@@ -1152,7 +1152,7 @@ export class EventsService {
       eventId,
       staffId,
     );
-    if (!promoter) throw new NotFoundException('RPP no encontrado');
+    if (!promoter) throw new NotFoundException('RRPP no encontrado');
 
     const recorded = await this.eventsRepository.registerPromoterPayment(
       {
@@ -1199,7 +1199,7 @@ export class EventsService {
       eventId,
     );
     if (!staff) {
-      throw new NotFoundException('No sos RPP de este evento');
+      throw new NotFoundException('No sos RRPP de este evento');
     }
 
     const recentSales = staff.orders.map((order) => {

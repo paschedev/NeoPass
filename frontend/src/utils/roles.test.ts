@@ -34,7 +34,7 @@ describe('roles', () => {
     expect(canScan({ role: 'CUSTOMER', hasBeenRpp: true })).toBe(false);
   });
 
-  it('ve Staff quien fue RPP alguna vez o puede escanear en un evento vigente', () => {
+  it('ve Staff quien fue RRPP alguna vez o puede escanear en un evento vigente', () => {
     expect(canSeeStaffPanel({ role: 'CUSTOMER', hasBeenRpp: true })).toBe(true);
     expect(
       canSeeStaffPanel({ role: 'CUSTOMER', isCurrentlyScanner: true }),

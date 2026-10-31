@@ -156,7 +156,7 @@ describe('buildMyStaff', () => {
     ]);
   });
 
-  it('suma lo ganado, lo cobrado, lo que le deben y las vendidas como RPP, al centavo', () => {
+  it('suma lo ganado, lo cobrado, lo que le deben y las vendidas como RRPP, al centavo', () => {
     const a = assignment(event('a', 3), 'PROMOTER', {
       earned: '1500.15',
       paid: '0.10',
@@ -202,7 +202,7 @@ describe('buildMyStaff', () => {
     expect(mine.promoterTotals).toMatchObject({ owed: 80 });
   });
 
-  it('sin roles de RPP no hay totales de RPP', () => {
+  it('sin roles de RRPP no hay totales de RRPP', () => {
     const mine = buildMyStaff(
       [
         assignment(event('a', 3), 'SCANNER'),

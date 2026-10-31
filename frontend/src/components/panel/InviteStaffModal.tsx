@@ -32,10 +32,10 @@ const ROLE_OPTIONS: { value: InviteRole; label: string }[] = [
   { value: 'CO_ORGANIZER', label: STAFF_ROLE_LABELS.MANAGER },
 ];
 
-// Invita a varios usuarios a un evento como scanner, RPP o co-organizador.
+// Invita a varios usuarios a un evento como scanner, RRPP o co-organizador.
 // Abierto desde un evento, llega con ese evento (y a veces el rol) ya
 // elegidos. Un co-organizador no puede invitar a otros co-organizadores ni
-// darle QR free a un RPP: eso es solo del dueño (canGrantFreeTickets).
+// darle QR free a un RRPP: eso es solo del dueño (canGrantFreeTickets).
 export default function InviteStaffModal({
   open,
   onClose,

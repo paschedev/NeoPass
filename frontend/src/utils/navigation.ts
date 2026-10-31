@@ -71,7 +71,7 @@ const ORGANIZATION: NavLink = {
   icon: CalendarRange,
   label: 'Organización',
 };
-// Los eventos donde trabajás como RPP, scanner o co-organizador.
+// Los eventos donde trabajás como RRPP, scanner o co-organizador.
 export const STAFF: NavLink = {
   id: 'staff',
   href: '/panel/staff',

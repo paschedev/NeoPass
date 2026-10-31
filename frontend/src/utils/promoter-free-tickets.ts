@@ -1,7 +1,7 @@
 import { freeTicketLimitError } from './co-organizers';
 import { joinNames } from './free-tickets';
 
-// Los QR free de un RPP en un evento: cuántos puede mandar, cuántos mandó y
+// Los QR free de un RRPP en un evento: cuántos puede mandar, cuántos mandó y
 // de qué tipos de entrada.
 export interface PromoterFreeTickets {
   limit: number;
@@ -9,7 +9,7 @@ export interface PromoterFreeTickets {
   types: string[];
 }
 
-// Un RPP manda QR free siempre con tope: a diferencia de un co-organizador,
+// Un RRPP manda QR free siempre con tope: a diferencia de un co-organizador,
 // la cantidad es obligatoria.
 export function promoterFreeTicketLimitError(limit: string): string | null {
   if (limit.trim() === '') return 'Indicá cuántos QR free puede mandar';
@@ -29,7 +29,7 @@ export const promoterFreeTicketsLabel = ({
   types,
 }: PromoterFreeTickets) => `QR free: ${sent} de ${limit}${ofTypes(types)}`;
 
-// Lo que ve el RPP. Si el dueño le bajó el tope por debajo de lo que ya mandó,
+// Lo que ve el RRPP. Si el dueño le bajó el tope por debajo de lo que ya mandó,
 // le quedan 0.
 export const ownFreeTicketsLabel = ({
   limit,

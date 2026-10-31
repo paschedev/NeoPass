@@ -47,7 +47,7 @@ export async function fetchEventMetadata(id: string): Promise<Metadata> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
   try {
-    // Nunca con el ?rpp= del link: la API le sumaría la visita al RPP.
+    // Nunca con el ?rpp= del link: la API le sumaría la visita al RRPP.
     const res = await fetch(`${apiUrl}/events/${id}`, {
       signal: controller.signal,
       next: { revalidate: 60 },

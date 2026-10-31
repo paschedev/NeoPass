@@ -49,10 +49,10 @@ export const PERMISSION_OPTIONS: {
   },
   {
     value: 'MANAGE_STAFF',
-    label: 'Staff y pagos a RPPs',
+    label: 'Staff y pagos a RRPP',
     short: 'Staff',
     description:
-      'Invitar scanners y RPPs y registrar pagos. Incluye ver ventas.',
+      'Invitar scanners y RRPP y registrar pagos. Incluye ver ventas.',
   },
 ];
 
@@ -61,7 +61,7 @@ const ORDER = PERMISSION_OPTIONS.map((option) => option.value);
 const sorted = (permissions: EventPermission[]) =>
   ORDER.filter((permission) => permissions.includes(permission));
 
-// Pagar a los RPPs muestra lo que vendió cada uno: "Staff y pagos" necesita
+// Pagar a los RRPP muestra lo que vendió cada uno: "Staff y pagos" necesita
 // "Ver ventas" (el backend rechaza uno sin el otro).
 export function togglePermission(
   permissions: EventPermission[],
@@ -165,7 +165,7 @@ const DENIED_PHRASE: Record<EventPermission, string> = {
   VIEW_SALES: 'ver ventas y recaudación',
   SEND_FREE_TICKETS: 'mandar QR free',
   VIEW_ATTENDEES: 'ver y exportar la lista del público',
-  MANAGE_STAFF: 'manejar el staff y los pagos a RPPs',
+  MANAGE_STAFF: 'manejar el staff y los pagos a RRPP',
 };
 
 export const permissionDeniedMessage = (permission: EventPermission) =>

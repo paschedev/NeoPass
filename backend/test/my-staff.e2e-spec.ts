@@ -169,7 +169,7 @@ describe('Staff: los eventos donde trabaja cada uno', () => {
     });
   });
 
-  it('quien solo escanea no tiene totales de RPP', async () => {
+  it('quien solo escanea no tiene totales de RRPP', async () => {
     const { event } = await createOrganizerWithEvent(t.prisma);
     const worker = await createUser(t.prisma);
     await addStaff(event.id, worker, 'SCANNER');

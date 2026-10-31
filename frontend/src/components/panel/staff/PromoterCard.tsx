@@ -29,7 +29,7 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-// Lo que se le debe al RPP en este evento, o por qué no se le debe nada.
+// Lo que se le debe al RRPP en este evento, o por qué no se le debe nada.
 function Debt({ promoter }: { promoter: StaffPromoter }) {
   const state = promoterDebtState(promoter);
   if (state === 'owed') {
@@ -83,7 +83,7 @@ function FreeTicketsButton({
   );
 }
 
-// Tarjeta de un RPP dentro de un evento: lo que vendió, ganó y cobró, lo que
+// Tarjeta de un RRPP dentro de un evento: lo que vendió, ganó y cobró, lo que
 // se le debe y sus QR free. Los pagos pasan por fuera de NeoPass; acá se
 // anotan. Sin onEditFreeTickets (evento terminado) los QR free solo se ven.
 export default function PromoterCard({

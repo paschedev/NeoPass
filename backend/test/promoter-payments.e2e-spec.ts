@@ -21,7 +21,7 @@ type Promoter = {
   payments: { amount: number; note: string | null; createdAt: string }[];
 };
 
-describe('Pagos a los RPPs del evento', () => {
+describe('Pagos a los RRPP del evento', () => {
   let t: TestApp;
 
   beforeAll(async () => {
@@ -32,10 +32,10 @@ describe('Pagos a los RPPs del evento', () => {
 
   afterAll(() => t.close());
 
-  // Evento con un RPP aceptado que vendió 2 entradas de $1000 (10% = $200).
+  // Evento con un RRPP aceptado que vendió 2 entradas de $1000 (10% = $200).
   async function eventWithPromoter() {
     const created = await createOrganizerWithEvent(t.prisma, { price: 1000 });
-    const rppUser = await createUser(t.prisma, { name: 'Rocío RPP' });
+    const rppUser = await createUser(t.prisma, { name: 'Rocío RRPP' });
     const promoter = await t.prisma.eventStaff.create({
       data: {
         eventId: created.event.id,
@@ -92,7 +92,7 @@ describe('Pagos a los RPPs del evento', () => {
     return Number(staff.totalPaid);
   }
 
-  it('el organizador ve a sus RPPs con lo vendido, la comisión ganada, lo pagado y el saldo', async () => {
+  it('el organizador ve a sus RRPP con lo vendido, la comisión ganada, lo pagado y el saldo', async () => {
     const { organizer, event, promoter } = await eventWithPromoter();
     const scanner = await createUser(t.prisma);
     await t.prisma.eventStaff.create({
@@ -109,7 +109,7 @@ describe('Pagos a los RPPs del evento', () => {
     expect(res.body).toEqual([
       expect.objectContaining({
         id: promoter.id,
-        name: 'Rocío RPP',
+        name: 'Rocío RRPP',
         ticketsSold: 2,
         salesAmount: 2000,
         totalEarned: 200,
@@ -193,7 +193,7 @@ describe('Pagos a los RPPs del evento', () => {
   });
 
   describe('permisos', () => {
-    it('otro organizador no puede ver ni pagar a los RPPs del evento: para él no existe', async () => {
+    it('otro organizador no puede ver ni pagar a los RRPP del evento: para él no existe', async () => {
       const { event, promoter } = await eventWithPromoter();
       const intruder = await createUser(t.prisma, { role: 'ORGANIZER' });
 
@@ -202,7 +202,7 @@ describe('Pagos a los RPPs del evento', () => {
       expect(await savedTotalPaid(promoter.id)).toBe(0);
     });
 
-    it('no se puede pagar a un RPP de otro evento pasando el propio', async () => {
+    it('no se puede pagar a un RRPP de otro evento pasando el propio', async () => {
       const mine = await createOrganizerWithEvent(t.prisma);
       const other = await eventWithPromoter();
 
@@ -212,7 +212,7 @@ describe('Pagos a los RPPs del evento', () => {
       expect(await savedTotalPaid(other.promoter.id)).toBe(0);
     });
 
-    it('a alguien del staff que no es RPP no se le registran pagos', async () => {
+    it('a alguien del staff que no es RRPP no se le registran pagos', async () => {
       const { organizer, event } = await eventWithPromoter();
       const scannerUser = await createUser(t.prisma);
       const scanner = await t.prisma.eventStaff.create({
@@ -236,8 +236,8 @@ describe('Pagos a los RPPs del evento', () => {
     });
   });
 
-  describe('en el panel del RPP', () => {
-    it('el RPP ve lo que le pagaron, lo que le deben y cada pago', async () => {
+  describe('en el panel del RRPP', () => {
+    it('el RRPP ve lo que le pagaron, lo que le deben y cada pago', async () => {
       const { organizer, event, promoter, rppUser } = await eventWithPromoter();
       await pay(organizer, event.id, promoter.id, {
         amount: 150,

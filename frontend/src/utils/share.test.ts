@@ -8,7 +8,7 @@ const withClipboard = (clipboard: unknown) =>
   });
 
 describe('eventLink', () => {
-  it('es la página pública del evento, sin rpp: no le suma ventas a ningún RPP', () => {
+  it('es la página pública del evento, sin rpp: no le suma ventas a ningún RRPP', () => {
     expect(eventLink('https://neopass.ar', 'e1')).toBe(
       'https://neopass.ar/eventos/e1',
     );

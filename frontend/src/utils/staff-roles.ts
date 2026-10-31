@@ -1,5 +1,5 @@
 // Nombre de cada rol del staff para el organizador. En la navegación y en el
-// panel del propio RPP se usa "RPP", que es como lo conocen ellos.
+// panel del propio RRPP se usa "RRPP", que es como lo conocen ellos.
 export const STAFF_ROLE_LABELS = {
   SCANNER: 'Scanner',
   PROMOTER: 'Promotor',
@@ -11,10 +11,10 @@ export function staffRoleLabel(role: string): string {
 }
 
 // El rol como lo lee quien trabaja en el evento (página Staff): el promotor
-// se ve como "RPP", que es como lo conocen ellos.
+// se ve como "RRPP", que es como lo conocen ellos.
 const OWN_ROLE_LABELS: Record<string, string> = {
   ...STAFF_ROLE_LABELS,
-  PROMOTER: 'RPP',
+  PROMOTER: 'RRPP',
 };
 
 export function ownRoleLabel(role: string): string {

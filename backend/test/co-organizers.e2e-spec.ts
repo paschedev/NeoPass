@@ -149,7 +149,7 @@ describe('Co-organizadores', () => {
     });
 
     it.each([
-      ['pagos a RPPs sin ver ventas', { permissions: ['MANAGE_STAFF'] }],
+      ['pagos a RRPP sin ver ventas', { permissions: ['MANAGE_STAFF'] }],
       ['un permiso que no existe', { permissions: ['CANCEL_EVENT'] }],
       ['permisos repetidos', { permissions: ['VIEW_SALES', 'VIEW_SALES'] }],
       [
@@ -261,7 +261,7 @@ describe('Co-organizadores', () => {
         {
           type: 'STAFF_INVITED',
           summary:
-            'Invitó a Carla Gómez como promotor (RPP), con 10% de comisión por entrada.',
+            'Invitó a Carla Gómez como promotor (RRPP), con 10% de comisión por entrada.',
           actor: organizer.name,
         },
         {
@@ -373,7 +373,7 @@ describe('Co-organizadores', () => {
       });
     });
 
-    it('cambiar a pagos a RPPs sin ver ventas da 400 y no cambia nada', async () => {
+    it('cambiar a pagos a RRPP sin ver ventas da 400 y no cambia nada', async () => {
       const { organizer, event } = await createOrganizerWithEvent(t.prisma);
       const { staff } = await coOrganizer(event.id, {
         permissions: ['VIEW_SALES'],

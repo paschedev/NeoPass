@@ -35,9 +35,9 @@ describe('describePermissions', () => {
 });
 
 describe('permissionsError', () => {
-  it('manejar el staff y los pagos a RPPs exige ver las ventas', () => {
+  it('manejar el staff y los pagos a RRPP exige ver las ventas', () => {
     expect(permissionsError(['MANAGE_STAFF'])).toBe(
-      'Para manejar el staff y los pagos a RPPs también tiene que poder ver las ventas',
+      'Para manejar el staff y los pagos a RRPP también tiene que poder ver las ventas',
     );
     expect(permissionsError(['MANAGE_STAFF', 'VIEW_SALES'])).toBeNull();
   });

@@ -39,7 +39,7 @@ export function validateInvitation(invite: {
   commissionValue: string;
   freeTicketLimit?: string;
   permissions?: EventPermission[];
-  // La cantidad máxima de QR free de un RPP; null si no puede mandar.
+  // La cantidad máxima de QR free de un RRPP; null si no puede mandar.
   promoterFreeTicketLimit?: string | null;
   // Los tipos que puede regalar, si puede mandar QR free.
   freeTicketTypes?: string[];
@@ -68,9 +68,9 @@ export function validateInvitation(invite: {
         typesError());
 }
 
-// Body de POST /events/:id/staff. En el backend el RPP es el rol PROMOTER y
+// Body de POST /events/:id/staff. En el backend el RRPP es el rol PROMOTER y
 // el co-organizador, MANAGER. Los permisos son solo del co-organizador; el
-// tope y los tipos de QR free, del co-organizador o del RPP al que el dueño
+// tope y los tipos de QR free, del co-organizador o del RRPP al que el dueño
 // se los dio.
 export function buildInvitationPayload(
   userId: string,
@@ -98,7 +98,7 @@ export function buildInvitationPayload(
   };
 }
 
-// Solo se suma staff a eventos que no terminaron: un RPP ya no podría vender.
+// Solo se suma staff a eventos que no terminaron: un RRPP ya no podría vender.
 export function invitableEvents<
   T extends { status: string; startDate: string; endDate: string },
 >(events: T[], now: Date): T[] {

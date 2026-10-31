@@ -11,10 +11,10 @@ import type { EventPromoter } from './types';
 const NUMBER_CELL = 'px-3 py-3 text-right tabular-nums whitespace-nowrap';
 const HEADER_CELL = 'px-3 py-2 text-right font-medium';
 
-// RPPs del evento: lo vendido, la comisión ganada, lo pagado y el saldo. Los
+// RRPP del evento: lo vendido, la comisión ganada, lo pagado y el saldo. Los
 // pagos pasan por fuera de NeoPass; acá el organizador (o un co-organizador
 // con "Staff y pagos") los anota. Con un evento que no terminó, también se
-// invitan scanners y RPPs desde acá.
+// invitan scanners y RRPP desde acá.
 export default function PromoterPayouts({
   eventId,
   inviteEvent,
@@ -22,7 +22,7 @@ export default function PromoterPayouts({
 }: {
   eventId: string;
   inviteEvent?: { id: string; title: string };
-  // Solo el dueño le da QR free a un RPP al invitarlo.
+  // Solo el dueño le da QR free a un RRPP al invitarlo.
   canGrantFreeTickets?: boolean;
 }) {
   const [promoters, setPromoters] = useState<EventPromoter[] | null>(null);
@@ -53,10 +53,10 @@ export default function PromoterPayouts({
   }, [path, version]);
 
   return (
-    <section aria-label="RPPs" className="space-y-4">
+    <section aria-label="RRPP" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-bold flex items-center gap-2">
-          <Users className="w-5 h-5 text-purple-400" /> RPPs
+          <Users className="w-5 h-5 text-purple-400" /> RRPP
         </h2>
         {inviteEvent && (
           <button
@@ -64,21 +64,21 @@ export default function PromoterPayouts({
             onClick={() => setInviting(true)}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-white bg-white/10 hover:bg-white/20 transition-colors"
           >
-            <UserPlus className="w-4 h-4" /> Invitar scanner o RPP
+            <UserPlus className="w-4 h-4" /> Invitar scanner o RRPP
           </button>
         )}
       </div>
 
       {failed && (
         <p className="text-sm text-neutral-400">
-          No pudimos cargar los RPPs del evento.
+          No pudimos cargar los RRPP del evento.
         </p>
       )}
       {!failed && promoters === null && (
-        <p className="text-sm text-neutral-400">Cargando RPPs...</p>
+        <p className="text-sm text-neutral-400">Cargando RRPP...</p>
       )}
       {promoters?.length === 0 && (
-        <p className="text-sm text-neutral-400">Este evento no tiene RPPs.</p>
+        <p className="text-sm text-neutral-400">Este evento no tiene RRPP.</p>
       )}
 
       {promoters && promoters.length > 0 && (
@@ -86,7 +86,7 @@ export default function PromoterPayouts({
           <table className="w-full min-w-[720px] text-sm">
             <thead className="text-xs text-neutral-500">
               <tr>
-                <th className="px-3 py-2 text-left font-medium">RPP</th>
+                <th className="px-3 py-2 text-left font-medium">RRPP</th>
                 <th className={HEADER_CELL}>Vendidas</th>
                 <th className={HEADER_CELL}>Ventas</th>
                 <th className={HEADER_CELL}>Ganado</th>

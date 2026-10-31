@@ -50,7 +50,7 @@ const REASONS: Reason[] = [
   {
     id: 'orden',
     title: 'Orden y flexibilidad',
-    text: 'Control total de tu evento: tandas con fechas y cupos, RPPs, scanners en la puerta y co-organizadores con los permisos que vos elijas.',
+    text: 'Control total de tu evento: tandas con fechas y cupos, RRPP, scanners en la puerta y co-organizadores con los permisos que vos elijas.',
     Icon: Calendar,
     iconClass: 'bg-pink-500/20 text-pink-400',
     size: 'regular',
@@ -109,7 +109,7 @@ const HOW_IT_WORKS = [
       },
       {
         title: 'Sumá a tu equipo',
-        text: 'Invitás RPPs con su link, scanners para la puerta y co-organizadores.',
+        text: 'Invitás RRPP con su link, scanners para la puerta y co-organizadores.',
       },
     ],
   },
@@ -350,7 +350,7 @@ export default function Home() {
                 Así se ve por dentro
               </h2>
               <p className="text-neutral-400 max-w-xl mx-auto">
-                El panel de quien organiza y el de un RPP, con datos de ejemplo.
+                El panel de quien organiza y el de un RRPP, con datos de ejemplo.
               </p>
             </div>
             <div className="reveal-in">

@@ -15,7 +15,7 @@ El proyecto está construido bajo una arquitectura de monorepo, asegurando una i
 ### Frontend (Cliente Web)
 - **Frameworks:** Next.js 16, React 19
 - **Estilos y UI:** TailwindCSS v4, Framer Motion
-- **Enfoque:** Aplicación web optimizada (mobile-first) para asistentes, red de promotores (RPP) y personal de control de accesos (escáner).
+- **Enfoque:** Aplicación web optimizada (mobile-first) para asistentes, red de promotores (RRPP) y personal de control de accesos (escáner).
 
 ### Backend (API REST)
 - **Framework:** NestJS 11
@@ -53,10 +53,10 @@ El ecosistema de NeoPass se compone de diversos módulos clave que cubren todo e
    - Validación de entradas en tiempo real para evitar fraudes, duplicaciones o ingresos no autorizados.
    - Panel de estadísticas de ingreso en vivo.
 
-5. **Panel de Administración y RPPs:**
+5. **Panel de Administración y RRPP:**
    - Dashboards analíticos para organizadores con métricas de ventas.
    - Gestión de asistentes, perfiles y configuraciones del sistema.
-   - Módulo exclusivo para Relaciones Públicas (RPP) que permite rastrear referidos, ventas generadas y comisiones.
+   - Módulo exclusivo para Relaciones Públicas (RRPP) que permite rastrear referidos, ventas generadas y comisiones.
 
 6. **Notificaciones y Comunicaciones:**
    - Envío automatizado de entradas digitales (PDF/QR) por correo electrónico tras la confirmación del pago.

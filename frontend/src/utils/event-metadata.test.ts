@@ -77,7 +77,7 @@ describe('Vista previa al compartir un evento', () => {
     }
   });
 
-  it('pide el evento a la API sin el rpp del link, para no sumarle visitas al RPP', async () => {
+  it('pide el evento a la API sin el rpp del link, para no sumarle visitas al RRPP', async () => {
     const fetchMock = respondWith(event);
 
     await fetchEventMetadata(EVENT_ID);

@@ -33,7 +33,7 @@ describe('calculatePromoterCommission', () => {
     expect(commission('PERCENTAGE', 12.5, 0.2, 1)).toBe('0.03');
   });
 
-  it('sin comisión configurada el RPP no gana nada', () => {
+  it('sin comisión configurada el RRPP no gana nada', () => {
     expect(commission(null, null, 2000, 2)).toBe('0.00');
     expect(commission('PERCENTAGE', null, 2000, 2)).toBe('0.00');
   });

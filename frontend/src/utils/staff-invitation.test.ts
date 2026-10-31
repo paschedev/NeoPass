@@ -100,7 +100,7 @@ describe('validateInvitation', () => {
     ).toBe('Elegí al menos un tipo de entrada para los QR free');
   });
 
-  it('un RPP con QR free necesita una cantidad máxima válida', () => {
+  it('un RRPP con QR free necesita una cantidad máxima válida', () => {
     expect(
       validateInvitation({
         ...valid,
@@ -119,7 +119,7 @@ describe('validateInvitation', () => {
     );
   });
 
-  it('un RPP sin QR free no pide cantidad', () => {
+  it('un RRPP sin QR free no pide cantidad', () => {
     expect(
       validateInvitation({ ...valid, promoterFreeTicketLimit: null }),
     ).toBeNull();
@@ -133,7 +133,7 @@ describe('buildInvitationPayload', () => {
     );
   });
 
-  it('un RPP viaja como PROMOTER con su comisión numérica', () => {
+  it('un RRPP viaja como PROMOTER con su comisión numérica', () => {
     expect(buildInvitationPayload('u1', 'RPP', 'FIXED', '1500')).toEqual({
       userId: 'u1',
       role: 'PROMOTER',
@@ -142,7 +142,7 @@ describe('buildInvitationPayload', () => {
     });
   });
 
-  it('un RPP con QR free lleva su cantidad máxima y sus tipos', () => {
+  it('un RRPP con QR free lleva su cantidad máxima y sus tipos', () => {
     expect(
       buildInvitationPayload('u1', 'RPP', 'PERCENTAGE', '10.0', {
         freeTicketLimit: 10,
@@ -158,7 +158,7 @@ describe('buildInvitationPayload', () => {
     });
   });
 
-  it('un RPP sin QR free viaja sin cantidad máxima ni tipos', () => {
+  it('un RRPP sin QR free viaja sin cantidad máxima ni tipos', () => {
     expect(
       buildInvitationPayload('u1', 'RPP', 'PERCENTAGE', '10.0', {
         freeTicketLimit: null,

@@ -60,7 +60,7 @@ describe('GlobalSidebar', () => {
     const link = screen.queryByRole('link', { name: 'Staff' });
     expect(link !== null).toBe(shown);
     if (link) expect(link).toHaveAttribute('href', '/panel/staff');
-    expect(screen.queryByText('Panel RPP')).toBeNull();
+    expect(screen.queryByText('Panel RRPP')).toBeNull();
   });
 
   it.each([

@@ -7,7 +7,7 @@ import {
 } from './promoter-free-tickets';
 
 describe('promoterFreeTicketLimitError', () => {
-  it('un RPP siempre tiene tope: la cantidad es obligatoria', () => {
+  it('un RRPP siempre tiene tope: la cantidad es obligatoria', () => {
     expect(promoterFreeTicketLimitError('')).toBe(
       'Indicá cuántos QR free puede mandar',
     );
@@ -31,7 +31,7 @@ describe('promoterFreeTicketLimitError', () => {
 });
 
 describe('ownFreeTicketsLabel', () => {
-  it('le dice al RPP cuántos le quedan, nunca menos de 0, y de qué tipos', () => {
+  it('le dice al RRPP cuántos le quedan, nunca menos de 0, y de qué tipos', () => {
     expect(
       ownFreeTicketsLabel({ limit: 10, sent: 3, types: ['General'] }),
     ).toBe('QR free: te quedan 7 de 10 · General');
