@@ -124,14 +124,42 @@ export class TicketsService {
     );
   }
 
+  // The account's tickets and, once its email is confirmed, the free tickets
+  // sent to that mailbox: they appear because the emails match, they are not
+  // moved to the account (they can't be transferred).
   async findMyTickets(userId: string) {
-    const tickets = await this.ticketsRepository.findMyTickets(userId);
+    const account = await this.ticketsRepository.findAccountEmail(userId);
+    const tickets = await this.ticketsRepository.findMyTickets(
+      userId,
+      account?.emailVerifiedAt ? account.emailKey : null,
+    );
     return tickets.map(
-      ({ ticketType: { event, ...ticketType }, ...ticket }) => ({
+      ({
+        ticketType: { event, ...ticketType },
+        freeTicketGrant,
+        ...ticket
+      }) => ({
         ...ticket,
+        freeTicket: freeTicketGrant && {
+          validUntil: freeTicketGrant.validUntil,
+        },
         ticketType: { ...ticketType, event: withDeletionNotice(event) },
       }),
     );
+  }
+
+  // While the email is not confirmed anyone could have opened the account
+  // with someone else's email: of the free tickets sent there it only learns
+  // how many still let someone in, nothing about them.
+  async countLockedFreeTickets(userId: string) {
+    const account = await this.ticketsRepository.findAccountEmail(userId);
+    if (!account || account.emailVerifiedAt) return { count: 0 };
+    return {
+      count: await this.ticketsRepository.countUsableFreeTickets(
+        account.emailKey,
+        new Date(),
+      ),
+    };
   }
 
   async processCheckIn(

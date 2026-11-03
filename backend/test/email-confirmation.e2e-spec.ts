@@ -296,6 +296,104 @@ describe('Confirmar y cambiar el correo', () => {
     });
   });
 
+  describe('tope de códigos incorrectos por correo', () => {
+    const TOO_MANY =
+      'Hubo demasiados intentos para este correo. Probá de nuevo mañana.';
+
+    // Five wrong codes from an account that asked to switch to `email`.
+    async function failFiveTimes(email: string) {
+      const { session } = await userWithPassword();
+      await askChange(session, email).expect(201);
+      const { code } = codeSentTo(email);
+      for (let i = 0; i < 5; i++) {
+        await confirm(session, wrongCode(code)).expect(400);
+      }
+    }
+
+    it('10 códigos incorrectos para el mismo correo en un día, sumando cuentas y formas de escribirlo, frenan hasta el código correcto', async () => {
+      await failFiveTimes('vic.tima@gmail.com');
+      await failFiveTimes('victima+x@gmail.com');
+      const { user, session } = await userWithPassword();
+      await askChange(session, 'victima@gmail.com').expect(201);
+      const { code } = codeSentTo('victima@gmail.com');
+
+      const res = await confirm(session, code).expect(429);
+
+      expect(messageOf(res)).toBe(TOO_MANY);
+      expect(
+        await t.prisma.user.findUniqueOrThrow({ where: { id: user.id } }),
+      ).toMatchObject({ email: user.email, emailVerifiedAt: null });
+      // The code was not spent: it still has its 5 attempts.
+      expect(
+        await t.prisma.emailCode.findUniqueOrThrow({
+          where: { userId: user.id },
+        }),
+      ).toMatchObject({ attempts: 0 });
+    });
+
+    it('12 intentos incorrectos al mismo tiempo desde 3 cuentas: pasan 10 y 2 se frenan', async () => {
+      const sessions: { session: string; code: string }[] = [];
+      for (let i = 0; i < 3; i++) {
+        const { session } = await userWithPassword();
+        await askChange(session, 'victima@neopass.test').expect(201);
+        sessions.push({
+          session,
+          code: codeSentTo('victima@neopass.test').code,
+        });
+      }
+
+      const results = await Promise.all(
+        sessions.flatMap(({ session, code }) =>
+          Array.from({ length: 4 }, () => confirm(session, wrongCode(code))),
+        ),
+      );
+
+      const statuses = results.map((res) => res.status).sort();
+      expect(statuses.filter((status) => status === 400)).toHaveLength(10);
+      expect(statuses.filter((status) => status === 429)).toHaveLength(2);
+      expect(await t.prisma.emailCodeFailure.count()).toBe(10);
+    });
+
+    it('el código correcto no suma al tope del correo', async () => {
+      const { user, session } = await userWithPassword();
+      await askCode(session).expect(201);
+
+      await confirm(session, codeSentTo(user.email).code).expect(201);
+
+      expect(await t.prisma.emailCodeFailure.count()).toBe(0);
+    });
+
+    it('a las 24 horas los intentos viejos dejan de contar', async () => {
+      await failFiveTimes('victima@neopass.test');
+      await failFiveTimes('victima@neopass.test');
+      await t.prisma.emailCodeFailure.updateMany({
+        data: { createdAt: new Date(Date.now() - 25 * 60 * MINUTE_MS) },
+      });
+      const { session } = await userWithPassword();
+      await askChange(session, 'victima@neopass.test').expect(201);
+
+      await confirm(session, codeSentTo('victima@neopass.test').code).expect(
+        201,
+      );
+
+      expect(await me(session)).toMatchObject({
+        email: 'victima@neopass.test',
+        emailVerified: true,
+      });
+    });
+
+    it('el tope de un correo no frena a los demás', async () => {
+      await failFiveTimes('victima@neopass.test');
+      await failFiveTimes('victima@neopass.test');
+      const { user, session } = await userWithPassword();
+      await askCode(session).expect(201);
+
+      await confirm(session, codeSentTo(user.email).code).expect(201);
+
+      expect(await me(session)).toMatchObject({ emailVerified: true });
+    });
+  });
+
   describe('cambiar el correo', () => {
     it('con la contraseña incorrecta no manda nada', async () => {
       const { session } = await userWithPassword();

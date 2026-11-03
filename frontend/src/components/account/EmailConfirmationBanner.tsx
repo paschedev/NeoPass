@@ -6,8 +6,13 @@ import { usePathname } from 'next/navigation';
 import { MailWarning } from 'lucide-react';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
-// Aviso del panel mientras el correo de la cuenta no esté confirmado. Nada se
-// bloquea sin confirmar: solo invita a hacerlo desde Configuración.
+// Pantallas con su propio aviso: Configuración (ahí se confirma) y Mis
+// entradas (avisa de las entradas de regalo bloqueadas).
+const OWN_NOTICE = ['/panel/configuracion', '/panel/tickets'];
+
+// Aviso del panel mientras el correo de la cuenta no esté confirmado. Sin
+// confirmar solo quedan bloqueadas las entradas de regalo: invita a hacerlo
+// desde Configuración.
 export default function EmailConfirmationBanner() {
   const { user, refresh } = useCurrentUser();
   const pathname = usePathname();
@@ -19,7 +24,7 @@ export default function EmailConfirmationBanner() {
     if (unknown) void refresh();
   }, [unknown, refresh]);
 
-  if (user?.emailVerified !== false || pathname === '/panel/configuracion') {
+  if (user?.emailVerified !== false || OWN_NOTICE.includes(pathname)) {
     return null;
   }
 

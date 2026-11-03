@@ -29,6 +29,14 @@ export function splitTickets(tickets: MyTicket[], now: Date) {
   };
 }
 
+// Título del aviso de Mis entradas mientras el correo no está confirmado.
+export function lockedTicketsTitle(count: number) {
+  if (count === 0) return 'Confirmá tu correo';
+  return count === 1
+    ? 'Tenés 1 entrada de regalo bloqueada'
+    : `Tenés ${count} entradas de regalo bloqueadas`;
+}
+
 // Una entrada sin usar de un evento que ya terminó deja de ser válida.
 export function ticketBadge(ticket: MyTicket, now: Date): TicketBadge {
   if (isVoidTicket(ticket.status)) return 'VOID';

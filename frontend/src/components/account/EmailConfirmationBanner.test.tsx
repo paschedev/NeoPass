@@ -50,6 +50,15 @@ describe('Aviso para confirmar el correo', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
+  it('en Mis entradas no aparece: la pantalla tiene su propio aviso', () => {
+    logIn({ emailVerified: false });
+    pathname.current = '/panel/tickets';
+
+    render(<EmailConfirmationBanner />);
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
   it('en Configuración no aparece: ahí ya está la sección del correo', () => {
     logIn({ emailVerified: false });
     pathname.current = '/panel/configuracion';

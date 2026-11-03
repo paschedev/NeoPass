@@ -1,17 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowRightLeft, Eye, EyeOff, X } from 'lucide-react';
+import { ArrowRightLeft, Eye, EyeOff, Gift, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import Modal from '@/components/ui/Modal';
 import type { UserSearchResult } from '@/hooks/useUserSearch';
 import DeletionNotice from './DeletionNotice';
 import TransferPanel from './TransferPanel';
-import { formatEventRange } from '@/utils/format';
+import { formatEventRange, formatWeekdayDateTime } from '@/utils/format';
 import { ticketBadge } from '@/utils/my-tickets';
 import { isVoidTicket, type MyTicket } from './types';
 
-// Entrada abierta: QR oculto hasta tocarlo y transferencia si sigue válida.
+// Entrada abierta: QR oculto hasta tocarlo y transferencia si sigue válida. Un
+// QR free no se transfiere: el QR es el mismo que llegó por mail.
 export default function TicketModal({
   ticket,
   onClose,
@@ -84,12 +85,19 @@ function TicketDetail({
               ticket.ticketType.event.endDate,
             )}
           </p>
+          {ticket.freeTicket?.validUntil && (
+            <p className="text-amber-300 text-sm mt-1">
+              Válida para entrar hasta el{' '}
+              {formatWeekdayDateTime(ticket.freeTicket.validUntil)}
+            </p>
+          )}
         </div>
 
         {isVoidTicket(ticket.status) ? (
           <p className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-8 text-center text-sm text-neutral-300">
-            Entrada anulada: el pago se devolvió y el QR ya no sirve para
-            entrar.
+            {ticket.freeTicket
+              ? 'El organizador anuló esta entrada y el QR ya no sirve para entrar.'
+              : 'Entrada anulada: el pago se devolvió y el QR ya no sirve para entrar.'}
           </p>
         ) : ticket.ticketType.event.deletion ? (
           <div className="mb-8">
@@ -140,7 +148,14 @@ function TicketDetail({
           </>
         )}
 
-        {ticketBadge(ticket, new Date()) === 'VALID' && (
+        {ticketBadge(ticket, new Date()) === 'VALID' && ticket.freeTicket && (
+          <p className="border-t border-white/10 pt-6 flex items-center justify-center gap-2 text-sm text-neutral-400">
+            <Gift className="w-4 h-4 shrink-0 text-indigo-400" />
+            Es una entrada de regalo: no se puede transferir.
+          </p>
+        )}
+
+        {ticketBadge(ticket, new Date()) === 'VALID' && !ticket.freeTicket && (
           <div className="border-t border-white/10 pt-6">
             {!showTransfer ? (
               <button

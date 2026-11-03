@@ -126,13 +126,25 @@ describe('Mail de QR free', () => {
     expect(build().html).not.toContain('para entrar hasta');
   });
 
-  it('lleva a la página del evento y no a Mis entradas, porque no queda en ninguna cuenta', () => {
-    const { html, text } = build();
+  it('lleva a la página del evento y avisa que también se ven en Mis entradas de una cuenta con ese correo', () => {
+    const { html, text } = build({
+      tickets: [ticket(), ticket({ id: 'ticket-2' })],
+    });
 
     expect(html).toContain(`href="${EVENT_URL}"`);
     expect(text).toContain(EVENT_URL);
-    expect(html).not.toContain('Mis entradas');
+    for (const body of [html, text]) {
+      expect(body).toContain(
+        'Si tenés cuenta en NeoPass con este correo, también las vas a ver en Mis entradas.',
+      );
+    }
     expect(html).not.toContain('Transferir');
+  });
+
+  it('con una sola entrada el aviso de Mis entradas va en singular', () => {
+    expect(build().text).toContain(
+      'Si tenés cuenta en NeoPass con este correo, también la vas a ver en Mis entradas.',
+    );
   });
 
   it('escapa el nombre del destinatario y el del organizador', () => {

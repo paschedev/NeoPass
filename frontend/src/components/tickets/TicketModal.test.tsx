@@ -14,6 +14,7 @@ const TICKET: MyTicket = {
   id: 'ticket-0001',
   status: 'VALID',
   qrCode: 'abcd1234-qr',
+  freeTicket: null,
   ticketType: {
     name: 'General',
     event: {
@@ -159,6 +160,47 @@ describe('TicketModal', () => {
     fireEvent.click(screen.getByRole('button', { name: /Transferir/ }));
 
     expect(screen.getByRole('button', { name: 'Confirmar' })).toBeDisabled();
+  });
+
+  describe('QR free', () => {
+    const FREE: MyTicket = { ...TICKET, freeTicket: { validUntil: null } };
+
+    it('muestra el QR pero no se puede transferir, y dice por qué', () => {
+      renderModal(FREE);
+
+      expect(screen.getByText('Tocá para revelar')).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /Transferir/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText('Es una entrada de regalo: no se puede transferir.'),
+      ).toBeInTheDocument();
+    });
+
+    it('con hora límite dice hasta cuándo deja entrar', () => {
+      renderModal({
+        ...FREE,
+        freeTicket: { validUntil: '2099-10-11T04:00:00.000Z' },
+      });
+
+      expect(
+        screen.getByText('Válida para entrar hasta el dom, 11 oct, 01:00'),
+      ).toBeInTheDocument();
+    });
+
+    it('anulada por el organizador lo dice, sin hablar de devoluciones', () => {
+      renderModal({ ...FREE, status: 'CANCELLED' });
+
+      expect(
+        screen.getByText(
+          'El organizador anuló esta entrada y el QR ya no sirve para entrar.',
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/el pago se devolvió/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/no se puede transferir/),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it('cancelar vuelve a mostrar el botón de transferir', () => {
