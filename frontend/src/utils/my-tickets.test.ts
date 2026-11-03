@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MyTicket } from '@/components/tickets/types';
-import { splitTickets, ticketBadge } from './my-tickets';
+import { lockedTicketsTitle, splitTickets, ticketBadge } from './my-tickets';
 
 const NOW = new Date('2026-10-10T12:00:00Z');
 const HOUR = 60 * 60 * 1000;
@@ -27,6 +27,7 @@ function ticket(
     id,
     status,
     qrCode: `qr-${id}`,
+    freeTicket: null,
     ticketType: {
       name: 'General',
       event: {
@@ -146,5 +147,15 @@ describe('ticketBadge', () => {
     ],
   ])('una entrada %s se marca con su etiqueta', (_, myTicket, badge) => {
     expect(ticketBadge(myTicket, NOW)).toBe(badge);
+  });
+});
+
+describe('lockedTicketsTitle', () => {
+  it.each([
+    [0, 'Confirmá tu correo'],
+    [1, 'Tenés 1 entrada de regalo bloqueada'],
+    [3, 'Tenés 3 entradas de regalo bloqueadas'],
+  ])('con %i bloqueadas dice "%s"', (count, title) => {
+    expect(lockedTicketsTitle(count)).toBe(title);
   });
 });

@@ -60,6 +60,8 @@ export default function SendFreeTicketsForm({
         </h2>
         <p className="text-sm text-neutral-400 mt-2">
           Llegan por mail, un QR por persona. No descuentan entradas a la venta.
+          Si la persona tiene cuenta en NeoPass con ese correo, también las ve
+          en Mis entradas.
         </p>
       </div>
       <div className="grid grid-cols-[1fr_auto] gap-3">

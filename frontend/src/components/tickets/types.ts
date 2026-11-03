@@ -5,6 +5,9 @@ export interface MyTicket {
   id: string;
   status: string;
   qrCode: string;
+  // Solo en un QR free: llegó de regalo al correo de la cuenta y, si tiene,
+  // hasta cuándo deja entrar.
+  freeTicket: { validUntil: string | null } | null;
   ticketType: {
     name: string;
     event: {
@@ -19,6 +22,7 @@ export interface MyTicket {
   };
 }
 
-// Anulada porque el pago se devolvió o tuvo un contracargo.
+// Anulada: el pago se devolvió o tuvo un contracargo, o el organizador anuló
+// el QR free.
 export const isVoidTicket = (status: string) =>
   status === 'REFUNDED' || status === 'CANCELLED';

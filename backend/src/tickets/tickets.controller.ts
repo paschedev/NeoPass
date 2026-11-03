@@ -27,6 +27,12 @@ export class TicketsController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('my-tickets/locked')
+  async getMyLockedTickets(@CurrentUser('userId') userId: string) {
+    return this.ticketsService.countLockedFreeTickets(userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post(':id/transfer')
   async transferTicket(
     @Param('id', ParseIdPipe) id: string,

@@ -15,8 +15,10 @@ export function formatEntryDeadline(isoDate: string): string {
   return `el ${parts.weekday} ${parts.day} de ${parts.month} a las ${parts.hour}:${parts.minute} h`;
 }
 
-// Free tickets go only to the email: they are not in any account, so the mail
-// links to the event and not to "Mis entradas". All of them are for one event.
+// Free tickets have no owner: they also show in "Mis entradas" of the account
+// whose email reaches this mailbox, locked until that email is confirmed. The
+// mail can't know whether such an account exists, so it links to the event
+// and only mentions "Mis entradas". All of them are for one event.
 export function freeTicketsEmail({
   name,
   organizerName,
@@ -42,6 +44,9 @@ export function freeTicketsEmail({
   const deadline = validUntil
     ? `${single ? 'Válida' : 'Válidas'} para entrar hasta ${formatEntryDeadline(validUntil)}.`
     : null;
+  const inAccount = `Si tenés cuenta en NeoPass con este correo, también ${
+    single ? 'la vas' : 'las vas'
+  } a ver en Mis entradas.`;
   const warning =
     'No compartas los códigos: quien tenga el QR entra con esa entrada.';
 
@@ -54,6 +59,7 @@ export function freeTicketsEmail({
       ${eventHeaderHtml(event)}
       ${ticketSummaryHtml(tickets)}
       ${button('Ver el evento', eventUrl)}
+      <p style="${STYLES.note}">${escapeHtml(inAccount)}</p>
       <p style="${STYLES.note}">${escapeHtml(warning)}</p>`,
   });
 
@@ -67,6 +73,7 @@ export function freeTicketsEmail({
       ...ticketSummaryLines(tickets),
     ].join('\n'),
     `El evento:\n${eventUrl}`,
+    inAccount,
     warning,
     TEXT_FOOTER,
   ].join('\n\n');

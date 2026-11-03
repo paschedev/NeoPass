@@ -7,6 +7,16 @@ const COOLDOWN_MS = 60 * 1000;
 const CODES_PER_HOUR = 5;
 const HOUR_MS = 60 * 60 * 1000;
 
+// Wrong codes a mailbox takes in a day, adding up every account that sent a
+// code there. A confirmed email shows the free tickets sent to it: with
+// several accounts asking to switch to someone else's email, the limit of
+// each code alone would let them guess in parallel. At the limit even the
+// right code waits: 10 a day leaves about 0.4 % a year to guess one.
+export const EMAIL_CODE_FAILURES_PER_DAY = 10;
+export const EMAIL_CODE_FAILURES_WINDOW_MS = 24 * HOUR_MS;
+export const TOO_MANY_FAILURES =
+  'Hubo demasiados intentos para este correo. Probá de nuevo mañana.';
+
 type SendHistory = Pick<
   EmailCode,
   'email' | 'sentAt' | 'sentInWindow' | 'windowStartedAt'
