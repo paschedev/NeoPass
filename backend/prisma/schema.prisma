@@ -209,6 +209,18 @@ model EmailCode {
   windowStartedAt DateTime
 }
 
+// One wrong email code, by the mailbox it was sent to (see `emailKey` in
+// User); a guess being checked counts until it turns out right. Counted
+// across accounts: many accounts guessing codes for the same mailbox share
+// one daily limit.
+model EmailCodeFailure {
+  id        String   @id @default(uuid())
+  emailKey  String
+  createdAt DateTime @default(now())
+
+  @@index([emailKey, createdAt])
+}
+
 model OrganizerProfile {
   id          String  @id @default(uuid())
   phone       String
@@ -540,17 +552,21 @@ model PromoterPayment {
 }
 
 // Free tickets ("QR free") the organizer sent to one email in one go. They do
-// not count against the stock and are never linked to an account.
+// not count against the stock and have no owner: they show in "Mis entradas"
+// of the account whose email reaches the same mailbox.
 model FreeTicketGrant {
-  id             String    @id @default(uuid())
-  recipientEmail String
-  recipientName  String?
+  id                String    @id @default(uuid())
+  recipientEmail    String
+  // Which mailbox `recipientEmail` reaches, as `emailKey` in User. The
+  // database fills it in (trigger "FreeTicketGrant_recipient_email_key").
+  recipientEmailKey String    @default("")
+  recipientName     String?
   // Last moment the tickets let people in; null = the whole event.
-  validUntil     DateTime?
-  createdAt      DateTime  @default(now())
+  validUntil        DateTime?
+  createdAt         DateTime  @default(now())
   // When the email was last queued, to space out resends.
-  lastSentAt     DateTime  @default(now())
-  cancelledAt    DateTime?
+  lastSentAt        DateTime  @default(now())
+  cancelledAt       DateTime?
 
   eventId      String
   event        Event      @relation(fields: [eventId], references: [id])
@@ -563,6 +579,7 @@ model FreeTicketGrant {
   @@index([eventId])
   @@index([ticketTypeId])
   @@index([issuedById, createdAt])
+  @@index([recipientEmailKey])
 }
 
 // What was done on an event and by whom, for its owner: with co-organizers

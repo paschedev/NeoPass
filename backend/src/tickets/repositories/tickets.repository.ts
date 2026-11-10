@@ -19,6 +19,13 @@ const CHECK_IN_FOR_DOOR = {
   scanner: { select: { name: true } },
 } satisfies Prisma.CheckInSelect;
 
+// Free tickets sent to a mailbox (see `emailKey` in the schema).
+const freeTicketsTo = (emailKey: string) =>
+  ({
+    userId: null,
+    freeTicketGrant: { recipientEmailKey: emailKey },
+  }) satisfies Prisma.TicketWhereInput;
+
 @Injectable()
 export class TicketsRepository {
   constructor(private prisma: PrismaService) {}
@@ -41,14 +48,33 @@ export class TicketsRepository {
     return tx.ticket.createMany({ data: ticketData });
   }
 
-  // Only what "Mis entradas" shows: the QR is the holder's own.
-  async findMyTickets(userId: string) {
+  // Whether the account proved it controls its email, and which mailbox that
+  // email reaches.
+  findAccountEmail(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { emailKey: true, emailVerifiedAt: true },
+    });
+  }
+
+  // Only what "Mis entradas" shows: the QR is the holder's own. With
+  // `freeTicketsEmailKey`, also the free tickets sent to that mailbox, which
+  // belong to no account.
+  async findMyTickets(userId: string, freeTicketsEmailKey: string | null) {
     return this.prisma.ticket.findMany({
-      where: { userId },
+      where: {
+        OR: [
+          { userId },
+          ...(freeTicketsEmailKey === null
+            ? []
+            : [freeTicketsTo(freeTicketsEmailKey)]),
+        ],
+      },
       select: {
         id: true,
         status: true,
         qrCode: true,
+        freeTicketGrant: { select: { validUntil: true } },
         ticketType: {
           select: {
             name: true,
@@ -72,6 +98,24 @@ export class TicketsRepository {
         },
       },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  // The free tickets sent to that mailbox that still let someone in: not
+  // used or cancelled, and their event neither over nor deleted.
+  countUsableFreeTickets(emailKey: string, now: Date) {
+    return this.prisma.ticket.count({
+      where: {
+        ...freeTicketsTo(emailKey),
+        status: 'VALID',
+        ticketType: {
+          event: {
+            deletedAt: null,
+            status: { notIn: ['FINISHED', 'CANCELLED'] },
+            endDate: { gt: now },
+          },
+        },
+      },
     });
   }
 

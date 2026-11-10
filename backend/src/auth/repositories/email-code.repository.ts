@@ -22,7 +22,37 @@ export class EmailCodeRepository {
     });
   }
 
-  // One more wrong guess, unless that code was replaced or used meanwhile.
+  // Takes one of the guesses the mailbox `email` reaches has left: counted as
+  // wrong until the code turns out right (releaseGuess). Under a lock per
+  // mailbox, so guesses at the same time can't all slip in under the limit.
+  // The id of the guess, or null at the limit; failures before `since` no
+  // longer count and go away.
+  reserveGuess(email: string, now: Date, since: Date, limit: number) {
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        SELECT pg_advisory_xact_lock(hashtext(email_key(${email})))`;
+      await tx.$executeRaw`
+        DELETE FROM "EmailCodeFailure"
+        WHERE "emailKey" = email_key(${email}) AND "createdAt" < ${since}`;
+      const [{ count }] = await tx.$queryRaw<{ count: number }[]>`
+        SELECT count(*)::int AS count FROM "EmailCodeFailure"
+        WHERE "emailKey" = email_key(${email})`;
+      if (count >= limit) return null;
+      const [{ id }] = await tx.$queryRaw<{ id: string }[]>`
+        INSERT INTO "EmailCodeFailure" ("id", "emailKey", "createdAt")
+        VALUES (gen_random_uuid()::text, email_key(${email}), ${now})
+        RETURNING "id"`;
+      return id;
+    });
+  }
+
+  // The right code doesn't count against its mailbox.
+  async releaseGuess(id: string) {
+    await this.prisma.emailCodeFailure.deleteMany({ where: { id } });
+  }
+
+  // One more wrong guess on the code, unless it was replaced or used
+  // meanwhile.
   async registerWrongGuess(userId: string, codeHash: string) {
     await this.prisma.emailCode.updateMany({
       where: { userId, codeHash, attempts: { lt: EMAIL_CODE_ATTEMPTS } },

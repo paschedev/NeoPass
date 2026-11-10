@@ -15,9 +15,12 @@ import { isUniqueViolation } from '../prisma/prisma-errors';
 import {
   codeRequestError,
   EMAIL_CODE_ATTEMPTS,
+  EMAIL_CODE_FAILURES_PER_DAY,
+  EMAIL_CODE_FAILURES_WINDOW_MS,
   EMAIL_CODE_TTL_MS,
   generateEmailCode,
   nextSendWindow,
+  TOO_MANY_FAILURES,
   wrongCodeMessage,
 } from './email-code';
 import {
@@ -121,10 +124,20 @@ export class EmailConfirmationService {
     if (pending.expiresAt <= now) {
       throw new BadRequestException('El código venció. Pedí uno nuevo.');
     }
+    const guess = await this.codes.reserveGuess(
+      pending.email,
+      now,
+      new Date(now.getTime() - EMAIL_CODE_FAILURES_WINDOW_MS),
+      EMAIL_CODE_FAILURES_PER_DAY,
+    );
+    if (!guess) {
+      throw new HttpException(TOO_MANY_FAILURES, HttpStatus.TOO_MANY_REQUESTS);
+    }
     if (!(await bcrypt.compare(code, pending.codeHash))) {
       await this.codes.registerWrongGuess(userId, pending.codeHash);
       throw new BadRequestException(wrongCodeMessage(pending.attempts + 1));
     }
+    await this.codes.releaseGuess(guess);
 
     if (pending.purpose === 'VERIFY') {
       if (!(await this.codes.confirmEmail(userId, pending.codeHash, now))) {

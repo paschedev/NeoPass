@@ -7,6 +7,7 @@ const TICKET: MyTicket = {
   id: 'ticket-0001',
   status: 'VALID',
   qrCode: 'abcd1234-qr',
+  freeTicket: null,
   ticketType: {
     name: 'General',
     event: {

@@ -1,25 +1,41 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ChevronDown, Ticket as TicketIcon } from 'lucide-react';
+import {
+  ChevronDown,
+  Lock,
+  MailCheck,
+  Ticket as TicketIcon,
+} from 'lucide-react';
 import toast from '@/utils/toast';
 import TicketCard from '@/components/tickets/TicketCard';
 import TicketModal from '@/components/tickets/TicketModal';
+import LockedTicketCard from '@/components/tickets/LockedTicketCard';
+import ConfirmEmailModal from '@/components/account/ConfirmEmailModal';
 import type { MyTicket } from '@/components/tickets/types';
 import type { UserSearchResult } from '@/hooks/useUserSearch';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
-import { splitTickets } from '@/utils/my-tickets';
+import { lockedTicketsTitle, splitTickets } from '@/utils/my-tickets';
 
 function TicketGrid({
   tickets,
+  locked = 0,
   onOpen,
+  onUnlock,
 }: {
   tickets: MyTicket[];
+  locked?: number;
   onOpen: (ticket: MyTicket) => void;
+  onUnlock?: () => void;
 }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {onUnlock &&
+        Array.from({ length: locked }, (_, index) => (
+          <LockedTicketCard key={`locked-${index}`} onOpen={onUnlock} />
+        ))}
       {tickets.map((ticket) => (
         <TicketCard
           key={ticket.id}
@@ -31,17 +47,70 @@ function TicketGrid({
   );
 }
 
+// Mientras el correo no está confirmado: cuántas entradas de regalo esperan
+// y el acceso directo para confirmarlo.
+function ConfirmEmailNotice({
+  locked,
+  onConfirm,
+}: {
+  locked: number;
+  onConfirm: () => void;
+}) {
+  const Icon = locked > 0 ? Lock : MailCheck;
+  return (
+    <div
+      role="status"
+      className="mb-8 flex flex-col sm:flex-row sm:items-center gap-4 rounded-3xl border border-amber-500/20 bg-amber-500/10 p-5"
+    >
+      <div className="flex-1">
+        <div className="flex items-center gap-2 mb-1">
+          <Icon className="w-5 h-5 shrink-0 text-amber-400" />
+          <h2 className="font-semibold text-amber-100">
+            {lockedTicketsTitle(locked)}
+          </h2>
+        </div>
+        <p className="text-sm text-amber-100/80">
+          {locked > 0
+            ? 'Te las regalaron a tu correo. Confirmalo con un código y vas a poder usarlas.'
+            : 'Si te regalan entradas a tu correo, las vas a ver acá cuando lo confirmes.'}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onConfirm}
+        className="self-start sm:self-auto shrink-0 rounded-xl bg-amber-500/20 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-500/30 transition-colors"
+      >
+        Confirmar mi correo
+      </button>
+    </div>
+  );
+}
+
+async function fetchLockedCount() {
+  const res = await apiFetch('/tickets/my-tickets/locked');
+  if (!res.ok) return 0;
+  const { count } = (await res.json()) as { count: number };
+  return count;
+}
+
 export default function MisEntradasPage() {
+  const { user } = useCurrentUser();
   const [tickets, setTickets] = useState<MyTicket[]>([]);
+  const [locked, setLocked] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState<MyTicket | null>(null);
   const [transferring, setTransferring] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [confirmingEmail, setConfirmingEmail] = useState(false);
 
   const fetchTickets = async () => {
     try {
-      const res = await apiFetch('/tickets/my-tickets');
+      const [res, lockedCount] = await Promise.all([
+        apiFetch('/tickets/my-tickets'),
+        fetchLockedCount(),
+      ]);
       if (res.ok) setTickets(await res.json());
+      setLocked(lockedCount);
     } catch (e) {
       console.error(e);
     } finally {
@@ -79,7 +148,18 @@ export default function MisEntradasPage() {
     }
   };
 
+  const emailConfirmed = () => {
+    setConfirmingEmail(false);
+    toast.success(
+      locked > 0
+        ? '¡Listo! Tus entradas de regalo ya están desbloqueadas.'
+        : '¡Listo! Confirmaste tu correo.',
+    );
+    fetchTickets();
+  };
+
   const { current, history } = splitTickets(tickets, new Date());
+  const unlock = () => setConfirmingEmail(true);
 
   if (loading) {
     return (
@@ -98,7 +178,11 @@ export default function MisEntradasPage() {
         Tus accesos a los mejores eventos.
       </p>
 
-      {tickets.length === 0 ? (
+      {(user?.emailVerified === false || locked > 0) && (
+        <ConfirmEmailNotice locked={locked} onConfirm={unlock} />
+      )}
+
+      {tickets.length === 0 && locked === 0 ? (
         <div className="bg-white/5 border border-white/10 rounded-3xl p-12 text-center">
           <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
             <TicketIcon className="w-10 h-10 text-indigo-400" />
@@ -112,12 +196,17 @@ export default function MisEntradasPage() {
         </div>
       ) : (
         <>
-          {current.length === 0 ? (
+          {current.length === 0 && locked === 0 ? (
             <p className="bg-white/5 border border-white/10 rounded-3xl p-8 text-center text-neutral-400">
               No tenés entradas para próximos eventos.
             </p>
           ) : (
-            <TicketGrid tickets={current} onOpen={setSelectedTicket} />
+            <TicketGrid
+              tickets={current}
+              locked={locked}
+              onOpen={setSelectedTicket}
+              onUnlock={unlock}
+            />
           )}
 
           {history.length > 0 && (
@@ -150,6 +239,11 @@ export default function MisEntradasPage() {
         onClose={() => setSelectedTicket(null)}
         onTransfer={handleTransfer}
         transferring={transferring}
+      />
+      <ConfirmEmailModal
+        open={confirmingEmail}
+        onClose={() => setConfirmingEmail(false)}
+        onConfirmed={emailConfirmed}
       />
     </div>
   );

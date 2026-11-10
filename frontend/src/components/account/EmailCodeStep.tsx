@@ -11,23 +11,29 @@ const RESEND_WAIT_SECONDS = 60;
 
 // El paso de escribir el código de 6 números que llegó por mail: confirma el
 // correo de la cuenta o el nuevo. `resend` vuelve a pedirlo y `children` suma
-// acciones debajo (corregir el correo, dejarlo para después).
+// acciones debajo (corregir el correo, dejarlo para después). Sin `justSent`
+// (se llegó con un código de antes) se puede pedir otro enseguida: si es
+// muy pronto, lo avisa el backend.
 export default function EmailCodeStep({
   sentTo,
   resend,
   onConfirmed,
+  justSent = true,
   children,
 }: {
   sentTo: string;
   resend: () => Promise<Response>;
   onConfirmed: (user: SessionUser) => void;
+  justSent?: boolean;
   children?: React.ReactNode;
 }) {
   const inputId = useId();
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [secondsLeft, setSecondsLeft] = useState(RESEND_WAIT_SECONDS);
+  const [secondsLeft, setSecondsLeft] = useState(
+    justSent ? RESEND_WAIT_SECONDS : 0,
+  );
 
   useEffect(() => {
     const timer = setInterval(
@@ -85,8 +91,10 @@ export default function EmailCodeStep({
     <form onSubmit={confirm} className="space-y-4" noValidate>
       <p className="text-sm text-neutral-300">
         Te mandamos un código de 6 números a{' '}
-        <strong className="text-white break-all">{sentTo}</strong>. Revisá
-        también Spam o Promociones.
+        <strong className="text-white [overflow-wrap:anywhere]">
+          {sentTo}
+        </strong>
+        . Revisá también Spam o Promociones.
       </p>
 
       <div>

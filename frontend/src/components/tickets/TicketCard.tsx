@@ -1,4 +1,4 @@
-import { ArrowRightLeft, Calendar, MapPin } from 'lucide-react';
+import { ArrowRightLeft, Calendar, Gift, MapPin } from 'lucide-react';
 import { formatEventRange } from '@/utils/format';
 import { ticketBadge, type TicketBadge } from '@/utils/my-tickets';
 import type { MyTicket } from './types';
@@ -41,7 +41,13 @@ export default function TicketCard({
 
       <div className="p-6">
         <div className="flex justify-between items-start mb-6">
-          <div className="bg-white/10 rounded-lg px-3 py-1.5 text-xs font-semibold text-white tracking-wide">
+          <div className="bg-white/10 rounded-lg px-3 py-1.5 text-xs font-semibold text-white tracking-wide flex items-center gap-1.5">
+            {ticket.freeTicket && (
+              <Gift
+                className="w-3.5 h-3.5 text-indigo-300"
+                aria-label="De regalo"
+              />
+            )}
             {ticket.ticketType.name}
           </div>
           <div
