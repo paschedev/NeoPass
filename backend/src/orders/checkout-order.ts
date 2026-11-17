@@ -119,7 +119,7 @@ export function buildCheckoutOrder<T extends CheckoutTicketType>(
       .toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
   const serviceFee = percentOfTickets(buyerPercentage);
   const marketplaceFee = percentOfTickets(neoPassPercentage);
-  // Without a fee (an event at 0 %) Mercado Pago gets no $0 line.
+  // Mercado Pago rejects a $0 line (free tickets, a fee that rounds to zero).
   if (serviceFee.gt(0)) {
     mpItems.push({
       id: 'service_fee',

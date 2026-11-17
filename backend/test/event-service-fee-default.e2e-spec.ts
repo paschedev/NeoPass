@@ -56,12 +56,12 @@ describe('Cargo de servicio por defecto de un evento nuevo', () => {
     return event.neoPassFeePercentage.toString();
   }
 
-  it('un evento creado por el organizador arranca con un cargo del 12 %', async () => {
+  it('un evento creado por el organizador arranca con un cargo del 10 %', async () => {
     const { organizer } = await createOrganizerWithEvent(t.prisma);
 
     const res = await create(organizer, {}).expect(201);
 
-    expect(await savedFee((res.body as { id: string }).id)).toBe('12');
+    expect(await savedFee((res.body as { id: string }).id)).toBe('10');
   });
 
   it('el organizador no puede elegir su propio cargo al crear el evento', async () => {
@@ -71,6 +71,6 @@ describe('Cargo de servicio por defecto de un evento nuevo', () => {
       201,
     );
 
-    expect(await savedFee((res.body as { id: string }).id)).toBe('12');
+    expect(await savedFee((res.body as { id: string }).id)).toBe('10');
   });
 });

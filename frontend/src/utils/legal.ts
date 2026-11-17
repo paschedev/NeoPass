@@ -1,6 +1,6 @@
 // Los textos legales vigentes. La versión es la misma que exige el backend
 // (backend/src/legal/legal-documents.ts): un cambio de fondo en un texto es
-// una versión nueva que todos vuelven a aceptar.
+// una versión nueva, que aceptan las cuentas nuevas.
 export const LEGAL_DOCUMENTS = {
   TERMS: {
     title: 'Términos de uso',
@@ -20,8 +20,8 @@ export const LEGAL_DOCUMENTS = {
     title: 'Términos para organizadores',
     article: 'los',
     href: '/terminos/organizadores',
-    version: 1,
-    since: '28 de octubre de 2026',
+    version: 2,
+    since: '17 de noviembre de 2026',
   },
 } as const;
 

@@ -362,7 +362,7 @@ export class EventsRepository {
   }
 
   // What the event's paid orders collected from the organizer's balance for
-  // absorbing less than their third of Mercado Pago's fee.
+  // absorbing less than their half of Mercado Pago's fee.
   async sumPaidFeeAdjustment(eventId: string) {
     const { _sum } = await this.prisma.order.aggregate({
       where: {

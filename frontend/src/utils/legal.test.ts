@@ -27,7 +27,7 @@ describe('acceptedLegalVersions', () => {
     expect(acceptedLegalVersions(true)).toEqual({
       termsVersion: 1,
       privacyVersion: 1,
-      organizerTermsVersion: 1,
+      organizerTermsVersion: 2,
     });
   });
 });

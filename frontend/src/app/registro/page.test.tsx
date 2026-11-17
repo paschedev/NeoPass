@@ -220,7 +220,7 @@ describe('Registro', () => {
         role: 'ORGANIZER',
         termsVersion: 1,
         privacyVersion: 1,
-        organizerTermsVersion: 1,
+        organizerTermsVersion: 2,
       });
     });
   });

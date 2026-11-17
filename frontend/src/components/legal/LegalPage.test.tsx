@@ -22,7 +22,7 @@ describe('Textos legales', () => {
     ).toHaveAttribute('href', '/privacidad');
   });
 
-  it('los Términos para organizadores explican el cargo del 12 % y el reparto de la comisión', () => {
+  it('los Términos para organizadores v2 explican el cargo del 10 % y el reparto de la comisión por mitades', () => {
     render(<TerminosOrganizadoresPage />);
 
     expect(
@@ -31,10 +31,19 @@ describe('Textos legales', () => {
         name: 'Términos para organizadores',
       }),
     ).toBeVisible();
-    expect(screen.getByText(VERSION)).toBeVisible();
     expect(
-      screen.getByText(/El cargo de servicio es del 12 % sobre el precio/),
+      screen.getByText('Versión 2 · vigente desde el 17 de noviembre de 2026'),
     ).toBeVisible();
+    expect(
+      screen.getByText(/El cargo de servicio es del 10 % sobre el precio/),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/se reparte por mitades entre el comprador y vos/),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/NeoPass recibe el cargo de servicio completo/),
+    ).toBeVisible();
+    expect(screen.queryByText(/tres partes/)).not.toBeInTheDocument();
     expect(
       screen.getByText(/se descuenta de tus ventas siguientes, hasta el 10 %/),
     ).toBeVisible();

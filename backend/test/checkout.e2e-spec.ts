@@ -45,7 +45,7 @@ describe('Checkout', () => {
     return types.reduce((sum, type) => sum + type.reserved, 0);
   }
 
-  it('el comprador paga el cargo del evento más su tercio de la comisión de Mercado Pago, redondeado a centavos', async () => {
+  it('el comprador paga el cargo del evento más su mitad de la comisión de Mercado Pago, redondeado a centavos', async () => {
     const { event, ticketType } = await createOrganizerWithEvent(t.prisma, {
       price: 333.33,
     });
@@ -63,25 +63,25 @@ describe('Checkout', () => {
       where: { id: (res.body as { orderId: string }).orderId },
     });
     expect(order.ticketAmount.toFixed(2)).toBe('333.33');
-    expect(order.serviceFee.toFixed(2)).toBe('60.50');
-    expect(order.marketplaceFee.toFixed(2)).toBe('39.50');
-    expect(order.totalAmount.toFixed(2)).toBe('393.83');
+    expect(order.serviceFee.toFixed(2)).toBe('65.93');
+    expect(order.marketplaceFee.toFixed(2)).toBe('50.00');
+    expect(order.totalAmount.toFixed(2)).toBe('399.26');
     const [preference] = mercadoPagoMock.preferenceCreate.mock.calls[0] as [
       { body: { items: MpItem[]; marketplace_fee?: number } },
       string,
     ];
     const fee = preference.body.items.find((i) => i.id === 'service_fee');
-    expect(fee?.unit_price).toBe(60.5);
-    expect(preference.body.marketplace_fee).toBe(39.5);
+    expect(fee?.unit_price).toBe(65.93);
+    expect(preference.body.marketplace_fee).toBe(50);
   });
 
-  it('si el cargo no alcanza para el tercio de NeoPass, NeoPass no recibe nada y el comprador paga solo su tercio', async () => {
+  it('una entrada de $10.000 al 10 % le cuesta $11.457 al comprador y NeoPass recibe su cargo completo', async () => {
     const { event, ticketType } = await createOrganizerWithEvent(t.prisma, {
       price: 10000,
     });
     await t.prisma.event.update({
       where: { id: event.id },
-      data: { neoPassFeePercentage: 2 },
+      data: { neoPassFeePercentage: 10 },
     });
     const buyer = await createUser(t.prisma);
 
@@ -92,13 +92,43 @@ describe('Checkout', () => {
     const order = await t.prisma.order.findUniqueOrThrow({
       where: { id: (res.body as { orderId: string }).orderId },
     });
-    expect(order.serviceFee.toFixed(2)).toBe('479.00');
-    expect(order.marketplaceFee.toFixed(2)).toBe('0.00');
-    expect(order.totalAmount.toFixed(2)).toBe('10479.00');
+    expect(order.serviceFee.toFixed(2)).toBe('1457.00');
+    expect(order.marketplaceFee.toFixed(2)).toBe('1000.00');
+    expect(order.totalAmount.toFixed(2)).toBe('11457.00');
     const [preference] = mercadoPagoMock.preferenceCreate.mock.calls[0] as [
       { body: { marketplace_fee?: number } },
       string,
     ];
+    expect(preference.body.marketplace_fee).toBe(1000);
+  });
+
+  it('un evento al 0 % cobra la mitad de la comisión como cargo por servicio y NeoPass no recibe nada', async () => {
+    const { event, ticketType } = await createOrganizerWithEvent(t.prisma, {
+      price: 10000,
+    });
+    await t.prisma.event.update({
+      where: { id: event.id },
+      data: { neoPassFeePercentage: 0 },
+    });
+    const buyer = await createUser(t.prisma);
+
+    const res = await checkout(buyer, {
+      items: [{ ticketTypeId: ticketType.id, quantity: 1 }],
+    }).expect(201);
+
+    const order = await t.prisma.order.findUniqueOrThrow({
+      where: { id: (res.body as { orderId: string }).orderId },
+    });
+    expect(order.serviceFee.toFixed(2)).toBe('416.00');
+    expect(order.marketplaceFee.toFixed(2)).toBe('0.00');
+    expect(order.totalAmount.toFixed(2)).toBe('10416.00');
+    const [preference] = mercadoPagoMock.preferenceCreate.mock.calls[0] as [
+      { body: { items: MpItem[]; marketplace_fee?: number } },
+      string,
+    ];
+    expect(
+      preference.body.items.find((i) => i.id === 'service_fee')?.unit_price,
+    ).toBe(416);
     expect(preference.body.marketplace_fee).toBeUndefined();
   });
 
@@ -134,12 +164,12 @@ describe('Checkout', () => {
     const [preference, accessToken] = mercadoPagoMock.preferenceCreate.mock
       .calls[0] as [{ body: { marketplace_fee?: number } }, string];
     expect(accessToken).toBe('TEST-organizer-access-token');
-    expect(preference.body.marketplace_fee).toBe(139.8);
+    expect(preference.body.marketplace_fee).toBe(200);
   });
 
   describe('con la comisión real del organizador', () => {
     // A 35 días Mercado Pago cobra 1,49 % + IVA = 1,803 %. Con un cargo del
-    // 10 % el comprador paga 10,67 % y NeoPass se queda con 9,33 %.
+    // 10 % el comprador paga 11 % y NeoPass se queda con el 10 %.
     async function eventOfOrganizerAt35Days() {
       const created = await createOrganizerWithEvent(t.prisma, {
         price: 1000,
@@ -162,7 +192,7 @@ describe('Checkout', () => {
         .then((res) => res.body as Record<string, unknown>);
     }
 
-    it('un organizador que cobra a 35 días le cobra al comprador un tercio más chico', async () => {
+    it('un organizador que cobra a 35 días le cobra al comprador una mitad más chica', async () => {
       const { ticketType } = await eventOfOrganizerAt35Days();
       const buyer = await createUser(t.prisma);
 
@@ -173,17 +203,17 @@ describe('Checkout', () => {
       const order = await t.prisma.order.findUniqueOrThrow({
         where: { id: (res.body as { orderId: string }).orderId },
       });
-      expect(order.serviceFee.toFixed(2)).toBe('213.40');
-      expect(order.marketplaceFee.toFixed(2)).toBe('186.60');
-      expect(order.totalAmount.toFixed(2)).toBe('2213.40');
+      expect(order.serviceFee.toFixed(2)).toBe('220.00');
+      expect(order.marketplaceFee.toFixed(2)).toBe('200.00');
+      expect(order.totalAmount.toFixed(2)).toBe('2220.00');
       const [preference] = mercadoPagoMock.preferenceCreate.mock.calls[0] as [
         { body: { items: MpItem[]; marketplace_fee?: number } },
         string,
       ];
       expect(
         preference.body.items.find((i) => i.id === 'service_fee')?.unit_price,
-      ).toBe(213.4);
-      expect(preference.body.marketplace_fee).toBe(186.6);
+      ).toBe(220);
+      expect(preference.body.marketplace_fee).toBe(200);
     });
 
     it('la página del evento informa el porcentaje que paga el comprador, sin la tasa del organizador ni el cargo de NeoPass', async () => {
@@ -191,7 +221,7 @@ describe('Checkout', () => {
 
       const body = await publicEvent(event.id);
 
-      expect(body.buyerFeePercentage).toBe('10.67');
+      expect(body.buyerFeePercentage).toBe('11');
       expect(body).not.toHaveProperty('neoPassFeePercentage');
       expect(JSON.stringify(body)).not.toContain('mercadoPagoFeeRate');
     });
@@ -205,7 +235,7 @@ describe('Checkout', () => {
 
       const body = await publicEvent(event.id);
 
-      expect(body.buyerFeePercentage).toBe('13.01');
+      expect(body.buyerFeePercentage).toBe('14.57');
     });
   });
 
