@@ -149,7 +149,7 @@ model User {
   mercadoPagoFeeRate        Decimal?  @db.Decimal(6, 5)
   mercadoPagoReleaseDays    Int?
   mercadoPagoFeeRateAt      DateTime?
-  // What the organizer owes NeoPass for absorbing less than their third of
+  // What the organizer owes NeoPass for absorbing less than their half of
   // Mercado Pago's fee (orders/fee-adjustment.ts). It is collected on their
   // next sales, on top of NeoPass's share; it never goes below zero.
   mercadoPagoFeeBalance     Decimal   @default(0) @db.Decimal(10, 2)
@@ -252,7 +252,7 @@ model Event {
 
   // NeoPass's service fee, charged to the buyer on top of the ticket price.
   // Only ADMIN changes it; the database keeps it between 0 and 100.
-  neoPassFeePercentage Decimal @default(12.0) @db.Decimal(5, 2)
+  neoPassFeePercentage Decimal @default(10.0) @db.Decimal(5, 2)
 
   organizerId String
   organizer   User   @relation("EventOrganizer", fields: [organizerId], references: [id])
@@ -348,7 +348,7 @@ model Order {
   totalAmount    Decimal     @db.Decimal(10, 2)
   // What the buyer paid on top of the tickets and, out of it, what NeoPass
   // kept (Mercado Pago's marketplace_fee): the rest of the service fee covers
-  // the buyer's third of Mercado Pago's fee (orders/service-fee-split.ts).
+  // the buyer's half of Mercado Pago's fee (orders/service-fee-split.ts).
   serviceFee     Decimal     @default(0) @db.Decimal(10, 2)
   marketplaceFee Decimal     @default(0) @db.Decimal(10, 2)
   ticketAmount   Decimal     @default(0) @db.Decimal(10, 2)
@@ -356,7 +356,7 @@ model Order {
   // interest-free installments excluded). Null if it didn't report it.
   mercadoPagoFee Decimal?    @db.Decimal(10, 2)
   // Part of marketplaceFee that collects the organizer's balance, fixed at
-  // checkout; and how much less than their third of Mercado Pago's real fee
+  // checkout; and how much less than their half of Mercado Pago's real fee
   // the organizer absorbed in this sale (negative: more), fixed when paid.
   feeAdjustment  Decimal     @default(0) @db.Decimal(10, 2)
   feeDeviation   Decimal?    @db.Decimal(10, 2)

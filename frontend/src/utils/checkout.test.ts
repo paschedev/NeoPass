@@ -19,14 +19,14 @@ describe('calculateCheckoutTotals', () => {
   });
 
   it('suma las entradas elegidas y agrega el porcentaje que paga el comprador', () => {
-    // Un evento al 10 % con la tasa al instante: el comprador paga 13,01 %.
+    // Un evento al 10 % con la tasa al instante: el comprador paga 14,57 %.
     expect(
-      calculateCheckoutTotals([GENERAL, VIP], { general: 2, vip: 1 }, '13.01'),
+      calculateCheckoutTotals([GENERAL, VIP], { general: 2, vip: 1 }, '14.57'),
     ).toEqual({
       tickets: 3,
       subtotal: 4500.5,
-      serviceFee: 585.52,
-      total: 5086.02,
+      serviceFee: 655.72,
+      total: 5156.22,
     });
   });
 

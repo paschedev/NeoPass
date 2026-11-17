@@ -187,7 +187,7 @@ describe('Panel ADMIN: eventos', () => {
       { target: { value: '8,5' } },
     );
     expect(dialog).toHaveTextContent(
-      'Pasa de 15 % a 8,5 %: una entrada de $10.000 le cuesta $11.147 a quien compra. NeoPass se queda con $553 y el organizador recibe $9.703,80 después de Mercado Pago.',
+      'Pasa de 15 % a 8,5 %: una entrada de $10.000 le cuesta $11.301 a quien compra. NeoPass se queda con $850 y el organizador recibe $9.548,50 después de Mercado Pago.',
     );
     fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar' }));
 

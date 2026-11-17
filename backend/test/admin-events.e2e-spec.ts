@@ -115,7 +115,7 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
         await listEvents(user).expect(403);
         await changeFee(user, event.id, { percentage: 8 }).expect(403);
       }
-      expect(await feeOf(event.id)).toBe('12');
+      expect(await feeOf(event.id)).toBe('10');
     });
   });
 
@@ -152,7 +152,7 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
       });
       expect(
         page.items.find((e) => e.id === first.event.id)?.neoPassFeePercentage,
-      ).toBe('12');
+      ).toBe('10');
     });
 
     it('muestra cómo le cobra Mercado Pago a cada organizador y cuánto le debe a NeoPass', async () => {
@@ -395,24 +395,24 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
       }).expect(200);
       expect(res.body).toEqual({ id: event.id, neoPassFeePercentage: '8.5' });
 
-      // Con 8,5 % y la tasa al instante, el comprador paga 11,47 %.
+      // Con 8,5 % y la tasa al instante, el comprador paga 13,01 %.
       const publicPage = await http().get(`/events/${event.id}`).expect(200);
       expect(
         (publicPage.body as { buyerFeePercentage: string }).buyerFeePercentage,
-      ).toBe('11.47');
+      ).toBe('13.01');
 
       const buyer = await createUser(t.prisma);
       const started = await checkout(buyer, ticketType.id).expect(201);
       const order = await t.prisma.order.findUniqueOrThrow({
         where: { id: (started.body as { orderId: string }).orderId },
       });
-      expect(order.serviceFee.toFixed(2)).toBe('114.70');
-      expect(order.marketplaceFee.toFixed(2)).toBe('55.30');
+      expect(order.serviceFee.toFixed(2)).toBe('130.10');
+      expect(order.marketplaceFee.toFixed(2)).toBe('85.00');
       const preference = lastPreference();
       expect(
         preference.items.find((item) => item.id === 'service_fee')?.unit_price,
-      ).toBe(114.7);
-      expect(preference.marketplace_fee).toBe(55.3);
+      ).toBe(130.1);
+      expect(preference.marketplace_fee).toBe(85);
     });
 
     it('una compra que ya empezó conserva el cargo con el que se inició', async () => {
@@ -429,11 +429,11 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
       const order = await t.prisma.order.findUniqueOrThrow({
         where: { id: (started.body as { orderId: string }).orderId },
       });
-      expect(order.serviceFee.toFixed(2)).toBe('150.60');
-      expect(order.totalAmount.toFixed(2)).toBe('1150.60');
+      expect(order.serviceFee.toFixed(2)).toBe('145.70');
+      expect(order.totalAmount.toFixed(2)).toBe('1145.70');
     });
 
-    it('con 0 % la compra sale sin cargo: Mercado Pago no recibe un ítem de $0 ni marketplace_fee', async () => {
+    it('con 0 % el comprador paga solo su mitad de la comisión: Mercado Pago recibe el cargo por servicio pero no marketplace_fee', async () => {
       const { event, ticketType } = await createOrganizerWithEvent(t.prisma, {
         price: 1000,
       });
@@ -447,9 +447,13 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
       const order = await t.prisma.order.findUniqueOrThrow({
         where: { id: (started.body as { orderId: string }).orderId },
       });
-      expect(order.serviceFee.toFixed(2)).toBe('0.00');
+      expect(order.serviceFee.toFixed(2)).toBe('41.60');
+      expect(order.marketplaceFee.toFixed(2)).toBe('0.00');
       const preference = lastPreference();
-      expect(preference.items.map((item) => item.id)).toEqual([ticketType.id]);
+      expect(preference.items.map((item) => item.id)).toEqual([
+        ticketType.id,
+        'service_fee',
+      ]);
       expect(preference.marketplace_fee).toBeUndefined();
     });
 
@@ -476,7 +480,7 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
 
       await changeFee(await createAdmin(), event.id, body).expect(400);
 
-      expect(await feeOf(event.id)).toBe('12');
+      expect(await feeOf(event.id)).toBe('10');
     });
 
     it('un evento que no existe responde 404', async () => {
@@ -507,16 +511,16 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
           percentage: 8,
         }).expect(409);
 
-        expect(await feeOf(event.id)).toBe('12');
+        expect(await feeOf(event.id)).toBe('10');
       },
     );
   });
 
   describe('la base de datos', () => {
-    it('los eventos nuevos nacen con 12 %', async () => {
+    it('los eventos nuevos nacen con 10 %', async () => {
       const { event } = await createOrganizerWithEvent(t.prisma);
 
-      expect(event.neoPassFeePercentage.toString()).toBe('12');
+      expect(event.neoPassFeePercentage.toString()).toBe('10');
     });
 
     it('rechaza un cargo fuera de 0–100 aunque se cambie por SQL', async () => {
@@ -528,7 +532,7 @@ describe('Panel ADMIN: cargo de servicio por evento', () => {
             .$executeRaw`UPDATE "Event" SET "neoPassFeePercentage" = ${fee} WHERE id = ${event.id}`,
         ).rejects.toThrow(/Event_neoPassFeePercentage_range/);
       }
-      expect(await feeOf(event.id)).toBe('12');
+      expect(await feeOf(event.id)).toBe('10');
     });
   });
 });

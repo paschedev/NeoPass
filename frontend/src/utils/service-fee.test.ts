@@ -62,27 +62,37 @@ describe('serviceFeeExample', () => {
   it('muestra cuánto paga quien compra una entrada de $10.000, cuánto se queda NeoPass y cuánto recibe el organizador después de Mercado Pago', () => {
     expect(serviceFeeExample(8.5)).toEqual({
       price: 10000,
-      serviceFee: 1147,
-      total: 11147,
-      neoPassFee: 553,
-      organizerNet: 9703.8,
+      serviceFee: 1301,
+      total: 11301,
+      neoPassFee: 850,
+      organizerNet: 9548.5,
     });
     expect(serviceFeeExample(15)).toEqual({
       price: 10000,
-      serviceFee: 1815,
-      total: 11815,
-      neoPassFee: 1185,
-      organizerNet: 9686.45,
+      serviceFee: 1978,
+      total: 11978,
+      neoPassFee: 1500,
+      organizerNet: 9521.44,
     });
   });
 
-  it('con 0 % el organizador absorbe toda la comisión de Mercado Pago', () => {
+  it('con el 10 % da lo mismo que el checkout del backend: $11.457, $1.000 para NeoPass y $914,96 de Mercado Pago', () => {
+    expect(serviceFeeExample(10)).toEqual({
+      price: 10000,
+      serviceFee: 1457,
+      total: 11457,
+      neoPassFee: 1000,
+      organizerNet: 9542.04,
+    });
+  });
+
+  it('con 0 % el comprador y el organizador se reparten la comisión de Mercado Pago y NeoPass no recibe nada', () => {
     expect(serviceFeeExample(0)).toEqual({
       price: 10000,
-      serviceFee: 0,
-      total: 10000,
+      serviceFee: 416,
+      total: 10416,
       neoPassFee: 0,
-      organizerNet: 9201.4,
+      organizerNet: 9584.18,
     });
   });
 });

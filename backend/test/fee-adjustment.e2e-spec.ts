@@ -131,33 +131,33 @@ describe('Saldo de ajuste por la comisión real de Mercado Pago', () => {
     return preference.body.marketplace_fee;
   }
 
-  it('una venta en la que el organizador absorbió menos que su tercio le deja saldo a favor de NeoPass', async () => {
-    // Se cobró con la tasa al instante (13,01 % / 6,99 %), pero Mercado Pago
-    // le cobró a 35 días: $40,75 sobre $2260,20.
+  it('una venta en la que el organizador absorbió menos que su mitad le deja saldo a favor de NeoPass', async () => {
+    // Se cobró con la tasa al instante (14,57 % / 10 %), pero Mercado Pago le
+    // cobró a 35 días: $41,31 sobre $2291,40.
     const { organizer, ticketType } = await organizerWith();
     const order = await buy(ticketType.id);
 
-    await pay(order, 40.75);
+    await pay(order, 41.31);
 
     const paid = await t.prisma.order.findUniqueOrThrow({
       where: { id: order.id },
     });
-    expect(paid.feeDeviation?.toFixed(2)).toBe('93.23');
-    expect(await balanceOf(organizer.id)).toBe('93.23');
+    expect(paid.feeDeviation?.toFixed(2)).toBe('70.74');
+    expect(await balanceOf(organizer.id)).toBe('70.74');
   });
 
   it('la venta siguiente cobra el saldo sobre la parte de NeoPass, sin cambiar lo que paga el comprador', async () => {
     const { ticketType } = await organizerWith({
-      balance: 93.23,
+      balance: 70.74,
       rate: AT_35_DAYS,
     });
 
     const order = await buy(ticketType.id);
 
-    expect(order.totalAmount.toFixed(2)).toBe('2213.40');
-    expect(order.feeAdjustment.toFixed(2)).toBe('93.23');
-    expect(order.marketplaceFee.toFixed(2)).toBe('279.83');
-    expect(lastMarketplaceFee()).toBe(279.83);
+    expect(order.totalAmount.toFixed(2)).toBe('2220.00');
+    expect(order.feeAdjustment.toFixed(2)).toBe('70.74');
+    expect(order.marketplaceFee.toFixed(2)).toBe('270.74');
+    expect(lastMarketplaceFee()).toBe(270.74);
   });
 
   it('cobra como máximo el 10 % de las entradas por venta y el resto queda para las siguientes', async () => {
@@ -168,7 +168,7 @@ describe('Saldo de ajuste por la comisión real de Mercado Pago', () => {
 
     const order = await buy(ticketType.id);
     expect(order.feeAdjustment.toFixed(2)).toBe('200.00');
-    expect(order.marketplaceFee.toFixed(2)).toBe('386.60');
+    expect(order.marketplaceFee.toFixed(2)).toBe('400.00');
 
     await pay(order);
     expect(await balanceOf(organizer.id)).toBe('300.00');
@@ -201,7 +201,7 @@ describe('Saldo de ajuste por la comisión real de Mercado Pago', () => {
 
   it('una devolución le vuelve a sumar al organizador el saldo que la venta había cobrado', async () => {
     const { organizer, ticketType } = await organizerWith({
-      balance: 93.23,
+      balance: 70.74,
       rate: AT_35_DAYS,
     });
     const order = await buy(ticketType.id);
@@ -210,36 +210,44 @@ describe('Saldo de ajuste por la comisión real de Mercado Pago', () => {
 
     await refund(order);
 
-    expect(await balanceOf(organizer.id)).toBe('93.23');
+    expect(await balanceOf(organizer.id)).toBe('70.74');
   });
 
-  it('un evento sin cargo no cobra saldo ni genera desvío', async () => {
+  it('un evento al 0 % también cobra saldo y genera desvío', async () => {
+    // Cobra la mitad al instante (4,16 % = $83,20) y Mercado Pago le cobra a
+    // 35 días: $37,56 sobre $2083,20.
     const { organizer, ticketType } = await organizerWith({
       balance: 100,
-      rate: AT_35_DAYS,
       fee: 0,
     });
 
     const order = await buy(ticketType.id);
-    expect(order.feeAdjustment.toFixed(2)).toBe('0.00');
-    expect(lastMarketplaceFee()).toBeUndefined();
+    expect(order.serviceFee.toFixed(2)).toBe('83.20');
+    expect(order.feeAdjustment.toFixed(2)).toBe('100.00');
+    expect(order.marketplaceFee.toFixed(2)).toBe('100.00');
+    expect(lastMarketplaceFee()).toBe(100);
 
-    await pay(order, 159.72);
-    expect(await balanceOf(organizer.id)).toBe('100.00');
+    await pay(order, 37.56);
+    const paid = await t.prisma.order.findUniqueOrThrow({
+      where: { id: order.id },
+    });
+    expect(paid.feeDeviation?.toFixed(2)).toBe('64.42');
+    // 100 − 100 cobrados + 64,42 de desvío.
+    expect(await balanceOf(organizer.id)).toBe('64.42');
   });
 
-  it('una venta en la que el organizador absorbió más que su tercio le descuenta deuda', async () => {
-    // Se cobró a 35 días, pero Mercado Pago le cobró al instante: $176,76.
+  it('una venta en la que el organizador absorbió más que su mitad le descuenta deuda', async () => {
+    // Se cobró a 35 días, pero Mercado Pago le cobró al instante: $177,29.
     const { organizer, ticketType } = await organizerWith({
       balance: 300,
       rate: AT_35_DAYS,
     });
     const order = await buy(ticketType.id);
 
-    await pay(order, 176.76);
+    await pay(order, 177.29);
 
-    // 300 − 200 cobrados − 91,04 de desvío a su favor.
-    expect(await balanceOf(organizer.id)).toBe('8.96');
+    // 300 − 200 cobrados − 68,65 de desvío a su favor.
+    expect(await balanceOf(organizer.id)).toBe('31.35');
   });
 
   it('una diferencia a favor del organizador nunca le deja crédito', async () => {
@@ -248,12 +256,12 @@ describe('Saldo de ajuste por la comisión real de Mercado Pago', () => {
     });
     const order = await buy(ticketType.id);
 
-    await pay(order, 176.76);
+    await pay(order, 177.29);
 
     const paid = await t.prisma.order.findUniqueOrThrow({
       where: { id: order.id },
     });
-    expect(paid.feeDeviation?.toFixed(2)).toBe('-91.04');
+    expect(paid.feeDeviation?.toFixed(2)).toBe('-68.65');
     expect(await balanceOf(organizer.id)).toBe('0.00');
   });
 
@@ -269,7 +277,7 @@ describe('Saldo de ajuste por la comisión real de Mercado Pago', () => {
     ).rejects.toThrow(/User_mercadoPagoFeeBalance_range/);
     await expect(
       t.prisma
-        .$executeRaw`UPDATE "Order" SET "feeAdjustment" = 200.01, "marketplaceFee" = 386.61 WHERE id = ${order.id}`,
+        .$executeRaw`UPDATE "Order" SET "feeAdjustment" = 200.01, "marketplaceFee" = 400.01 WHERE id = ${order.id}`,
     ).rejects.toThrow(/Order_feeAdjustment_range/);
   });
 });

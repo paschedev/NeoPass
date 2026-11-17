@@ -76,11 +76,8 @@ export class OrdersService {
 
     // 1. Reserve the stock and create the order in PENDING
     // The sale also collects part of what the organizer owes NeoPass for
-    // absorbing less than their third of Mercado Pago's fee in past sales.
-    const adjustmentCap = adjustmentCapOf(
-      checkout.ticketAmount,
-      checkout.serviceFee,
-    );
+    // absorbing less than their half of Mercado Pago's fee in past sales.
+    const adjustmentCap = adjustmentCapOf(checkout.ticketAmount);
     let order: { id: string; marketplaceFee: Prisma.Decimal };
     try {
       order = await this.ordersRepository.createPendingOrder(
