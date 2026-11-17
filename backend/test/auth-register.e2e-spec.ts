@@ -214,7 +214,7 @@ describe('Registro', () => {
       ).toEqual([
         ['TERMS', CURRENT_LEGAL_VERSIONS.TERMS],
         ['PRIVACY', CURRENT_LEGAL_VERSIONS.PRIVACY],
-        ['ORGANIZER_TERMS', CURRENT_LEGAL_VERSIONS.ORGANIZER_TERMS],
+        ['ORGANIZER_TERMS', 2],
       ]);
       expect(user.legalAcceptances).toHaveLength(3);
     });

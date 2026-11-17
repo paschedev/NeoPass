@@ -67,7 +67,7 @@ export function formatPercentage(value: string | number): string {
 }
 
 // Cómo le cobra Mercado Pago a un organizador, según su última venta, y lo
-// que le debe a NeoPass por absorber menos que su tercio de la comisión.
+// que le debe a NeoPass por absorber menos que su mitad de la comisión.
 // Decimales de la base: llegan como string.
 export interface MercadoPagoTerms {
   mercadoPagoReleaseDays: number | null;

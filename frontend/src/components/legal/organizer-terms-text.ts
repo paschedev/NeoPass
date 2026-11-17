@@ -1,6 +1,6 @@
 import type { LegalText } from './legal-text';
 
-// Términos para organizadores de NeoPass, versión 1, generado desde el documento "NeoPass -
+// Términos para organizadores de NeoPass, versión 2, generado desde el documento "NeoPass -
 // Textos legales". Un cambio de fondo es una versión nueva (utils/legal.ts).
 export const ORGANIZER_TERMS_TEXT: LegalText = {
   intro: [
@@ -130,22 +130,22 @@ export const ORGANIZER_TERMS_TEXT: LegalText = {
             },
             {
               content: [
-                'El cargo de servicio es del 12 % sobre el precio de las entradas, salvo que acordemos otro porcentaje por escrito. Lo paga el comprador, junto con su parte de la comisión de Mercado Pago.',
+                'El cargo de servicio es del 10 % sobre el precio de las entradas, salvo que acordemos otro porcentaje por escrito. Lo paga el comprador, junto con su mitad de la comisión de Mercado Pago.',
               ],
             },
             {
               content: [
-                'Cada compra se paga con Mercado Pago y se divide en el momento: NeoPass recibe el cargo de servicio menos su parte de la comisión, y vos el resto del pago, del que Mercado Pago descuenta su comisión completa.',
+                'Cada compra se paga con Mercado Pago y se divide en el momento: NeoPass recibe el cargo de servicio completo, y vos el resto del pago, del que Mercado Pago descuenta su comisión completa.',
               ],
             },
             {
               content: [
-                'Así, la comisión de Mercado Pago se reparte en tres partes iguales entre el comprador, NeoPass y vos. Cada parte se calcula con la comisión real que Mercado Pago te cobra según el plazo de cobro que elegiste en tu cuenta. Hasta que una venta tuya la muestre, usamos la del cobro en el momento, que es la más alta.',
+                'Así, la comisión de Mercado Pago se reparte por mitades entre el comprador y vos. Cada mitad se calcula con la comisión real que Mercado Pago te cobra según el plazo de cobro que elegiste en tu cuenta. Hasta que una venta tuya la muestre, usamos la del cobro en el momento, que es la más alta.',
               ],
             },
             {
               content: [
-                'Como se calcula con tu última comisión conocida, en una venta podés absorber un poco más o un poco menos que tu parte. Si absorbiste menos, la diferencia queda como saldo a favor de NeoPass y se descuenta de tus ventas siguientes, hasta el 10 % del valor de las entradas de cada venta. Si absorbiste más, la diferencia reduce ese saldo pero no se te devuelve.',
+                'Como se calcula con tu última comisión conocida, en una venta podés absorber un poco más o un poco menos que tu mitad. Si absorbiste menos, la diferencia queda como saldo a favor de NeoPass y se descuenta de tus ventas siguientes, hasta el 10 % del valor de las entradas de cada venta. Si absorbiste más, la diferencia reduce ese saldo pero no se te devuelve.',
               ],
             },
             {
@@ -155,7 +155,7 @@ export const ORGANIZER_TERMS_TEXT: LegalText = {
             },
             {
               content: [
-                'Si ofrecés cuotas sin interés, su costo es tuyo y no entra en este reparto. Un evento sin cargo de servicio no tiene reparto: la comisión de Mercado Pago queda toda a tu cargo.',
+                'Si ofrecés cuotas sin interés, su costo es tuyo y no entra en este reparto. En un evento al 0 % la comisión también se reparte por mitades: el comprador paga solo su mitad y NeoPass no cobra nada.',
               ],
             },
             {
