@@ -133,7 +133,7 @@ export class PaymentsService {
 
     const paymentData = await new Payment(client).get({ id: paymentId });
     if (paymentData.status !== 'approved') {
-      return this.handleNotApprovedPayment(paymentId, paymentData);
+      return this.handleNotApprovedPayment(paymentId, paymentData, mpUserId);
     }
 
     const orderId = paymentData.external_reference;
@@ -359,6 +359,7 @@ export class PaymentsService {
   private async handleNotApprovedPayment(
     paymentId: string,
     payment: MercadoPagoPayment,
+    mpUserId?: string,
   ) {
     this.logger.warn(
       `Payment ${paymentId} for order ${payment.external_reference ?? '-'} is ${payment.status} (${payment.status_detail ?? '-'})`,
@@ -376,7 +377,19 @@ export class PaymentsService {
       this.logger.log(
         `Order ${orderId} cancelled and its tickets voided: payment ${paymentId} is ${payment.status}`,
       );
+      return;
     }
+
+    // Nothing to reverse, but the approval of this payment (or of another
+    // part of its order) may be processing right now, read from Mercado Pago
+    // before the reversal and not saved yet. A minute later it is, so the
+    // notification runs again then; once per payment, as the jobId repeats.
+    const job: PaymentNotificationJob = { paymentId, mpUserId };
+    await this.paymentsQueue.add('process-payment', job, {
+      ...PAYMENT_JOB_OPTIONS,
+      delay: REVERSAL_RECHECK_DELAY_MS,
+      jobId: `reversal-recheck-${paymentId}`,
+    });
   }
 
   // A payment Mercado Pago approved but that cannot be turned into tickets:
@@ -465,6 +478,10 @@ const REVERSED_PAYMENT_STATUSES = ['refunded', 'charged_back', 'cancelled'];
 // How long the first part of a combined payment waits for the rest before the
 // organizer hears about it.
 const PAYMENT_PARTS_WAIT_MS = 60 * 60 * 1000;
+
+// How long a reversal that found nothing to reverse waits before reading the
+// payment again: far longer than an approval takes to be saved.
+const REVERSAL_RECHECK_DELAY_MS = 60 * 1000;
 
 type PaymentIssueReason =
   | 'AMOUNT_MISMATCH'

@@ -131,6 +131,29 @@ describe('Estados de la orden al pagar y al vencer', () => {
     expect(await issues(organizer.id)).toEqual([]);
   });
 
+  it('el mismo pago notificado dos veces a la vez se procesa una sola vez', async () => {
+    const { organizer, ticketType, buyer } = await setup();
+    const order = await createOrder(t.prisma, {
+      user: buyer,
+      ticketType,
+      quantity: 2,
+    });
+
+    await Promise.all([
+      pay('pago-1', order.id, 2 * PRICE),
+      pay('pago-1', order.id, 2 * PRICE),
+    ]);
+
+    expect(await state(order.id, ticketType)).toEqual({
+      status: 'PAID',
+      reserved: 0,
+      sold: 2,
+      tickets: 2,
+      payments: 1,
+    });
+    expect(await issues(organizer.id)).toEqual([]);
+  });
+
   // Uno por menos es parte de un pago combinado: combined-payments.e2e-spec.ts.
   it('un pago por más del total no paga la orden y avisa al organizador', async () => {
     const { organizer, ticketType, buyer } = await setup();
@@ -313,6 +336,45 @@ describe('Estados de la orden al pagar y al vencer', () => {
         expect(await paymentStatus(order.id)).toBe('REFUNDED');
       },
     );
+
+    // Runs the notifications the payments queue left scheduled for later as
+    // if their time had come, with the status Mercado Pago reports by then.
+    async function runScheduledNotifications(payment: Record<string, unknown>) {
+      const scheduled = (
+        t.queues.payments.add.mock.calls as [string, { paymentId: string }][]
+      ).filter(([name]) => name === 'process-payment');
+      for (const [, { paymentId }] of scheduled) {
+        await notify(paymentId, payment);
+      }
+    }
+
+    it('si la aprobación y la devolución del mismo pago se procesan a la vez, la orden termina anulada', async () => {
+      const { ticketType, buyer } = await setup();
+      const order = await createOrder(t.prisma, {
+        user: buyer,
+        ticketType,
+        quantity: 2,
+      });
+
+      await Promise.all([
+        pay('pago-1', order.id, 2 * PRICE),
+        pay('pago-1', order.id, 2 * PRICE, 'refunded'),
+      ]);
+      await runScheduledNotifications({
+        status: 'refunded',
+        external_reference: order.id,
+        transaction_amount: 2 * PRICE,
+      });
+
+      expect(await state(order.id, ticketType)).toEqual({
+        status: 'CANCELLED',
+        reserved: 0,
+        sold: 0,
+        tickets: 2,
+        payments: 1,
+      });
+      expect(await ticketStatuses(order.id)).toEqual(['REFUNDED', 'REFUNDED']);
+    });
 
     it('una entrada ya usada también queda anulada por la devolución', async () => {
       const { order } = await paidOrder();
