@@ -82,6 +82,22 @@ describe('EmailCodeStep', () => {
     });
   });
 
+  it('borra las letras y los signos que se escriben o se pegan', () => {
+    renderStep();
+
+    typeCode('ab12 34-56cd');
+
+    expect(screen.getByLabelText('Código')).toHaveValue('123456');
+  });
+
+  it('si se pegan más de 6 números se queda con los primeros 6', () => {
+    renderStep();
+
+    typeCode('1234567890');
+
+    expect(screen.getByLabelText('Código')).toHaveValue('123456');
+  });
+
   it('no deja confirmar hasta tener los 6 números', () => {
     renderStep();
 

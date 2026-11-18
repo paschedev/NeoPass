@@ -8,6 +8,15 @@ import { updateSessionUser, type SessionUser } from '@/hooks/useCurrentUser';
 
 // Lo mismo que espera el backend entre un código y otro.
 const RESEND_WAIT_SECONDS = 60;
+const CODE_LENGTH = 6;
+
+// Texto alineado a la izquierda con un margen que centra las 6 cifras: el
+// cursor arranca delante del primer cero y cada número cae en el lugar de un
+// cero sin correrse. 3ch + 1.25em es la mitad de 6 cifras con 5 espacios de
+// 0.5em entre ellas; el 1px es el borde. El campo y los ceros de fondo lo
+// comparten para quedar alineados.
+const CODE_TEXT =
+  'py-3 pr-4 pl-[calc(50%_-_1px_-_3ch_-_1.25em)] text-2xl tracking-[0.5em] tabular-nums';
 
 // El paso de escribir el código de 6 números que llegó por mail: confirma el
 // correo de la cuenta o el nuevo. `resend` vuelve a pedirlo y `children` suma
@@ -104,17 +113,28 @@ export default function EmailCodeStep({
         >
           Código
         </label>
-        <input
-          id={inputId}
-          value={code}
-          onChange={(event) =>
-            setCode(event.target.value.replace(/\D/g, '').slice(0, 6))
-          }
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          placeholder="000000"
-          className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-center text-2xl tracking-[0.5em] focus:outline-none focus:border-indigo-500 transition-colors"
-        />
+        <div className="relative">
+          {/* Los ceros que faltan, a la derecha de lo escrito. */}
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute inset-0 overflow-hidden whitespace-pre border border-transparent text-white/50 ${CODE_TEXT}`}
+          >
+            <span className="invisible">{code}</span>
+            {'0'.repeat(CODE_LENGTH - code.length)}
+          </span>
+          <input
+            id={inputId}
+            value={code}
+            onChange={(event) =>
+              setCode(
+                event.target.value.replace(/\D/g, '').slice(0, CODE_LENGTH),
+              )
+            }
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            className={`relative w-full bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:border-indigo-500 transition-colors ${CODE_TEXT}`}
+          />
+        </div>
       </div>
 
       {error && (
@@ -125,7 +145,7 @@ export default function EmailCodeStep({
 
       <button
         type="submit"
-        disabled={busy || code.length !== 6}
+        disabled={busy || code.length !== CODE_LENGTH}
         className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium transition-colors disabled:opacity-50"
       >
         Confirmar
