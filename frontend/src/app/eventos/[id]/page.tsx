@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import {
   Calendar,
@@ -14,7 +14,7 @@ import toast from '@/utils/toast';
 import CustomSelect from '@/components/CustomSelect';
 import VenueMap from '@/components/events/VenueMap';
 import DeleteEventModal from '@/components/events/DeleteEventModal';
-import { Turnstile } from '@marsidev/react-turnstile';
+import { Turnstile, type TurnstileInstance } from '@marsidev/react-turnstile';
 import { TURNSTILE_OPTIONS } from '@/utils/captcha';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
@@ -56,7 +56,15 @@ function EventContent() {
     [],
   );
   const [captchaToken, setCaptchaToken] = useState<string>('');
+  const turnstileRef = useRef<TurnstileInstance>(null);
   const [takingDown, setTakingDown] = useState(false);
+
+  // Cloudflare accepts each captcha token once: after a failed attempt the
+  // widget solves a new one, and "Comprar" waits for it.
+  const renewCaptcha = () => {
+    setCaptchaToken('');
+    turnstileRef.current?.reset();
+  };
 
   useEffect(() => {
     Promise.all([
@@ -115,11 +123,13 @@ function EventContent() {
         window.location.href = data.checkoutUrl;
       } else {
         toast.error(getApiErrorMessage(data, 'Error al iniciar el pago'));
+        renewCaptcha();
         setBuying(false);
       }
     } catch (error) {
       console.error(error);
       toast.error('Error de conexión');
+      renewCaptcha();
       setBuying(false);
     }
   };
@@ -441,6 +451,7 @@ function EventContent() {
                 <div className="flex flex-col items-center md:items-end gap-4 w-full">
                   <div className="w-full flex justify-center md:justify-end relative z-50">
                     <Turnstile
+                      ref={turnstileRef}
                       siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
                       onSuccess={(token) => setCaptchaToken(token)}
                       onError={() => setCaptchaToken('')}
