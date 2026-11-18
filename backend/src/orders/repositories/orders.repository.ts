@@ -52,6 +52,7 @@ export class OrdersRepository {
                 mercadoPagoAccessToken: true,
                 mercadoPagoTokenExpiresAt: true,
                 mercadoPagoFeeRate: true,
+                mercadoPagoFeeBalance: true,
               },
             },
           },
@@ -72,39 +73,25 @@ export class OrdersRepository {
     });
   }
 
-  // Reserves the tickets and creates the order in PENDING. If another purchase
+  // Creates the order in PENDING and reserves its tickets. If another purchase
   // took the last tickets in the meantime, the stock CHECK aborts it all.
-  // The organizer's row is locked first (as payments and refunds do, so they
-  // can't deadlock): two checkouts can't reserve the same balance. The
-  // adjustment goes on top of NeoPass's share.
+  // Without `feeAdjustmentOf` (the organizer owes NeoPass nothing) the
+  // organizer's row isn't touched, so their purchases don't queue behind each
+  // other. With it, that row is locked first (as payments and refunds do, so
+  // they can't deadlock): two checkouts can't reserve the same balance, and
+  // the adjustment goes on top of NeoPass's share.
+  // The tickets are reserved last and in the items' order (ticket type id),
+  // so each ticket type stays locked for as short as possible.
   async createPendingOrder(
     { items, organizerId, ...order }: PendingOrder,
-    feeAdjustmentOf: FeeAdjustmentOf,
+    feeAdjustmentOf: FeeAdjustmentOf | null,
   ) {
     return this.prisma.$transaction(async (tx) => {
-      const [organizer] = await tx.$queryRaw<
-        { mercadoPagoFeeBalance: Prisma.Decimal }[]
-      >`SELECT "mercadoPagoFeeBalance" FROM "User" WHERE id = ${organizerId} FOR UPDATE`;
-      const reserved = await tx.order.aggregate({
-        _sum: { feeAdjustment: true },
-        where: {
-          status: 'PENDING',
-          feeAdjustment: { gt: 0 },
-          orderItems: { some: { ticketType: { event: { organizerId } } } },
-        },
-      });
-      const feeAdjustment = feeAdjustmentOf(
-        organizer.mercadoPagoFeeBalance,
-        reserved._sum.feeAdjustment ?? new Prisma.Decimal(0),
-      );
+      const feeAdjustment = feeAdjustmentOf
+        ? await this.reserveFeeAdjustment(tx, organizerId, feeAdjustmentOf)
+        : new Prisma.Decimal(0);
 
-      for (const item of items) {
-        await tx.ticketType.update({
-          where: { id: item.ticketTypeId },
-          data: { reserved: { increment: item.quantity } },
-        });
-      }
-      return tx.order.create({
+      const created = await tx.order.create({
         data: {
           ...order,
           feeAdjustment,
@@ -114,7 +101,36 @@ export class OrdersRepository {
         },
         select: { id: true, marketplaceFee: true },
       });
+      for (const item of items) {
+        await tx.ticketType.update({
+          where: { id: item.ticketTypeId },
+          data: { reserved: { increment: item.quantity } },
+        });
+      }
+      return created;
     });
+  }
+
+  private async reserveFeeAdjustment(
+    tx: Prisma.TransactionClient,
+    organizerId: string,
+    feeAdjustmentOf: FeeAdjustmentOf,
+  ) {
+    const [organizer] = await tx.$queryRaw<
+      { mercadoPagoFeeBalance: Prisma.Decimal }[]
+    >`SELECT "mercadoPagoFeeBalance" FROM "User" WHERE id = ${organizerId} FOR UPDATE`;
+    const reserved = await tx.order.aggregate({
+      _sum: { feeAdjustment: true },
+      where: {
+        status: 'PENDING',
+        feeAdjustment: { gt: 0 },
+        orderItems: { some: { ticketType: { event: { organizerId } } } },
+      },
+    });
+    return feeAdjustmentOf(
+      organizer.mercadoPagoFeeBalance,
+      reserved._sum.feeAdjustment ?? new Prisma.Decimal(0),
+    );
   }
 
   // PENDING → EXPIRED or CANCELLED, releasing the reservation. Conditional on
@@ -132,7 +148,11 @@ export class OrdersRepository {
       });
       if (count === 0) return false;
 
-      const items = await tx.orderItem.findMany({ where: { orderId } });
+      // Same lock order as a checkout (see createPendingOrder).
+      const items = await tx.orderItem.findMany({
+        where: { orderId },
+        orderBy: { ticketTypeId: 'asc' },
+      });
       for (const item of items) {
         await tx.ticketType.update({
           where: { id: item.ticketTypeId },

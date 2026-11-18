@@ -77,7 +77,11 @@ export class OrdersService {
     // 1. Reserve the stock and create the order in PENDING
     // The sale also collects part of what the organizer owes NeoPass for
     // absorbing less than their half of Mercado Pago's fee in past sales.
+    // Without a debt there's nothing to collect, and the purchase doesn't
+    // wait for the organizer's other purchases. A debt that shows up during
+    // this purchase is collected by the next one.
     const adjustmentCap = adjustmentCapOf(checkout.ticketAmount);
+    const owesNeoPass = organizer.mercadoPagoFeeBalance.gt(0);
     let order: { id: string; marketplaceFee: Prisma.Decimal };
     try {
       order = await this.ordersRepository.createPendingOrder(
@@ -92,8 +96,10 @@ export class OrdersService {
           items: checkout.orderItems,
           organizerId: organizer.id,
         },
-        (balance, reserved) =>
-          feeAdjustmentFor(balance, reserved, adjustmentCap),
+        owesNeoPass
+          ? (balance, reserved) =>
+              feeAdjustmentFor(balance, reserved, adjustmentCap)
+          : null,
       );
     } catch (error) {
       if (isStockLimitError(error)) {

@@ -296,7 +296,11 @@ export class PaymentsRepository {
         if (updated > 0) previousReleaseDays = before.mercadoPagoReleaseDays;
       }
 
-      const items = await tx.orderItem.findMany({ where: { orderId } });
+      // Same lock order as a checkout (OrdersRepository.createPendingOrder).
+      const items = await tx.orderItem.findMany({
+        where: { orderId },
+        orderBy: { ticketTypeId: 'asc' },
+      });
       const hadReservation = fromStatus === 'PENDING';
       for (const item of items) {
         await tx.ticketType.update({
@@ -368,8 +372,10 @@ export class PaymentsRepository {
         where: { orderId: payment.orderId },
         data: { status: 'REFUNDED' },
       });
+      // Same lock order as a checkout (OrdersRepository.createPendingOrder).
       const items = await tx.orderItem.findMany({
         where: { orderId: payment.orderId },
+        orderBy: { ticketTypeId: 'asc' },
       });
       for (const item of items) {
         await tx.ticketType.update({

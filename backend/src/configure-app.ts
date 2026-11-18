@@ -4,8 +4,10 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { HttpAdapterHost } from '@nestjs/core';
 import type { Express } from 'express';
 import helmet from 'helmet';
+import { DatabaseBusyFilter } from './common/database-busy.filter';
 import { NullCharactersPipe } from './common/null-characters.pipe';
 import { validationMessages } from './common/validation-messages';
 
@@ -25,6 +27,9 @@ export function configureApp(app: INestApplication) {
       exceptionFactory: (errors) =>
         new BadRequestException(validationMessages(errors)),
     }),
+  );
+  app.useGlobalFilters(
+    new DatabaseBusyFilter(app.get(HttpAdapterHost).httpAdapter),
   );
   const frontendUrl = app.get(ConfigService).getOrThrow<string>('FRONTEND_URL');
   app.enableCors({
