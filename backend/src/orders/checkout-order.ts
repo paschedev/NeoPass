@@ -45,6 +45,9 @@ const CURRENCY_ID = 'ARS';
 // and NeoPass's share of it (both rounded to cents), and the items Mercado Pago
 // charges. The stock check here gives the buyer a clear answer; the database
 // CHECK is what prevents overselling.
+// The items come out in ticket type id order, whatever order the buyer sent:
+// every purchase, payment and release locks ticket types in that same order,
+// so two of them sharing types can't deadlock.
 export function buildCheckoutOrder<T extends CheckoutTicketType>(
   items: { ticketTypeId: string; quantity: number }[],
   ticketTypes: T[],
@@ -55,8 +58,15 @@ export function buildCheckoutOrder<T extends CheckoutTicketType>(
   let ticketAmount = new Prisma.Decimal(0);
   const orderItems: CheckoutOrderItem[] = [];
   const mpItems: PreferenceItem[] = [];
+  const inLockOrder = [...items].sort((a, b) =>
+    a.ticketTypeId < b.ticketTypeId
+      ? -1
+      : a.ticketTypeId > b.ticketTypeId
+        ? 1
+        : 0,
+  );
 
-  for (const item of items) {
+  for (const item of inLockOrder) {
     const ticketType = ticketTypesById.get(item.ticketTypeId);
     if (!ticketType) {
       throw new NotFoundException('La entrada seleccionada no existe.');

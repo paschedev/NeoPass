@@ -459,6 +459,72 @@ describe('Checkout', () => {
     expect(await reservedTotal()).toBe(1);
   });
 
+  // Toma la fila con FOR UPDATE en otra transacción, como una compra o un
+  // pago en curso, y la suelta cuando se resuelve la promesa devuelta.
+  async function holdRow(table: 'User' | 'TicketType', id: string) {
+    let release!: () => void;
+    const released = new Promise<void>((resolve) => (release = resolve));
+    let locked!: () => void;
+    const isLocked = new Promise<void>((resolve) => (locked = resolve));
+    const holder = t.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRawUnsafe(
+          `SELECT 1 FROM "${table}" WHERE id = $1 FOR UPDATE`,
+          id,
+        );
+        locked();
+        await released;
+      },
+      { timeout: 20_000 },
+    );
+    await isLocked;
+    return async () => {
+      release();
+      await holder;
+    };
+  }
+
+  const delay = (ms: number) =>
+    new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+  it('una compra de un organizador sin saldo no espera a otra compra en curso del mismo organizador', async () => {
+    const { organizer, ticketType } = await createOrganizerWithEvent(t.prisma);
+    const buyer = await createUser(t.prisma);
+    const releaseOrganizer = await holdRow('User', organizer.id);
+
+    const purchase = checkout(buyer, {
+      items: [{ ticketTypeId: ticketType.id, quantity: 1 }],
+    }).then((res) => res.status);
+    const outcome = await Promise.race([
+      purchase,
+      delay(2_000).then(() => 'sigue esperando'),
+    ]);
+    await releaseOrganizer();
+    await purchase;
+
+    expect(outcome).toBe(201);
+  });
+
+  it('si la compra no consigue la base a tiempo, responde 503 para reintentar y no deja reserva ni orden', async () => {
+    const { ticketType } = await createOrganizerWithEvent(t.prisma);
+    const buyer = await createUser(t.prisma);
+    // La transacción de la compra vence a los 5 s; la tanda sigue tomada 6 s.
+    const releaseTicketType = await holdRow('TicketType', ticketType.id);
+    const releaseLater = delay(6_000).then(releaseTicketType);
+
+    const res = await checkout(buyer, {
+      items: [{ ticketTypeId: ticketType.id, quantity: 1 }],
+    });
+    await releaseLater;
+
+    expect(res.status).toBe(503);
+    expect((res.body as { message: string }).message).toBe(
+      'Hay mucha demanda en este momento. Probá de nuevo en unos segundos.',
+    );
+    expect(await reservedTotal()).toBe(0);
+    expect(await t.prisma.order.count()).toBe(0);
+  }, 20_000);
+
   it.each([
     ['cancelado', { status: 'CANCELLED' as const }],
     [
