@@ -41,16 +41,40 @@ export default function GoogleButton({
     if (!parent) return;
     let release: (() => void) | null = null;
     let unmounted = false;
-    renderGoogleButton(parent, {
-      text,
-      width: parent.offsetWidth,
-      onCredential: (credential) => handler.current(credential),
-    })
+    let renderedWidth = parent.offsetWidth;
+    const render = () =>
+      renderGoogleButton(parent, {
+        text,
+        width: renderedWidth,
+        onCredential: (credential) => handler.current(credential),
+      });
+
+    // Google dibuja el botón con un ancho fijo: si la columna cambia de ancho
+    // (girar el teléfono, o una pestaña que cargó en segundo plano), se dibuja
+    // de nuevo.
+    let frame = 0;
+    const resized = new ResizeObserver(() => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const width = parent.offsetWidth;
+        if (!release || Math.abs(width - renderedWidth) < 8) return;
+        renderedWidth = width;
+        render()
+          .then((done) => {
+            release?.();
+            release = done;
+          })
+          .catch(() => undefined);
+      });
+    });
+
+    render()
       .then((done) => {
         if (unmounted) done();
         else {
           release = done;
           setStatus('ready');
+          resized.observe(parent);
         }
       })
       .catch(() => {
@@ -58,6 +82,8 @@ export default function GoogleButton({
       });
     return () => {
       unmounted = true;
+      resized.disconnect();
+      cancelAnimationFrame(frame);
       release?.();
     };
   }, [text, inApp]);

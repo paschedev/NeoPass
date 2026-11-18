@@ -1,9 +1,8 @@
 import type { ReactNode } from 'react';
-import Link from 'next/link';
-import { ChevronLeft, Ticket } from 'lucide-react';
+import { Ticket } from 'lucide-react';
 
 // El marco de Ingresar y Registro: una columna angosta y centrada sobre el
-// fondo, con el resplandor de la landing y la vuelta al inicio arriba.
+// fondo, con el resplandor de la landing (la barra de arriba lleva al inicio).
 export default function AuthShell({
   title,
   subtitle,
@@ -20,14 +19,7 @@ export default function AuthShell({
         <div className="absolute -bottom-40 -right-32 w-96 h-96 md:w-[32rem] md:h-[32rem] rounded-full bg-brand-accent/10 blur-3xl motion-safe:animate-drift [--delay:-12s]" />
       </div>
 
-      <Link
-        href="/"
-        className="relative inline-flex items-center gap-1 text-sm font-medium text-neutral-300 hover:text-white transition-colors"
-      >
-        <ChevronLeft className="w-4 h-4" /> Inicio
-      </Link>
-
-      <main className="relative mx-auto w-full max-w-sm pt-10 md:pt-20">
+      <main className="relative mx-auto w-full max-w-sm pt-16 md:pt-24">
         <div className="text-center mb-8">
           <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-neutral-900 shadow-lg shadow-brand-600/10">
             <Ticket className="h-6 w-6 text-brand-400" />
