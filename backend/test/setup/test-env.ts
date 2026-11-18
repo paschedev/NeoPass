@@ -23,4 +23,5 @@ export const testEnv = {
   TURNSTILE_SECRET_KEY: 'test-turnstile-secret',
   CAPTCHA_DISABLED: 'false',
   CLOUDINARY_URL: 'cloudinary://test_api_key:test_api_secret@test-cloud',
+  GOOGLE_CLIENT_ID: 'neopass-test.apps.googleusercontent.com',
 };

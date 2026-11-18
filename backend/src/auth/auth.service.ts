@@ -42,7 +42,8 @@ export class AuthService {
 
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.userRepository.findByEmail(email);
-    if (user && (await bcrypt.compare(pass, user.passwordHash))) {
+    // An account that only enters with Google has no password to match.
+    if (user?.passwordHash && (await bcrypt.compare(pass, user.passwordHash))) {
       const { passwordHash, ...result } = user;
       return result;
     }
@@ -82,6 +83,9 @@ export class AuthService {
       // Organizers only; null without a producer name.
       companyName: user.organizerProfile?.companyName ?? null,
       emailVerified: user.emailVerifiedAt !== null,
+      // Ways to enter, never the values themselves.
+      hasPassword: user.passwordHash !== null,
+      hasGoogle: user.googleId !== null,
       hasLinkedMp: hasUsableMercadoPagoToken(user, new Date()),
       hasBeenRpp,
       isCurrentlyScanner,
@@ -194,6 +198,11 @@ export class AuthService {
     const user = await this.userRepository.findById(userId);
     if (!user) throw new UnauthorizedException('Usuario no encontrado');
 
+    if (!user.passwordHash) {
+      throw new BadRequestException(
+        'Tu cuenta no tiene contraseña: creala desde Configuración.',
+      );
+    }
     const isValid = await bcrypt.compare(oldPass, user.passwordHash);
     // 400 and not 401: the front treats a 401 as an expired session.
     if (!isValid) {

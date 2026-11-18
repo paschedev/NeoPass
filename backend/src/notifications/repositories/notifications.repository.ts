@@ -153,14 +153,20 @@ export class NotificationsRepository {
     eventId,
     actorId,
     changes,
-    title,
+    titles,
     messages,
   }: {
     eventId: string;
     actorId: string;
-    changes: { date: boolean; place: boolean };
-    title: string;
-    messages: { date: string; place: string; both: string };
+    changes: { date: boolean; place: boolean; map: boolean };
+    titles: { changes: string; map: string };
+    messages: {
+      date: string;
+      place: string;
+      both: string;
+      dateAndMap: string;
+      map: string;
+    };
   }) {
     const groupKey = `changes:${eventId}`;
     const now = new Date();
@@ -170,10 +176,11 @@ export class NotificationsRepository {
           ("id", "userId", "type", "title", "message", "eventId", "actionUrl",
            "metadata", "openGroupKey", "createdAt", "activityAt")
         SELECT gen_random_uuid()::text, holders."userId",
-          'EVENT_UPDATE'::"NotificationType", ${title}, '', ${eventId},
+          'EVENT_UPDATE'::"NotificationType", '', '', ${eventId},
           '/panel/tickets',
           jsonb_build_object('date', ${changes.date}::boolean,
-                             'place', ${changes.place}::boolean),
+                             'place', ${changes.place}::boolean,
+                             'map', ${changes.map}::boolean),
           ${groupKey}, ${now}, ${now}
         FROM (
           SELECT DISTINCT t."userId"
@@ -185,20 +192,34 @@ export class NotificationsRepository {
             AND t."userId" <> ${actorId}
         ) holders
         ON CONFLICT ("userId", "openGroupKey") DO UPDATE SET
-          "title" = EXCLUDED."title",
           "metadata" = jsonb_build_object(
             'date',
             ("Notification"."metadata"->>'date')::boolean OR ${changes.date}::boolean,
             'place',
-            ("Notification"."metadata"->>'place')::boolean OR ${changes.place}::boolean),
+            ("Notification"."metadata"->>'place')::boolean OR ${changes.place}::boolean,
+            'map',
+            COALESCE(("Notification"."metadata"->>'map')::boolean, false)
+              OR ${changes.map}::boolean),
           "activityAt" = EXCLUDED."activityAt"`;
+      // Notices from before the map have no 'map' key. A new place already
+      // says where the event is: then the map goes unmentioned.
       await tx.$executeRaw`
-        UPDATE "Notification" SET "message" = CASE
-          WHEN ("metadata"->>'date')::boolean AND ("metadata"->>'place')::boolean
-            THEN ${messages.both}
-          WHEN ("metadata"->>'date')::boolean THEN ${messages.date}
-          ELSE ${messages.place}
-        END
+        UPDATE "Notification" SET
+          "title" = CASE
+            WHEN ("metadata"->>'date')::boolean OR ("metadata"->>'place')::boolean
+              THEN ${titles.changes}
+            ELSE ${titles.map}
+          END,
+          "message" = CASE
+            WHEN ("metadata"->>'date')::boolean AND ("metadata"->>'place')::boolean
+              THEN ${messages.both}
+            WHEN ("metadata"->>'date')::boolean
+              AND COALESCE(("metadata"->>'map')::boolean, false)
+              THEN ${messages.dateAndMap}
+            WHEN ("metadata"->>'date')::boolean THEN ${messages.date}
+            WHEN ("metadata"->>'place')::boolean THEN ${messages.place}
+            ELSE ${messages.map}
+          END
         WHERE "openGroupKey" = ${groupKey}`;
     });
   }

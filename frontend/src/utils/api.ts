@@ -39,10 +39,13 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
     headers,
   });
 
+  // En Ingresar, Registro y Google un 401 es un dato mal ingresado (o una
+  // credencial de Google vencida), no una sesión vencida.
   if (
     response.status === 401 &&
     !url.includes('/auth/login') &&
-    !url.includes('/auth/register')
+    !url.includes('/auth/register') &&
+    !url.includes('/auth/google')
   ) {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token');

@@ -126,13 +126,18 @@ model User {
   // When the account proved it controls `email`: a code sent there, a
   // password reset link or an email change. Null = not confirmed.
   emailVerifiedAt DateTime?
-  passwordHash    String
+  // Null for accounts that only enter with Google.
+  passwordHash    String?
   name            String
   // Profile photo uploaded through NeoPass (see auth/avatar-url.ts).
   avatarUrl       String?
   role            UserRole  @default(CUSTOMER)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @default(now()) @updatedAt
+
+  // Sign in with Google: the linked Google account (its "sub", which never
+  // changes). Linking it also confirms the email.
+  googleId        String?   @unique
 
   // Mercado Pago (OAuth). The access token lasts 180 days and is renewed with
   // the refresh token, which changes on every renewal. Accounts linked before

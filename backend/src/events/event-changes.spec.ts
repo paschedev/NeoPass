@@ -141,7 +141,7 @@ describe('qué cambia al editar un evento', () => {
         ticketHolderChanges(event, {
           endDate: '2026-12-21T07:00:00.000Z',
         }),
-      ).toEqual({ date: true, place: false });
+      ).toEqual({ date: true, place: false, map: false });
     });
 
     it('el lugar, la dirección o el punto del mapa cuentan como cambio de lugar', () => {
@@ -149,10 +149,12 @@ describe('qué cambia al editar un evento', () => {
         { venueName: 'Otro club' },
         { venueAddress: 'Otra calle 123' },
         { latitude: -34.6 },
+        { latitude: null, longitude: null },
       ]) {
         expect(ticketHolderChanges(event, changes)).toEqual({
           date: false,
           place: true,
+          map: false,
         });
       }
     });
@@ -163,7 +165,52 @@ describe('qué cambia al editar un evento', () => {
           startDate: '2026-12-20T22:00:00.000Z',
           venueName: 'Otro club',
         }),
-      ).toEqual({ date: true, place: true });
+      ).toEqual({ date: true, place: true, map: false });
+    });
+
+    describe('un evento sin mapa que lo agrega', () => {
+      const withoutMap = {
+        ...event,
+        venueCity: null,
+        latitude: null,
+        longitude: null,
+        venuePlaceId: null,
+      };
+      // Elegir el lugar de la lista de Google reescribe la dirección.
+      const fromGoogle = {
+        venueName: 'Niceto',
+        venueAddress: 'Av. Cnel. Niceto Vega 5510, C1414 CABA',
+        venueCity: 'CABA',
+        latitude: -34.5862,
+        longitude: -58.4372,
+        venuePlaceId: 'place-1',
+      };
+
+      it('con el mismo nombre del lugar es el aviso del mapa, no un cambio de lugar', () => {
+        expect(ticketHolderChanges(withoutMap, fromGoogle)).toEqual({
+          date: false,
+          place: false,
+          map: true,
+        });
+      });
+
+      it('si también cambia el nombre del lugar, es un cambio de lugar', () => {
+        expect(
+          ticketHolderChanges(withoutMap, {
+            ...fromGoogle,
+            venueName: 'Otro club',
+          }),
+        ).toEqual({ date: false, place: true, map: false });
+      });
+
+      it('junto con la fecha, avisa las dos cosas', () => {
+        expect(
+          ticketHolderChanges(withoutMap, {
+            ...fromGoogle,
+            startDate: '2026-12-20T22:00:00.000Z',
+          }),
+        ).toEqual({ date: true, place: false, map: true });
+      });
     });
 
     it('título, descripción, flyer o video no se avisan', () => {

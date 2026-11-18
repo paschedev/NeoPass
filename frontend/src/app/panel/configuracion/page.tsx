@@ -4,6 +4,7 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { isOrganizer } from '@/utils/roles';
 import EmailSection from '@/components/settings/EmailSection';
 import PasswordSection from '@/components/settings/PasswordSection';
+import GoogleSection from '@/components/settings/GoogleSection';
 import MercadoPagoSection from '@/components/settings/MercadoPagoSection';
 import PresetsLinkSection from '@/components/settings/PresetsLinkSection';
 
@@ -18,6 +19,7 @@ export default function ConfiguracionPage() {
 
       <EmailSection />
       <PasswordSection />
+      <GoogleSection />
 
       {isOrganizer(user) && (
         <>

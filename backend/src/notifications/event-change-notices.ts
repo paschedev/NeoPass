@@ -1,10 +1,11 @@
 import { ARGENTINA_TIME_ZONE } from '../common/argentina-time-zone';
 
-// What ticket holders read when the event changes date or place. The notice
-// adds up while unread, so it names everything that changed and always shows
-// the event as it is now.
+// What ticket holders read when the event changes date or place, or its place
+// is now on the map. The notice adds up while unread, so it names everything
+// that changed and always shows the event as it is now. A new place already
+// says where the event is: then the map goes unmentioned.
 
-export type EventChanges = { date: boolean; place: boolean };
+export type EventChanges = { date: boolean; place: boolean; map: boolean };
 
 export type ChangedEvent = {
   title: string;
@@ -47,9 +48,17 @@ export function eventChangeNotice(event: ChangedEvent, changes: EventChanges) {
   if (changes.date && changes.place) {
     message = `Cambiaron la fecha y el lugar de ${event.title}. Ahora es ${dates}${inPlace ? `, ${inPlace}` : ''}.`;
   } else if (changes.date) {
-    message = `Cambió la fecha de ${event.title}. Ahora es ${dates}.`;
-  } else {
+    const onMap =
+      changes.map && place ? ` Ya está el mapa del lugar: ${place}.` : '';
+    message = `Cambió la fecha de ${event.title}. Ahora es ${dates}.${onMap}`;
+  } else if (changes.place) {
     message = `Cambió el lugar de ${event.title}. ${inPlace ? `Ahora es ${inPlace}` : 'Ahora el lugar está a confirmar'}.`;
+  } else {
+    message = `Ya está el mapa de ${event.title}${place ? `: ${place}` : ''}.`;
   }
-  return { title: `Cambios en ${event.title}`, message };
+  const title =
+    changes.date || changes.place
+      ? `Cambios en ${event.title}`
+      : `Novedades de ${event.title}`;
+  return { title, message };
 }

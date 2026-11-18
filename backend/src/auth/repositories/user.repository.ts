@@ -15,6 +15,10 @@ export class UserRepository {
     return this.prisma.user.findUnique({ where: { emailKey: key } });
   }
 
+  findByGoogleId(googleId: string): Promise<User | null> {
+    return this.prisma.user.findUnique({ where: { googleId } });
+  }
+
   async findById(id: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { id } });
   }
@@ -44,6 +48,26 @@ export class UserRepository {
 
   async create(data: Prisma.UserCreateInput): Promise<User> {
     return this.prisma.user.create({ data });
+  }
+
+  // Only while the account has no Google account linked, so two links at the
+  // same time can't overwrite each other. Null when it already had one.
+  async linkGoogle(id: string, googleId: string, emailVerifiedAt: Date) {
+    const { count } = await this.prisma.user.updateMany({
+      where: { id, googleId: null },
+      data: { googleId, emailVerifiedAt },
+    });
+    return count === 1 ? this.findById(id) : null;
+  }
+
+  // Only while the account has none, so it never replaces a password chosen
+  // in between. False when it already had one.
+  async setPasswordIfNone(id: string, passwordHash: string) {
+    const { count } = await this.prisma.user.updateMany({
+      where: { id, passwordHash: null },
+      data: { passwordHash },
+    });
+    return count === 1;
   }
 
   async update(id: string, data: Prisma.UserUpdateInput): Promise<User> {
@@ -90,6 +114,9 @@ export class UserRepository {
           passwordResetExpires: null,
           passwordChangedAt: now,
           emailVerifiedAt: now,
+          // The account starts over: a linked Google account may belong to
+          // whoever no longer has the mailbox.
+          googleId: null,
         },
       }),
       this.prisma.emailCode.deleteMany({ where: { userId: id } }),

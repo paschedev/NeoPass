@@ -11,6 +11,8 @@ import { EmailCodeRepository } from './repositories/email-code.repository';
 import { CaptchaService } from './captcha.service';
 import { EmailConfirmationController } from './email-confirmation.controller';
 import { EmailConfirmationService } from './email-confirmation.service';
+import { GoogleIdentityService } from './google-identity.service';
+import { GoogleSignInService } from './google-sign-in.service';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { EmailConfirmationService } from './email-confirmation.service';
     CaptchaService,
     EmailConfirmationService,
     EmailCodeRepository,
+    GoogleIdentityService,
+    GoogleSignInService,
   ],
   exports: [AuthService, UserRepository, CaptchaService, JwtModule],
 })
