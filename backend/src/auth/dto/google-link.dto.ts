@@ -1,7 +1,7 @@
 import { IsNotEmpty, IsString } from 'class-validator';
-import { GoogleSignInDto } from './google-sign-in.dto';
+import { GoogleCredentialDto } from './google-sign-in.dto';
 
-export class GoogleLinkDto extends GoogleSignInDto {
+export class GoogleLinkDto extends GoogleCredentialDto {
   @IsString({ message: 'La contraseña debe ser un texto' })
   @IsNotEmpty({ message: 'Ingresá tu contraseña' })
   password: string;

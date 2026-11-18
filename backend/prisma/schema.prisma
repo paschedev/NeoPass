@@ -136,10 +136,8 @@ model User {
   updatedAt       DateTime  @default(now()) @updatedAt
 
   // Sign in with Google: the linked Google account (its "sub", which never
-  // changes) and when the email was proven to be the user's (Google with the
-  // same email or the password reset link).
+  // changes). Linking it also confirms the email.
   googleId        String?   @unique
-  emailVerifiedAt DateTime?
 
   // Mercado Pago (OAuth). The access token lasts 180 days and is renewed with
   // the refresh token, which changes on every renewal. Accounts linked before

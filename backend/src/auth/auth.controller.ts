@@ -20,8 +20,9 @@ import { LoginDto } from './dto/login.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { GoogleSignInDto } from './dto/google-sign-in.dto';
+import { GoogleCredentialDto, GoogleSignInDto } from './dto/google-sign-in.dto';
 import { GoogleLinkDto } from './dto/google-link.dto';
+import { GooglePasswordDto } from './dto/google-password.dto';
 import { GoogleSignInService } from './google-sign-in.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
@@ -59,13 +60,40 @@ export class AuthController {
   @Throttle(GOOGLE_LIMIT)
   @Post('google')
   signInWithGoogle(@Body() body: GoogleSignInDto) {
-    return this.googleSignIn.signIn(body.credential);
+    return this.googleSignIn.signIn(body.credential, {
+      termsVersion: body.termsVersion,
+      privacyVersion: body.privacyVersion,
+    });
   }
 
   @Throttle(GOOGLE_LIMIT)
   @Post('google/link')
   linkGoogle(@Body() body: GoogleLinkDto) {
     return this.googleSignIn.link(body.credential, body.password);
+  }
+
+  @Throttle(GOOGLE_LIMIT)
+  @UseGuards(JwtAuthGuard)
+  @Post('google/connect')
+  connectGoogle(
+    @CurrentUser('userId') userId: string,
+    @Body() body: GoogleCredentialDto,
+  ) {
+    return this.googleSignIn.connect(userId, body.credential);
+  }
+
+  @Throttle(GOOGLE_LIMIT)
+  @UseGuards(JwtAuthGuard)
+  @Post('google/password')
+  createPasswordWithGoogle(
+    @CurrentUser('userId') userId: string,
+    @Body() body: GooglePasswordDto,
+  ) {
+    return this.googleSignIn.createPassword(
+      userId,
+      body.credential,
+      body.password,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

@@ -15,7 +15,6 @@ const PRODUCTION_ENV = {
   RESEND_API_KEY: 're_resend_key',
   TURNSTILE_SECRET_KEY: 'turnstile-secret',
   CLOUDINARY_URL: 'cloudinary://key:secret@neopass',
-  GOOGLE_CLIENT_ID: 'neopass.apps.googleusercontent.com',
 };
 
 const REQUIRED_VARIABLES = Object.keys(PRODUCTION_ENV).filter(
@@ -35,6 +34,16 @@ describe('validateEnv', () => {
 
   it.each(REQUIRED_VARIABLES)('la app no arranca sin %s', (name) => {
     expect(() => validateEnv(without(name))).toThrow(name);
+  });
+
+  it('sin GOOGLE_CLIENT_ID la app arranca: entrar con Google queda apagado', () => {
+    expect(() => validateEnv(PRODUCTION_ENV)).not.toThrow();
+    expect(() =>
+      validateEnv({
+        ...PRODUCTION_ENV,
+        GOOGLE_CLIENT_ID: 'neopass.apps.googleusercontent.com',
+      }),
+    ).not.toThrow();
   });
 
   it('una variable vacía cuenta como faltante', () => {

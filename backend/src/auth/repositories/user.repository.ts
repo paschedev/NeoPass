@@ -60,6 +60,16 @@ export class UserRepository {
     return count === 1 ? this.findById(id) : null;
   }
 
+  // Only while the account has none, so it never replaces a password chosen
+  // in between. False when it already had one.
+  async setPasswordIfNone(id: string, passwordHash: string) {
+    const { count } = await this.prisma.user.updateMany({
+      where: { id, passwordHash: null },
+      data: { passwordHash },
+    });
+    return count === 1;
+  }
+
   async update(id: string, data: Prisma.UserUpdateInput): Promise<User> {
     return this.prisma.user.update({
       where: { id },

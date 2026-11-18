@@ -94,6 +94,11 @@ export class EmailConfirmationService {
 
   async requestChange(userId: string, newEmail: string, password: string) {
     const user = await this.findUser(userId);
+    if (!user.passwordHash) {
+      throw new BadRequestException(
+        'Creá una contraseña antes de cambiar el correo.',
+      );
+    }
     // 400 and not 401: the front treats a 401 as an expired session.
     if (!(await bcrypt.compare(password, user.passwordHash))) {
       throw new BadRequestException('La contraseña es incorrecta');

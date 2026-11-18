@@ -3,6 +3,7 @@ import { Job } from 'bullmq';
 import { Logger } from '@nestjs/common';
 import {
   EmailChangedJob,
+  GoogleLinkedJob,
   EmailCodeJob,
   FreeTicketsEmailJob,
   MailService,
@@ -30,6 +31,7 @@ export class MailProcessor extends WorkerHost {
       | PasswordResetEmailJob
       | EmailCodeJob
       | EmailChangedJob
+      | GoogleLinkedJob
     >,
   ) {
     this.logger.log(`Processing job ${job.id} of type ${job.name}`);
@@ -58,6 +60,12 @@ export class MailProcessor extends WorkerHost {
       case 'send-email-changed': {
         await this.mailService.sendEmailChangedNotice(
           job.data as EmailChangedJob,
+        );
+        break;
+      }
+      case 'send-google-linked': {
+        await this.mailService.sendGoogleLinkedNotice(
+          job.data as GoogleLinkedJob,
         );
         break;
       }

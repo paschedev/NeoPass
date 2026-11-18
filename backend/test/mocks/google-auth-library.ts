@@ -9,6 +9,8 @@ export interface GoogleTestPayload {
   sub: string;
   email: string;
   email_verified: boolean;
+  // Google Workspace domain of the account, if it has one.
+  hd?: string;
   name?: string;
   aud: string;
   iat: number;

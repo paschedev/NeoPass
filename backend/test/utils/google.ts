@@ -12,6 +12,7 @@ export function googleCredential({
   email,
   emailVerified = true,
   name = 'Ana Gómez',
+  hd,
   issuedMinutesAgo = 0,
   audience = testEnv.GOOGLE_CLIENT_ID,
 }: {
@@ -19,6 +20,7 @@ export function googleCredential({
   email: string;
   emailVerified?: boolean;
   name?: string;
+  hd?: string;
   issuedMinutesAgo?: number;
   audience?: string;
 }) {
@@ -28,6 +30,7 @@ export function googleCredential({
     sub,
     email,
     email_verified: emailVerified,
+    ...(hd ? { hd } : {}),
     name,
     aud: audience,
     iat,

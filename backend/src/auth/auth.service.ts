@@ -83,6 +83,9 @@ export class AuthService {
       // Organizers only; null without a producer name.
       companyName: user.organizerProfile?.companyName ?? null,
       emailVerified: user.emailVerifiedAt !== null,
+      // Ways to enter, never the values themselves.
+      hasPassword: user.passwordHash !== null,
+      hasGoogle: user.googleId !== null,
       hasLinkedMp: hasUsableMercadoPagoToken(user, new Date()),
       hasBeenRpp,
       isCurrentlyScanner,
@@ -197,7 +200,7 @@ export class AuthService {
 
     if (!user.passwordHash) {
       throw new BadRequestException(
-        'Tu cuenta no tiene contraseña: podés crearla con "Olvidé mi contraseña".',
+        'Tu cuenta no tiene contraseña: creala desde Configuración.',
       );
     }
     const isValid = await bcrypt.compare(oldPass, user.passwordHash);

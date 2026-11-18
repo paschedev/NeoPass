@@ -97,6 +97,9 @@ export class EmailCodeRepository {
           emailVerifiedAt: now,
           passwordResetToken: null,
           passwordResetExpires: null,
+          // Google's email has to be the account's: the old one's Google
+          // account no longer enters.
+          googleId: null,
         },
         select: { email: true },
       });
