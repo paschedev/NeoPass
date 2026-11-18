@@ -13,6 +13,8 @@ import {
   createTicket,
   createUser,
 } from './utils/factories';
+import { ACCEPTED_LEGAL } from './utils/legal';
+import { mockTurnstile } from './utils/network';
 import { createTestApp, TestApp } from './utils/test-app';
 import { resetDb } from './utils/test-database';
 
@@ -40,7 +42,7 @@ type MailJob = [
       venueCity?: string | null;
     }[];
   },
-  { jobId?: string; attempts?: number },
+  { jobId?: string; attempts?: number; priority?: number },
 ];
 
 const VENUE = {
@@ -194,6 +196,96 @@ describe('Mails', () => {
     function mailJobs() {
       return t.queues.mail.add.mock.calls as MailJob[];
     }
+
+    // The order in which BullMQ sends the queued mails: jobs without a
+    // priority first, then by priority (lower first), then by arrival.
+    function sendingOrder() {
+      return mailJobs()
+        .map(([name, , options], arrival) => ({
+          name,
+          priority: options?.priority ?? 0,
+          arrival,
+        }))
+        .sort(
+          (a, b) =>
+            Number(a.priority > 0) - Number(b.priority > 0) ||
+            a.priority - b.priority ||
+            a.arrival - b.arrival,
+        )
+        .map(({ name }) => name);
+    }
+
+    it('con entradas esperando su mail, el código de registro y el link de recuperación salen primero', async () => {
+      const { ticketType } = await createOrganizerWithEvent(t.prisma, {
+        price: 1000,
+      });
+      const buyer = await createUser(t.prisma);
+      const order = await createOrder(t.prisma, { user: buyer, ticketType });
+      await pay('pago-1', order.id, 1000);
+
+      mockTurnstile(true);
+      await request(t.app.getHttpServer())
+        .post('/auth/register')
+        .send({
+          firstName: 'Ana',
+          lastName: 'Pérez',
+          email: 'ana@neopass.test',
+          password: 'clave-segura-123',
+          role: 'CUSTOMER',
+          captchaToken: 'captcha-de-prueba',
+          ...ACCEPTED_LEGAL,
+        })
+        .expect(201);
+      await request(t.app.getHttpServer())
+        .post('/auth/forgot-password')
+        .send({ email: buyer.email })
+        .expect(201);
+
+      expect(sendingOrder()).toEqual([
+        'send-email-code',
+        'send-password-reset',
+        'send-tickets',
+      ]);
+    });
+
+    it('ningún otro mail pasa adelante de los códigos y del link de recuperación, y el resto sale por orden de llegada', async () => {
+      const mail = t.app.get(MailService);
+      const to = 'ana@neopass.test';
+      const name = 'Ana';
+
+      await mail.queueTicketsEmail({ to, name, tickets: [] }, 'tickets-1');
+      await mail.queueFreeTicketsEmail(
+        {
+          to,
+          name,
+          organizerName: 'Productora',
+          eventId: 'evento-1',
+          validUntil: null,
+          tickets: [],
+        },
+        'free-tickets-1',
+      );
+      await mail.queueEmailChangedNotice({ to, name, newEmail: 'n***@x.com' });
+      await mail.queueEmailCode({
+        to,
+        name,
+        code: '123456',
+        purpose: 'CHANGE',
+      });
+      await mail.queuePasswordResetEmail({
+        to,
+        name,
+        resetLink: 'https://neopass.test/reset',
+      });
+
+      expect(sendingOrder()).toEqual([
+        'send-email-code',
+        'send-password-reset',
+        'send-tickets',
+        'send-free-tickets',
+        'send-email-changed',
+      ]);
+    });
 
     it('después de pagar se encola el mail con las entradas, con reintentos y una vez por orden', async () => {
       const { ticketType } = await createOrganizerWithEvent(t.prisma, {
