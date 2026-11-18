@@ -73,17 +73,25 @@ const PLACE_FIELDS: InfoField[] = [
   'venuePlaceId',
 ];
 
-// What changes for whoever already has tickets: when or where the event is.
-// Null when the edit changes neither.
+// What changes for whoever already has tickets: when or where the event is,
+// or that its place is now on the map. Null when the edit changes none.
+// Putting on the map an event that had no point, with the same place name, is
+// not a move: choosing it from Google's list also rewrites the address, and
+// the notice shows the address anyway.
 export function ticketHolderChanges(
   event: StoredEvent,
   changes: UpdateEventDto,
-): { date: boolean; place: boolean } | null {
+): { date: boolean; place: boolean; map: boolean } | null {
   const changed = (fields: InfoField[]) =>
     fields.some((field) => differs(changes[field], event[field]));
   const date = changed(DATE_FIELDS);
-  const place = changed(PLACE_FIELDS);
-  return date || place ? { date, place } : null;
+  const map =
+    (event.latitude === null || event.longitude === null) &&
+    changes.latitude != null &&
+    changes.longitude != null &&
+    !changed(['venueName']);
+  const place = !map && changed(PLACE_FIELDS);
+  return date || place || map ? { date, place, map } : null;
 }
 
 export function statusChange(event: StoredEvent, changes: UpdateEventDto) {
