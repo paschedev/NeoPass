@@ -12,7 +12,10 @@ export interface PaymentPartsCheckJob {
   orderId: string;
 }
 
-@Processor('payments')
+// Several notifications at once. Two of the same order are safe: paying is a
+// conditional update, an order has one payment, and a reversal that finds
+// nothing yet reads the payment again later (handleNotApprovedPayment).
+@Processor('payments', { concurrency: 5 })
 export class PaymentsProcessor extends WorkerHost {
   private readonly logger = new Logger(PaymentsProcessor.name);
 

@@ -10,7 +10,11 @@ import {
   TicketsEmailJob,
 } from './mail.service';
 
-@Processor('mail')
+// Several sends at once, capped for the whole queue (every replica counts)
+// below Resend's limit of 10 requests per second per team: one every 125 ms
+// is 8 per second. The limiter counts in fixed windows, so 8 per 1000 ms
+// would let up to twice that start within a second around a window's edge.
+@Processor('mail', { concurrency: 5, limiter: { max: 1, duration: 125 } })
 export class MailProcessor extends WorkerHost {
   private readonly logger = new Logger(MailProcessor.name);
 

@@ -25,6 +25,12 @@ const MAIL_JOB_OPTIONS: JobsOptions = {
   backoff: { type: 'exponential', delay: 60_000 },
 };
 
+// BullMQ sends the jobs without a priority before any prioritized one, so
+// every mail gets one (lower goes first, same priority by arrival). The
+// mails someone is waiting for on screen skip the tickets of a sales peak.
+const AWAITED_MAIL: JobsOptions = { ...MAIL_JOB_OPTIONS, priority: 1 };
+const REGULAR_MAIL: JobsOptions = { ...MAIL_JOB_OPTIONS, priority: 2 };
+
 export interface TicketsEmailJob {
   to: string;
   name: string;
@@ -80,28 +86,28 @@ export class MailService {
   // `jobId` makes it idempotent: queuing the same order twice sends one mail.
   async queueTicketsEmail(job: TicketsEmailJob, jobId?: string) {
     await this.mailQueue.add('send-tickets', job, {
-      ...MAIL_JOB_OPTIONS,
+      ...REGULAR_MAIL,
       jobId,
     });
   }
 
   async queueFreeTicketsEmail(job: FreeTicketsEmailJob, jobId: string) {
     await this.mailQueue.add('send-free-tickets', job, {
-      ...MAIL_JOB_OPTIONS,
+      ...REGULAR_MAIL,
       jobId,
     });
   }
 
   async queuePasswordResetEmail(job: PasswordResetEmailJob) {
-    await this.mailQueue.add('send-password-reset', job, MAIL_JOB_OPTIONS);
+    await this.mailQueue.add('send-password-reset', job, AWAITED_MAIL);
   }
 
   async queueEmailCode(job: EmailCodeJob) {
-    await this.mailQueue.add('send-email-code', job, MAIL_JOB_OPTIONS);
+    await this.mailQueue.add('send-email-code', job, AWAITED_MAIL);
   }
 
   async queueEmailChangedNotice(job: EmailChangedJob) {
-    await this.mailQueue.add('send-email-changed', job, MAIL_JOB_OPTIONS);
+    await this.mailQueue.add('send-email-changed', job, REGULAR_MAIL);
   }
 
   async sendTicketsEmail(to: string, name: string, tickets: TicketForMail[]) {
