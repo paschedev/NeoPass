@@ -10,6 +10,10 @@ export interface SessionUser {
   role: 'ADMIN' | 'ORGANIZER' | 'CUSTOMER';
   // Sin valor en las sesiones guardadas antes de que existieran.
   emailVerified?: boolean;
+  // Cómo puede entrar (también sin valor en las sesiones viejas: esas tienen
+  // contraseña).
+  hasPassword?: boolean;
+  hasGoogle?: boolean;
   avatarUrl?: string | null;
   // Solo organizadores: el nombre de su productora.
   companyName?: string | null;

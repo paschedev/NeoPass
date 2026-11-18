@@ -13,6 +13,8 @@ import {
 } from '@/utils/password-schema';
 import { saveSession, useCurrentUser } from '@/hooks/useCurrentUser';
 import PasswordInput from '@/components/forms/PasswordInput';
+import { isGoogleEnabled } from '@/utils/google-sign-in';
+import CreatePasswordForm from './CreatePasswordForm';
 
 const FIELDS: {
   name: keyof ChangePasswordValues;
@@ -41,10 +43,12 @@ const FIELDS: {
 ];
 
 // "Seguridad de la cuenta" in the settings page: change the password or ask
-// for the reset link.
+// for the reset link. An account made with Google creates its password here
+// (confirming with Google), or with the reset link if Google is off.
 export default function PasswordSection() {
   const { user } = useCurrentUser();
   const [open, setOpen] = useState(false);
+  const withoutPassword = user?.hasPassword === false;
   const [serverError, setServerError] = useState<string | null>(null);
   const {
     register,
@@ -128,15 +132,25 @@ export default function PasswordSection() {
         {!open && (
           <button
             type="button"
-            onClick={() => setOpen(true)}
+            onClick={() =>
+              withoutPassword && !isGoogleEnabled()
+                ? void handleForgotPassword()
+                : setOpen(true)
+            }
             className="w-full sm:w-auto bg-white/10 hover:bg-white/20 text-white px-4 py-3 sm:py-2 rounded-xl text-sm font-medium transition-colors"
           >
-            Cambiar contraseña
+            {withoutPassword ? 'Crear contraseña' : 'Cambiar contraseña'}
           </button>
         )}
       </div>
 
-      {open && (
+      {open && withoutPassword && (
+        <div className="mt-6 border-t border-white/10 pt-6 animate-in slide-in-from-top-4 fade-in duration-300">
+          <CreatePasswordForm onDone={close} onCancel={close} />
+        </div>
+      )}
+
+      {open && !withoutPassword && (
         <div className="mt-6 border-t border-white/10 pt-6 animate-in slide-in-from-top-4 fade-in duration-300">
           <form
             onSubmit={handleSubmit(onSubmit)}

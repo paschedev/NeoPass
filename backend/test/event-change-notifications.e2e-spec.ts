@@ -117,6 +117,83 @@ describe('Avisos de cambios del evento a quien tiene entradas', () => {
     ]);
   });
 
+  describe('cuando el evento agrega el mapa por primera vez', () => {
+    const fromGoogle = {
+      venueName: 'Club Y',
+      venueAddress: 'Av. Siempreviva 742, Springfield',
+      venueCity: 'Springfield',
+      latitude: -34.6037,
+      longitude: -58.3816,
+      venuePlaceId: 'place-club-y',
+    };
+
+    it('con el mismo nombre del lugar, el aviso dice que ya está el mapa', async () => {
+      const s = await setup();
+      const buyer = await createUser(t.prisma);
+      await tickets(s, buyer, 1);
+
+      await edit(s.organizer, s.event.id, fromGoogle).expect(200);
+
+      expect(await notices(buyer)).toEqual([
+        expect.objectContaining({
+          title: `Novedades de ${s.event.title}`,
+          message: `Ya está el mapa de ${s.event.title}: Club Y (Av. Siempreviva 742, Springfield).`,
+        }),
+      ]);
+    });
+
+    it('si también cambia el nombre del lugar, solo llega el cambio de lugar', async () => {
+      const s = await setup();
+      const buyer = await createUser(t.prisma);
+      await tickets(s, buyer, 1);
+
+      await edit(s.organizer, s.event.id, {
+        ...fromGoogle,
+        venueName: 'Otro club',
+      }).expect(200);
+
+      expect(await notices(buyer)).toEqual([
+        expect.objectContaining({
+          title: `Cambios en ${s.event.title}`,
+          message: `Cambió el lugar de ${s.event.title}. Ahora es en Otro club (Av. Siempreviva 742, Springfield).`,
+        }),
+      ]);
+    });
+
+    it('si después cambia el lugar sin leer el aviso, queda un solo aviso con el cambio de lugar', async () => {
+      const s = await setup();
+      const buyer = await createUser(t.prisma);
+      await tickets(s, buyer, 1);
+
+      await edit(s.organizer, s.event.id, fromGoogle).expect(200);
+      await edit(s.organizer, s.event.id, { venueName: 'Club Z' }).expect(200);
+
+      expect(await notices(buyer)).toEqual([
+        expect.objectContaining({
+          title: `Cambios en ${s.event.title}`,
+          message: `Cambió el lugar de ${s.event.title}. Ahora es en Club Z (Av. Siempreviva 742, Springfield).`,
+        }),
+      ]);
+    });
+
+    it('si después cambia la fecha sin leer el aviso, nombra la fecha y suma el mapa', async () => {
+      const s = await setup();
+      const buyer = await createUser(t.prisma);
+      await tickets(s, buyer, 1);
+
+      await edit(s.organizer, s.event.id, fromGoogle).expect(200);
+      await edit(s.organizer, s.event.id, postponed(s)).expect(200);
+
+      const [notice] = await notices(buyer);
+      expect(notice.title).toBe(`Cambios en ${s.event.title}`);
+      expect(notice.message).toMatch(
+        new RegExp(
+          `^Cambió la fecha de ${s.event.title}\\. Ahora es del .*\\. Ya está el mapa del lugar: Club Y \\(Av\\. Siempreviva 742, Springfield\\)\\.$`,
+        ),
+      );
+    });
+  });
+
   it('editar desde el formulario, que manda también las tandas, avisa igual', async () => {
     const s = await setup();
     const buyer = await createUser(t.prisma);

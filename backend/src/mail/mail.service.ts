@@ -6,6 +6,7 @@ import { JobsOptions, Queue } from 'bullmq';
 import { Resend } from 'resend';
 import { SUPPORT_EMAIL, TICKETS_EMAIL } from './mail-addresses';
 import { emailChangedEmail } from './templates/email-changed-email';
+import { googleLinkedEmail } from './templates/google-linked-email';
 import { emailCodeEmail } from './templates/email-code-email';
 import { freeTicketsEmail } from './templates/free-tickets-email';
 import { passwordResetEmail } from './templates/password-reset-email';
@@ -67,6 +68,12 @@ export interface EmailChangedJob {
   newEmail: string;
 }
 
+// To the account's email when a Google account is linked to it.
+export interface GoogleLinkedJob {
+  to: string;
+  name: string;
+}
+
 @Injectable()
 export class MailService {
   private resend: Resend;
@@ -108,6 +115,10 @@ export class MailService {
 
   async queueEmailChangedNotice(job: EmailChangedJob) {
     await this.mailQueue.add('send-email-changed', job, REGULAR_MAIL);
+  }
+
+  async queueGoogleLinkedNotice(job: GoogleLinkedJob) {
+    await this.mailQueue.add('send-google-linked', job, REGULAR_MAIL);
   }
 
   async sendTicketsEmail(to: string, name: string, tickets: TicketForMail[]) {
@@ -163,6 +174,14 @@ export class MailService {
       from: SUPPORT_SENDER,
       to,
       ...emailChangedEmail({ name, newEmail }),
+    });
+  }
+
+  async sendGoogleLinkedNotice({ to, name }: GoogleLinkedJob) {
+    await this.send({
+      from: SUPPORT_SENDER,
+      to,
+      ...googleLinkedEmail({ name }),
     });
   }
 

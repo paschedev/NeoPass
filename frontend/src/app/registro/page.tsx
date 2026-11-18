@@ -13,6 +13,9 @@ import PhoneInput from '@/components/forms/PhoneInput';
 import PasswordInput from '@/components/forms/PasswordInput';
 import RegistrationEmailStep from '@/components/account/RegistrationEmailStep';
 import LegalConsentText from '@/components/legal/LegalConsentText';
+import AuthShell, { AuthDivider } from '@/components/auth/AuthShell';
+import GoogleSignIn from '@/components/auth/GoogleSignIn';
+import { isGoogleEnabled } from '@/utils/google-sign-in';
 import { acceptedLegalVersions, DATA_PROTECTION_NOTICES } from '@/utils/legal';
 import { saveSession, type SessionUser } from '@/hooks/useCurrentUser';
 import { z } from 'zod';
@@ -93,6 +96,9 @@ type RegisterFormValues = z.infer<typeof registerSchema>;
 export default function RegistroPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // El correo ya tiene cuenta: puede ser una hecha con Google.
+  const [googleHint, setGoogleHint] = useState(false);
+  const google = isGoogleEnabled();
   const [registeredUser, setRegisteredUser] = useState<SessionUser | null>(
     null,
   );
@@ -158,6 +164,7 @@ export default function RegistroPage() {
   const onSubmit = async (data: RegisterFormValues) => {
     setLoading(true);
     setError('');
+    setGoogleHint(false);
 
     const payload: any = {
       firstName: data.firstName,
@@ -192,6 +199,7 @@ export default function RegistroPage() {
         setError(
           getApiErrorMessage(responseData, 'Error al registrar el usuario'),
         );
+        setGoogleHint(google && response.status === 409);
       }
     } catch (err) {
       setError('Error de conexión con el servidor');
@@ -211,23 +219,49 @@ export default function RegistroPage() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 relative overflow-x-hidden flex flex-col px-4">
-      <div className="flex-1 min-h-[6rem] md:min-h-[8rem]" />
-      <div className="w-full max-w-md bg-neutral-900 border border-white/5 p-8 rounded-3xl shadow-2xl z-10 mx-auto shrink-0">
-        <div className="text-center mb-8">
+    <AuthShell
+      title="Creá tu cuenta en NeoPass"
+      subtitle={
+        <>
+          ¿Ya tenés cuenta?{' '}
           <Link
-            href="/"
-            className="font-outfit text-3xl font-bold tracking-tighter inline-block mb-2"
+            href="/login"
+            className="font-semibold text-white hover:text-indigo-300 transition-colors"
           >
-            Neo<span className="text-indigo-500">Pass</span>
+            Ingresá
           </Link>
-          <p className="text-neutral-400">Creá tu cuenta gratis</p>
-        </div>
-
+          .
+        </>
+      }
+    >
+      <div>
         {error && (
-          <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-sm text-center">
+          <div
+            role="alert"
+            className="mb-6 p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-sm text-center"
+          >
             {error}
+            {googleHint && (
+              <span className="block mt-1 text-neutral-300">
+                ¿Te registraste con Google? Usá el botón de Google en Ingresar.
+              </span>
+            )}
           </div>
+        )}
+
+        {google && (
+          <>
+            <GoogleSignIn
+              onError={(message) => {
+                setError(message);
+                setGoogleHint(false);
+              }}
+            />
+            <p className="mt-3 text-center text-xs text-neutral-500">
+              ¿Organizás eventos? Registrate con el formulario.
+            </p>
+            <AuthDivider />
+          </>
         )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -574,7 +608,7 @@ export default function RegistroPage() {
               captchaError ||
               (!captchaToken && process.env.NODE_ENV === 'production')
             }
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 mt-6 disabled:opacity-50"
+            className="w-full h-11 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-medium transition-colors flex items-center justify-center gap-2 mt-6 disabled:opacity-50"
           >
             {!mounted ? (
               'Conectando...'
@@ -587,15 +621,7 @@ export default function RegistroPage() {
             )}
           </button>
         </form>
-
-        <div className="mt-8 text-center text-sm text-neutral-500">
-          ¿Ya tenés cuenta?{' '}
-          <Link href="/login" className="text-indigo-400 hover:text-indigo-300">
-            Ingresá acá
-          </Link>
-        </div>
       </div>
-      <div className="flex-1 min-h-[4rem]" />
-    </div>
+    </AuthShell>
   );
 }

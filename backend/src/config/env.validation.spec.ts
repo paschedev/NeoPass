@@ -36,6 +36,16 @@ describe('validateEnv', () => {
     expect(() => validateEnv(without(name))).toThrow(name);
   });
 
+  it('sin GOOGLE_CLIENT_ID la app arranca: entrar con Google queda apagado', () => {
+    expect(() => validateEnv(PRODUCTION_ENV)).not.toThrow();
+    expect(() =>
+      validateEnv({
+        ...PRODUCTION_ENV,
+        GOOGLE_CLIENT_ID: 'neopass.apps.googleusercontent.com',
+      }),
+    ).not.toThrow();
+  });
+
   it('una variable vacía cuenta como faltante', () => {
     expect(() => validateEnv({ ...PRODUCTION_ENV, JWT_SECRET: '' })).toThrow(
       'JWT_SECRET',

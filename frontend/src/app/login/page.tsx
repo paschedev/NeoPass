@@ -1,17 +1,23 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { LogIn } from 'lucide-react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { TURNSTILE_OPTIONS } from '@/utils/captcha';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
-import { getSafeRedirect } from '@/utils/redirect';
+import {
+  afterSignInPath,
+  isGoogleEnabled,
+  readLastLoginMethod,
+  rememberLoginMethod,
+  type LoginMethod,
+} from '@/utils/google-sign-in';
 import { saveSession } from '@/hooks/useCurrentUser';
-import { getHomePath } from '@/utils/navigation';
 import PasswordInput from '@/components/forms/PasswordInput';
+import AuthShell, { AuthDivider } from '@/components/auth/AuthShell';
+import GoogleSignIn from '@/components/auth/GoogleSignIn';
+import LastUsedBadge from '@/components/auth/LastUsedBadge';
 import { z } from 'zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,13 +29,19 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+const INPUT =
+  'w-full bg-white/5 border rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors';
+
 export default function LoginPage() {
-  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // Una contraseña que no coincide puede ser de una cuenta hecha con Google.
+  const [googleHint, setGoogleHint] = useState(false);
   const [captchaToken, setCaptchaToken] = useState<string>('');
   const [captchaError, setCaptchaError] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [lastUsed, setLastUsed] = useState<LoginMethod | null>(null);
+  const google = isGoogleEnabled();
 
   const {
     control,
@@ -46,6 +58,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     setMounted(true);
+    setLastUsed(readLastLoginMethod());
     if (window.location.search.includes('expired=1')) {
       setError('Tu sesión expiró. Ingresá de nuevo.');
     }
@@ -54,6 +67,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormValues) => {
     setLoading(true);
     setError('');
+    setGoogleHint(false);
 
     try {
       const response = await apiFetch('/auth/login', {
@@ -69,12 +83,13 @@ export default function LoginPage() {
 
       if (response.ok) {
         saveSession(responseData.access_token, responseData.user);
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const callbackUrl = getSafeRedirect(urlParams.get('callbackUrl'));
-        window.location.replace(callbackUrl ?? getHomePath(responseData.user));
+        rememberLoginMethod('password');
+        window.location.replace(
+          afterSignInPath(window.location.search, responseData.user),
+        );
       } else {
         setError(getApiErrorMessage(responseData, 'Credenciales inválidas'));
+        setGoogleHint(google && response.status === 401);
       }
     } catch (err) {
       setError('Error de conexión con el servidor');
@@ -84,106 +99,140 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-950 p-4 relative overflow-hidden">
-      <div className="w-full max-w-md bg-neutral-900 border border-white/5 p-8 rounded-3xl shadow-2xl">
-        <div className="text-center mb-8">
+    <AuthShell
+      title="Ingresá a NeoPass"
+      subtitle={
+        <>
+          ¿No tenés cuenta?{' '}
           <Link
-            href="/"
-            className="font-outfit text-3xl font-bold tracking-tighter inline-block mb-2"
+            href="/registro"
+            className="font-semibold text-white hover:text-indigo-300 transition-colors"
           >
-            Neo<span className="text-indigo-500">Pass</span>
+            Registrate
           </Link>
-          <p className="text-neutral-400">Ingresá a tu cuenta</p>
+          .
+        </>
+      }
+    >
+      {error && (
+        <div
+          role="alert"
+          className="mb-6 p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-sm text-center"
+        >
+          {error}
+          {googleHint && (
+            <span className="block mt-1 text-neutral-300">
+              ¿Te registraste con Google? Usá el botón de Google.
+            </span>
+          )}
+        </div>
+      )}
+
+      {google && (
+        <>
+          <GoogleSignIn
+            lastUsed={lastUsed === 'google'}
+            onError={(message) => {
+              setError(message);
+              setGoogleHint(false);
+            }}
+          />
+          <AuthDivider />
+        </>
+      )}
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        <div>
+          <label
+            htmlFor="email"
+            className="block text-sm font-medium text-neutral-300 mb-1.5"
+          >
+            Correo
+          </label>
+          <Controller
+            name="email"
+            control={control}
+            render={({ field }) => (
+              <input
+                {...field}
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                className={`${INPUT} ${errors.email ? 'border-red-500' : 'border-white/10'}`}
+                placeholder="tucorreo@ejemplo.com"
+              />
+            )}
+          />
+          {errors.email && (
+            <span className="text-red-400 text-xs mt-1 block">
+              {errors.email.message}
+            </span>
+          )}
+        </div>
+        <div>
+          <label
+            htmlFor="password"
+            className="block text-sm font-medium text-neutral-300 mb-1.5"
+          >
+            Contraseña
+          </label>
+          <Controller
+            name="password"
+            control={control}
+            render={({ field }) => (
+              <PasswordInput
+                {...field}
+                id="password"
+                autoComplete="current-password"
+                required
+                className={`${INPUT} pl-4 ${errors.password ? 'border-red-500' : 'border-white/10'}`}
+                placeholder="••••••••"
+              />
+            )}
+          />
+          {errors.password && (
+            <span className="text-red-400 text-xs mt-1 block">
+              {errors.password.message}
+            </span>
+          )}
+          <div className="flex justify-end mt-2">
+            <Link
+              href="/password-recovery"
+              className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+            >
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </div>
         </div>
 
-        {error && (
-          <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg text-sm text-center">
-            {error}
+        {mounted && process.env.NODE_ENV === 'production' && (
+          <div className="flex flex-col items-center justify-center">
+            {!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? (
+              <div className="text-red-400 text-sm p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-center w-full">
+                Falta configurar la clave de seguridad (Turnstile).
+              </div>
+            ) : (
+              <Turnstile
+                siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
+                onSuccess={(token) => {
+                  setCaptchaToken(token);
+                  setCaptchaError(false);
+                }}
+                onError={() => setCaptchaError(true)}
+                options={TURNSTILE_OPTIONS}
+                className="w-full"
+              />
+            )}
+            {captchaError && (
+              <div className="text-red-400 text-sm p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-center w-full mt-2">
+                Error de seguridad. Desactivá el AdBlocker o recargá la página.
+              </div>
+            )}
           </div>
         )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <div>
-            <label className="block text-sm font-medium text-neutral-400 mb-1">
-              Email
-            </label>
-            <Controller
-              name="email"
-              control={control}
-              render={({ field }) => (
-                <input
-                  {...field}
-                  type="email"
-                  required
-                  className={`w-full bg-white/5 border ${errors.email ? 'border-red-500' : 'border-white/10'} rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors`}
-                  placeholder="tucorreo@ejemplo.com"
-                />
-              )}
-            />
-            {errors.email && (
-              <span className="text-red-400 text-xs mt-1 block">
-                {errors.email.message}
-              </span>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-neutral-400 mb-1">
-              Contraseña
-            </label>
-            <Controller
-              name="password"
-              control={control}
-              render={({ field }) => (
-                <PasswordInput
-                  {...field}
-                  required
-                  className={`w-full bg-white/5 border ${errors.password ? 'border-red-500' : 'border-white/10'} rounded-xl pl-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-colors`}
-                  placeholder="••••••••"
-                />
-              )}
-            />
-            {errors.password && (
-              <span className="text-red-400 text-xs mt-1 block">
-                {errors.password.message}
-              </span>
-            )}
-            <div className="flex justify-end mt-2">
-              <Link
-                href="/password-recovery"
-                className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
-              >
-                ¿Olvidaste tu contraseña?
-              </Link>
-            </div>
-          </div>
-
-          {mounted && process.env.NODE_ENV === 'production' && (
-            <div className="flex flex-col items-center justify-center mt-6">
-              {!process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? (
-                <div className="text-red-400 text-sm p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-center w-full">
-                  Falta configurar la clave de seguridad (Turnstile).
-                </div>
-              ) : (
-                <Turnstile
-                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY}
-                  onSuccess={(token) => {
-                    setCaptchaToken(token);
-                    setCaptchaError(false);
-                  }}
-                  onError={() => setCaptchaError(true)}
-                  options={TURNSTILE_OPTIONS}
-                  className="w-full"
-                />
-              )}
-              {captchaError && (
-                <div className="text-red-400 text-sm p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-center w-full mt-2">
-                  Error de seguridad. Desactivá el AdBlocker o recargá la
-                  página.
-                </div>
-              )}
-            </div>
-          )}
-
+        <div className="relative">
           <button
             type="submit"
             disabled={
@@ -192,30 +241,33 @@ export default function LoginPage() {
               captchaError ||
               (!captchaToken && process.env.NODE_ENV === 'production')
             }
-            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
+            className="w-full h-11 bg-indigo-600 hover:bg-indigo-500 text-white rounded-full font-medium transition-colors disabled:opacity-50"
           >
-            {!mounted ? (
-              'Conectando...'
-            ) : loading ? (
-              'Ingresando...'
-            ) : (
-              <>
-                <LogIn className="w-5 h-5" /> Entrar
-              </>
-            )}
+            {!mounted
+              ? 'Conectando...'
+              : loading
+                ? 'Ingresando...'
+                : 'Ingresar'}
           </button>
-        </form>
-
-        <div className="mt-8 text-center text-sm text-neutral-500">
-          ¿No tenés cuenta?{' '}
-          <Link
-            href="/registro"
-            className="text-indigo-400 hover:text-indigo-300"
-          >
-            Registrate gratis
-          </Link>
+          {google && lastUsed === 'password' && <LastUsedBadge />}
         </div>
-      </div>
-    </div>
+      </form>
+
+      <p className="mt-10 text-center text-xs text-neutral-500">
+        <Link
+          href="/terminos"
+          className="hover:text-neutral-300 underline underline-offset-2"
+        >
+          Términos de uso
+        </Link>{' '}
+        ·{' '}
+        <Link
+          href="/privacidad"
+          className="hover:text-neutral-300 underline underline-offset-2"
+        >
+          Política de privacidad
+        </Link>
+      </p>
+    </AuthShell>
   );
 }

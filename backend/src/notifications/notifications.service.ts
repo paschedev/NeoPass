@@ -89,16 +89,22 @@ export class NotificationsService {
     actorId: string,
     changes: EventChanges,
   ) {
-    const notice = (kinds: EventChanges) => eventChangeNotice(event, kinds);
+    const notice = (date: boolean, place: boolean, map: boolean) =>
+      eventChangeNotice(event, { date, place, map });
     return this.notificationsRepository.notifyEventChange({
       eventId: event.id,
       actorId,
       changes,
-      title: notice(changes).title,
+      titles: {
+        changes: notice(true, false, false).title,
+        map: notice(false, false, true).title,
+      },
       messages: {
-        date: notice({ date: true, place: false }).message,
-        place: notice({ date: false, place: true }).message,
-        both: notice({ date: true, place: true }).message,
+        date: notice(true, false, false).message,
+        place: notice(false, true, false).message,
+        both: notice(true, true, false).message,
+        dateAndMap: notice(true, false, true).message,
+        map: notice(false, false, true).message,
       },
     });
   }
