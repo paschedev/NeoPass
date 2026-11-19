@@ -122,6 +122,9 @@ export class AuthController {
     );
   }
 
+  // Each request can send a mail: a tight limit per IP on top of the one mail
+  // per account every few minutes.
+  @Throttle({ default: { limit: 10, ttl: 60 * 60_000 } })
   @Post('forgot-password')
   forgotPassword(@Body() body: ForgotPasswordDto) {
     return this.authService.forgotPassword(body.email);
