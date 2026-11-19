@@ -7,7 +7,9 @@ import {
   UseGuards,
   Headers,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { UserThrottlerGuard } from '../common/throttling';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -43,7 +45,10 @@ export class TicketsController {
     return { success: true, message: 'Entrada transferida con éxito' };
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  // Per scanner, not per IP: every scanner of a door shares the venue's WiFi.
+  // One phone checks at most about one code a second.
+  @Throttle({ default: { limit: 300, ttl: 60_000 } })
+  @UseGuards(JwtAuthGuard, RolesGuard, UserThrottlerGuard)
   // Permite a todos, porque la seguridad real se valida por EventStaff en la lógica
   @Roles('ORGANIZER', 'ADMIN', 'CUSTOMER')
   @Post('check-in')

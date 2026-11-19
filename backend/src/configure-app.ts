@@ -42,5 +42,7 @@ export function configureApp(app: INestApplication) {
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
+    // With a 429 the site waits what the limit says before trying again.
+    exposedHeaders: ['Retry-After'],
   });
 }
