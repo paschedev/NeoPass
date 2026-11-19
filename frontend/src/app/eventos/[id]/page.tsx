@@ -19,6 +19,9 @@ import { TURNSTILE_OPTIONS } from '@/utils/captcha';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
+import { useAutoRetry } from '@/hooks/useAutoRetry';
+import BusyNotice, { type BusyKind } from '@/components/ui/BusyNotice';
+import { isBusyStatus } from '@/utils/busy-retry';
 import { optimizeCloudinaryUrl } from '@/utils/cloudinary';
 import {
   formatCurrency,
@@ -48,7 +51,11 @@ function EventContent() {
   const rppFromUrl = searchParams.get('rpp');
 
   const [event, setEvent] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const [load, setLoad] = useState<'loading' | 'ready' | 'missing' | BusyKind>(
+    'loading',
+  );
+  const { attempt, secondsLeft, schedule, succeeded, retryNow } =
+    useAutoRetry();
   const [buying, setBuying] = useState(false);
   const [selectedRpp, setSelectedRpp] = useState<string>(rppFromUrl || '');
   const [cart, setCart] = useState<Record<string, number>>({});
@@ -66,27 +73,44 @@ function EventContent() {
     turnstileRef.current?.reset();
   };
 
+  // Too many people, a server error or no answer in time: a notice that tries
+  // again by itself. Only a 404 (draft, finished or missing event) is "Evento
+  // no encontrado". The promoters are optional: without them the page loads.
   useEffect(() => {
-    Promise.all([
-      // A 404 (draft, finished or missing event) leaves `event` empty and the
-      // page shows "Evento no encontrado" instead of the error JSON.
-      apiFetch(
-        rppFromUrl ? `/events/${id}?rpp=${rppFromUrl}` : `/events/${id}`,
-      ).then((res) => (res.ok ? res.json() : null)),
-      apiFetch(`/events/${id}/promoters`).then((res) =>
-        res.ok ? res.json() : [],
-      ),
-    ])
-      .then(([eventData, promotersData]) => {
-        setEvent(eventData);
-        setPromoters(promotersData);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setLoading(false);
-      });
-  }, [id]);
+    let current = true;
+    const loadEvent = async () => {
+      try {
+        const [res, promotersData] = await Promise.all([
+          apiFetch(
+            rppFromUrl ? `/events/${id}?rpp=${rppFromUrl}` : `/events/${id}`,
+          ),
+          apiFetch(`/events/${id}/promoters`)
+            .then((r) => (r.ok ? r.json() : []))
+            .catch(() => []),
+        ]);
+        if (!current) return;
+        if (res.ok) {
+          setEvent(await res.json());
+          setPromoters(promotersData);
+          setLoad('ready');
+          succeeded();
+        } else if (isBusyStatus(res.status) || res.status >= 500) {
+          setLoad(isBusyStatus(res.status) ? 'busy' : 'failed');
+          schedule(res.headers.get('Retry-After'));
+        } else {
+          setLoad('missing');
+        }
+      } catch {
+        if (!current) return;
+        setLoad('failed');
+        schedule(null);
+      }
+    };
+    void loadEvent();
+    return () => {
+      current = false;
+    };
+  }, [id, rppFromUrl, attempt, schedule, succeeded]);
 
   const handleQuantityChange = (
     ticketTypeId: string,
@@ -152,8 +176,19 @@ function EventContent() {
     }
   };
 
-  if (loading) return <div className="text-center py-20">Cargando...</div>;
-  if (!event)
+  if (load === 'loading')
+    return <div className="text-center py-20">Cargando...</div>;
+  if (load === 'busy' || load === 'failed')
+    return (
+      <BusyNotice
+        kind={load}
+        subject="el evento"
+        secondsLeft={secondsLeft}
+        onRetry={retryNow}
+        className="px-4 pt-20 pb-24 md:pb-20"
+      />
+    );
+  if (load === 'missing' || !event)
     return <div className="text-center py-20">Evento no encontrado</div>;
 
   const totals = calculateCheckoutTotals(
@@ -175,8 +210,7 @@ function EventContent() {
         <>
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-red-500/5 border border-red-500/20 rounded-2xl p-4">
             <p className="text-sm text-neutral-300">
-              Sos ADMIN de NeoPass: podés sacar este evento de la vista
-              pública.
+              Sos ADMIN de NeoPass: podés sacar este evento de la vista pública.
             </p>
             <button
               type="button"
