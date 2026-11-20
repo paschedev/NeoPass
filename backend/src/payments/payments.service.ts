@@ -243,6 +243,13 @@ export class PaymentsService {
     }
     // A cancelled order can also have a payment: it was refunded.
     if (order.status === 'PAID' || order.payment) {
+      // Mercado Pago notifies a payment more than once, and two of those
+      // notifications can run at the same time: the other one may have paid
+      // the order with this very payment after our first check. Only checked
+      // here, so a normal purchase makes no extra query.
+      if (await this.paymentsRepository.isPaymentRegistered(paymentId)) {
+        return null;
+      }
       await this.reportPaymentIssue(order, paymentId, 'DUPLICATE_PAYMENT');
       return null;
     }
