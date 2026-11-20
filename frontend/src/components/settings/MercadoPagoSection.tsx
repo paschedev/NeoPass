@@ -4,13 +4,14 @@ import ConnectMercadoPagoButton from '@/components/panel/ConnectMercadoPagoButto
 // Organizer's Mercado Pago account, where the ticket sales are paid.
 export default function MercadoPagoSection({ linked }: { linked: boolean }) {
   return (
-    <section className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-8">
+    <section className="p-6 md:p-8">
       <div className="flex items-center gap-4 mb-6">
-        <div className="w-12 h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-400">
-          <Link2 className="w-6 h-6" />
-        </div>
+        <Link2
+          aria-hidden="true"
+          className="w-5 h-5 shrink-0 text-neutral-400"
+        />
         <div>
-          <h2 className="text-xl font-bold text-white">Mercado Pago</h2>
+          <h2 className="text-lg font-bold text-white">Mercado Pago</h2>
           <p className="text-neutral-400 text-sm">
             La cuenta donde cobrás tus entradas
           </p>
@@ -18,7 +19,7 @@ export default function MercadoPagoSection({ linked }: { linked: boolean }) {
       </div>
 
       {linked ? (
-        <div className="mb-6 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+        <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
           <p className="text-emerald-400 text-sm font-medium flex items-center gap-2 mb-4">
             <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
             Ya tenés una cuenta de Mercado Pago vinculada.
@@ -26,7 +27,7 @@ export default function MercadoPagoSection({ linked }: { linked: boolean }) {
           <ConnectMercadoPagoButton variant="change" />
         </div>
       ) : (
-        <div className="mb-6">
+        <div>
           <p className="text-sm text-neutral-400 mb-6 leading-relaxed">
             Al conectar tu cuenta de Mercado Pago autorizás a NeoPass a procesar
             las ventas en tu nombre. El valor de tus entradas va{' '}

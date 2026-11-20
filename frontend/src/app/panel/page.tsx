@@ -125,19 +125,14 @@ function OrganizerDashboardContent() {
     <div className="max-w-7xl mx-auto px-4 pt-8 pb-24 md:pb-8">
       {/* Header & Title */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-        <div>
-          <h1 className="font-outfit text-4xl font-bold text-white mb-2">
-            Panel del organizador
-          </h1>
-          <p className="text-neutral-400">
-            Gestioná tus eventos, tandas de entradas y comisiones de promotores.
-          </p>
-        </div>
+        <h1 className="font-outfit text-4xl font-bold text-white">
+          Panel del organizador
+        </h1>
         <button
           onClick={handleCreateEventClick}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-full font-medium transition-all flex items-center gap-2 shadow-lg shadow-indigo-500/20 active:scale-95"
+          className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-full font-medium transition-colors flex items-center gap-2 active:scale-95"
         >
-          <Plus className="w-5 h-5" /> Crear Evento
+          <Plus className="w-5 h-5" /> Crear evento
         </button>
       </div>
 
@@ -171,8 +166,10 @@ function OrganizerDashboardContent() {
         )}
       </AnimatePresence>
 
-      {/* Tabs Navigation */}
-      <div className="flex w-full bg-white/[0.02] border border-white/5 p-1 rounded-2xl mb-8">
+      {/* Pestañas: la elegida en índigo y el hover en un índigo más suave,
+          con un espacio entre botones para que dos resaltados no se peguen.
+          Solo cambia el color: nada se mueve al pasar o elegir. */}
+      <div className="flex w-full gap-1 bg-white/[0.02] border border-white/10 p-1 rounded-2xl mb-8">
         {[
           {
             id: 'dashboard',
@@ -198,10 +195,11 @@ function OrganizerDashboardContent() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-1 md:px-3 py-3 rounded-xl flex-1 transition-all ${
+            aria-pressed={activeTab === tab.id}
+            className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-1 md:px-3 py-3 rounded-xl flex-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 ${
               activeTab === tab.id
-                ? 'bg-white/10 text-white shadow-sm'
-                : 'text-neutral-500 hover:text-white hover:bg-white/5'
+                ? 'bg-indigo-500/20 text-indigo-200'
+                : 'text-neutral-400 hover:text-white hover:bg-indigo-500/10'
             }`}
           >
             {tab.icon}
