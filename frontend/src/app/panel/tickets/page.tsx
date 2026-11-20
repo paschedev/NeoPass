@@ -171,12 +171,9 @@ export default function MisEntradasPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-6 pb-24 pt-8 md:py-12 md:pt-24">
-      <h1 className="font-outfit text-4xl font-bold text-white mb-2">
+      <h1 className="font-outfit text-4xl font-bold text-white mb-10">
         Mis entradas
       </h1>
-      <p className="text-neutral-400 mb-10">
-        Tus accesos a los mejores eventos.
-      </p>
 
       {(user?.emailVerified === false || locked > 0) && (
         <ConfirmEmailNotice locked={locked} onConfirm={unlock} />
