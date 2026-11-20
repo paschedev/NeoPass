@@ -36,14 +36,10 @@ export function configureApp(app: INestApplication) {
     new DatabaseBusyFilter(app.get(HttpAdapterHost).httpAdapter),
   );
   const frontendUrl = app.get(ConfigService).getOrThrow<string>('FRONTEND_URL');
+  // Para probar en local alcanza con FRONTEND_URL: producción no acepta
+  // pedidos desde localhost.
   app.enableCors({
-    origin: [
-      frontendUrl,
-      'https://neopass.ar',
-      'https://www.neopass.ar',
-      'http://localhost:3000',
-      'http://127.0.0.1:3000',
-    ],
+    origin: [frontendUrl, 'https://neopass.ar', 'https://www.neopass.ar'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
     // With a 429 the site waits what the limit says before trying again.
