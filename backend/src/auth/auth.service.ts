@@ -25,6 +25,12 @@ import {
 } from '../legal/legal-documents';
 
 const EMAIL_TAKEN = 'El correo electrónico ya existe';
+const RESET_LINK_MS = 60 * 60 * 1000;
+// One recovery mail per account every 5 minutes: asking again sooner keeps the
+// link already sent. Nobody can flood a mailbox or spend the day's mails.
+const RESET_MAIL_GAP_MS = 5 * 60 * 1000;
+const RESET_SENT_MESSAGE =
+  'Si el correo existe, te enviamos un enlace para recuperar la contraseña.';
 
 function hashResetToken(token: string) {
   return crypto.createHash('sha256').update(token).digest('hex');
@@ -224,24 +230,22 @@ export class AuthService {
     };
   }
 
+  // The same answer whether the account exists, gets a mail or already got
+  // one a moment ago: it never tells which emails are registered.
   async forgotPassword(email: string) {
     const user = await this.userRepository.findByEmail(email);
-    if (!user) {
-      // Return success even if not found for security reasons
-      return {
-        message:
-          'Si el correo existe, te enviamos un enlace para recuperar la contraseña.',
-      };
-    }
+    if (!user) return { message: RESET_SENT_MESSAGE };
 
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpires = new Date(Date.now() + 3600000); // 1 hour
-
+    const now = Date.now();
     // Only the hash is stored: a database leak doesn't expose usable links.
-    await this.userRepository.update(user.id, {
-      passwordResetToken: hashResetToken(resetToken),
-      passwordResetExpires: resetTokenExpires,
-    });
+    const started = await this.userRepository.startPasswordReset(
+      user.id,
+      hashResetToken(resetToken),
+      new Date(now + RESET_LINK_MS),
+      new Date(now + RESET_LINK_MS - RESET_MAIL_GAP_MS),
+    );
+    if (!started) return { message: RESET_SENT_MESSAGE };
 
     const resetLink = `${this.config.getOrThrow<string>('FRONTEND_URL')}/reset-password?token=${resetToken}`;
 
@@ -251,10 +255,7 @@ export class AuthService {
       resetLink,
     });
 
-    return {
-      message:
-        'Si el correo existe, te enviamos un enlace para recuperar la contraseña.',
-    };
+    return { message: RESET_SENT_MESSAGE };
   }
 
   async resetPassword(token: string, newPass: string) {

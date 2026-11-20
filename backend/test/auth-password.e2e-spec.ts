@@ -8,6 +8,9 @@ import { resetDb } from './utils/test-database';
 
 type ResetMailJob = [string, { resetLink: string }];
 
+const BUSY_MESSAGE =
+  'Hay mucha demanda en este momento. Probá de nuevo en unos segundos.';
+
 describe('Contraseñas y sesiones', () => {
   let t: TestApp;
 
@@ -38,11 +41,18 @@ describe('Contraseñas y sesiones', () => {
     return `Bearer ${token}`;
   }
 
-  async function requestResetLink(email: string) {
-    await request(server())
+  // Asking for a link has a limit per IP and hour that outlives resetDb: every
+  // request comes from its own address.
+  let nextAddress = 1;
+  function forgotPassword(email: string, ip = `181.46.0.${nextAddress++}`) {
+    return request(server())
       .post('/auth/forgot-password')
-      .send({ email })
-      .expect(201);
+      .set('X-Forwarded-For', ip)
+      .send({ email });
+  }
+
+  async function requestResetLink(email: string) {
+    await forgotPassword(email).expect(201);
     const [, job] = t.queues.mail.add.mock.calls.at(-1) as ResetMailJob;
     return new URL(job.resetLink);
   }
@@ -186,5 +196,62 @@ describe('Contraseñas y sesiones', () => {
       .set('Authorization', oldSession(user))
       .send({ oldPassword: 'clave-vieja-123', newPassword: 'corta7' })
       .expect(400);
+  });
+
+  describe('freno a los mails de recuperación', () => {
+    const resetMails = () =>
+      t.queues.mail.add.mock.calls.filter(
+        ([name]) => name === 'send-password-reset',
+      ) as ResetMailJob[];
+
+    it('pedirlo dos veces en 5 minutos manda un solo mail y responde lo mismo las dos veces', async () => {
+      const user = await userWithPassword();
+
+      const first = await forgotPassword(user.email).expect(201);
+      const second = await forgotPassword(user.email).expect(201);
+
+      expect(second.body).toEqual(first.body);
+      expect(resetMails()).toHaveLength(1);
+    });
+
+    it('el link del primer mail sigue sirviendo después de pedir otro', async () => {
+      const user = await userWithPassword();
+      await forgotPassword(user.email).expect(201);
+      await forgotPassword(user.email).expect(201);
+      const [[, job]] = resetMails();
+
+      await request(server())
+        .post('/auth/reset-password')
+        .send({
+          token: new URL(job.resetLink).searchParams.get('token'),
+          newPassword: 'clave-nueva-456',
+        })
+        .expect(201);
+    });
+
+    it('pasados 5 minutos se puede pedir otro mail', async () => {
+      const user = await userWithPassword();
+      await forgotPassword(user.email).expect(201);
+      // As if the first link had been sent 6 minutes ago.
+      await t.prisma.user.update({
+        where: { id: user.id },
+        data: { passwordResetExpires: new Date(Date.now() + 54 * 60_000) },
+      });
+
+      await forgotPassword(user.email).expect(201);
+
+      expect(resetMails()).toHaveLength(2);
+    });
+
+    it('el pedido número 11 en una hora desde la misma IP recibe el aviso', async () => {
+      const ip = '181.46.1.1';
+      for (let i = 0; i < 10; i++) {
+        await forgotPassword(`nadie-${i}@neopass.test`, ip).expect(201);
+      }
+
+      const res = await forgotPassword('otro@neopass.test', ip).expect(429);
+
+      expect((res.body as { message: string }).message).toBe(BUSY_MESSAGE);
+    });
   });
 });

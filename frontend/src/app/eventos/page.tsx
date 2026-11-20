@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { Search, Calendar, MapPin } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { apiFetch } from '@/utils/api';
+import { isBusyStatus } from '@/utils/busy-retry';
+import { useAutoRetry } from '@/hooks/useAutoRetry';
+import BusyNotice, { type BusyKind } from '@/components/ui/BusyNotice';
 import { optimizeCloudinaryUrl } from '@/utils/cloudinary';
 import { formatEventRange } from '@/utils/format';
 
@@ -25,25 +28,60 @@ export default function EventosPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  // Why the last page could not load; it is tried again by itself.
+  const [loadError, setLoadError] = useState<BusyKind | null>(null);
+  const { attempt, secondsLeft, schedule, succeeded, retryNow } =
+    useAutoRetry();
   const [searchTerm, setSearchTerm] = useState('');
 
+  // A page that fails is tried again, the same one: "Ver más" never skips one.
   useEffect(() => {
-    apiFetch(`/events?page=${page}&limit=${EVENTS_PER_PAGE}`)
-      .then(async (res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data: { items: EventSummary[]; total: number }) => {
+    let current = true;
+    const loadPage = async () => {
+      try {
+        const res = await apiFetch(
+          `/events?page=${page}&limit=${EVENTS_PER_PAGE}`,
+        );
+        if (!current) return;
+        if (!res.ok) {
+          setLoadError(isBusyStatus(res.status) ? 'busy' : 'failed');
+          schedule(res.headers.get('Retry-After'));
+          return;
+        }
+        const data = (await res.json()) as {
+          items: EventSummary[];
+          total: number;
+        };
         setEvents((prev) =>
           page === 1 ? data.items : [...prev, ...data.items],
         );
         setTotal(data.total);
-        setLoadError(false);
-      })
-      .catch(() => setLoadError(true))
-      .finally(() => setLoading(false));
-  }, [page]);
+        setLoadError(null);
+        succeeded();
+      } catch {
+        if (!current) return;
+        setLoadError('failed');
+        schedule(null);
+      } finally {
+        if (current) setLoading(false);
+      }
+    };
+    void loadPage();
+    return () => {
+      current = false;
+    };
+  }, [page, attempt, schedule, succeeded]);
+
+  const retryNotice = (className: string) =>
+    loadError && (
+      <BusyNotice
+        kind={loadError}
+        subject="los eventos"
+        secondsLeft={secondsLeft}
+        onRetry={retryNow}
+        className={className}
+      />
+    );
 
   const filteredEvents = events.filter((event) => {
     const searchLower = searchTerm.toLowerCase();
@@ -83,9 +121,7 @@ export default function EventosPage() {
           Cargando eventos...
         </div>
       ) : loadError && events.length === 0 ? (
-        <div className="text-center text-neutral-400 py-20">
-          No pudimos cargar los eventos. Probá de nuevo en unos minutos.
-        </div>
+        retryNotice('py-20')
       ) : events.length === 0 ? (
         <div className="flex flex-col items-center justify-center bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
           <p className="text-neutral-400 mb-6 text-lg">
@@ -159,15 +195,19 @@ export default function EventosPage() {
             </div>
           )}
 
-          {events.length < total && (
-            <div className="col-span-full flex justify-center">
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl font-medium transition-colors border border-white/10"
-              >
-                Ver más eventos
-              </button>
-            </div>
+          {loadError ? (
+            <div className="col-span-full">{retryNotice('')}</div>
+          ) : (
+            events.length < total && (
+              <div className="col-span-full flex justify-center">
+                <button
+                  onClick={() => setPage((p) => p + 1)}
+                  className="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl font-medium transition-colors border border-white/10"
+                >
+                  Ver más eventos
+                </button>
+              </div>
+            )
           )}
         </motion.div>
       )}

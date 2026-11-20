@@ -207,6 +207,37 @@ describe('Scanner de accesos', () => {
     expect(within(result()!).getByText('VÁLIDO')).toBeInTheDocument();
   });
 
+  it.each([429, 503, 500])(
+    'con el servidor saturado (%i) avisa que no se pudo validar, nunca que es inválida, y deja reintentar',
+    async (status) => {
+      mockedFetch
+        .mockResolvedValueOnce(
+          answer({ message: 'Hay mucha demanda en este momento.' }, status),
+        )
+        .mockResolvedValueOnce(answer(VALID));
+      await camera('qr-1');
+
+      expect(
+        within(result()!).getByText('NO SE PUDO VALIDAR'),
+      ).toBeInTheDocument();
+      expect(
+        within(result()!).getByText(
+          'Hay mucha demanda. Reintentá en unos segundos',
+        ),
+      ).toBeInTheDocument();
+      expect(within(result()!).queryByText(/INVÁLID/)).toBeNull();
+
+      await act(async () => {
+        fireEvent.click(
+          within(result()!).getByRole('button', { name: 'Reintentar' }),
+        );
+      });
+
+      expect(checkedCodes()).toEqual(['qr-1', 'qr-1']);
+      expect(within(result()!).getByText('VÁLIDO')).toBeInTheDocument();
+    },
+  );
+
   it('muestra los últimos escaneos, el más reciente arriba', async () => {
     mockedFetch
       .mockResolvedValueOnce(answer(VALID))

@@ -75,6 +75,7 @@ export default function ScanResultPanel({
     result.validUntil && entryDeadlinePassedLabel(result.validUntil),
     result.opensAt && checkInOpensLabel(result.opensAt),
     result.status === 'NO_CONNECTION' && 'Revisá la conexión y reintentá',
+    result.status === 'BUSY' && 'Hay mucha demanda. Reintentá en unos segundos',
   ].filter((detail): detail is string => Boolean(detail));
 
   return (

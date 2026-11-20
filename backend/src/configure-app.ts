@@ -14,10 +14,14 @@ import { validationMessages } from './common/validation-messages';
 // Configuración HTTP compartida entre main.ts y los tests e2e,
 // para que los tests corran contra la misma app que producción.
 export function configureApp(app: INestApplication) {
-  // Railway puts one proxy in front of the app: without this, req.ip is the
-  // proxy's address and every client shares the same rate limit.
+  // Two hops of Railway in front of the app, measured in production on
+  // 2026-11-19: the connection comes from an internal address (100.64.0.0/10)
+  // and X-Forwarded-For is "client, edge node", rewritten by Railway (what the
+  // client sends there is dropped). Trusting both hops makes req.ip the
+  // client; with 1 it was the edge node, so everyone entering through the
+  // same node shared the limits and counted as one visitor of a promoter.
   const server = app.getHttpAdapter().getInstance() as Express;
-  server.set('trust proxy', 1);
+  server.set('trust proxy', 2);
   app.use(helmet());
   app.useGlobalPipes(
     new NullCharactersPipe(),
@@ -42,5 +46,7 @@ export function configureApp(app: INestApplication) {
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
+    // With a 429 the site waits what the limit says before trying again.
+    exposedHeaders: ['Retry-After'],
   });
 }

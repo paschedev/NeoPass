@@ -11,6 +11,7 @@ import {
   Ip,
   Header,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { EventsService } from './events.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -29,12 +30,17 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ListEventsQueryDto } from './dto/list-events-query.dto';
 import { ParseIdPipe } from '../common/parse-id.pipe';
 
+// What everyone opens at once when a batch goes on sale. Behind the carriers'
+// CGNAT many buyers share one IP, and these routes only read public data.
+const PUBLIC_PAGE_LIMIT = { default: { limit: 300, ttl: 60_000 } };
+
 // The routes of one event are for its team: the owner and the co-organizers,
 // who can have any account. The service checks who can do what on each event.
 @Controller('events')
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
+  @Throttle(PUBLIC_PAGE_LIMIT)
   @Get()
   findPublicPage(@Query() query: ListEventsQueryDto) {
     return this.eventsService.findPublicPage(query.page, query.limit);
@@ -151,6 +157,7 @@ export class EventsController {
     return this.eventsService.findOneForTeam(id, userId);
   }
 
+  @Throttle(PUBLIC_PAGE_LIMIT)
   @Get(':id')
   findOne(
     @Param('id', ParseIdPipe) id: string,
@@ -160,6 +167,7 @@ export class EventsController {
     return this.eventsService.findOne(id, rppId, visitorIp);
   }
 
+  @Throttle(PUBLIC_PAGE_LIMIT)
   @Get(':id/promoters')
   getPublicPromoters(@Param('id', ParseIdPipe) id: string) {
     return this.eventsService.getPublicPromoters(id);

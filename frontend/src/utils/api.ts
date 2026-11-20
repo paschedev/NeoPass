@@ -1,3 +1,5 @@
+const LOAD_TIMEOUT_MS = 15_000;
+
 export async function apiFetch(url: string, options: RequestInit = {}) {
   // Solo aplicar prefijo si la ruta empieza con '/' (relativa a nuestra API)
   const isRelativeUrl = url.startsWith('/');
@@ -33,9 +35,18 @@ export async function apiFetch(url: string, options: RequestInit = {}) {
     headers.set('Content-Type', 'application/json');
   }
 
+  // A load that takes too long gives up, so the page can offer to try again
+  // instead of "Cargando..." for minutes. Not a purchase or a scan: cutting
+  // one would leave us not knowing whether it went through.
+  const method = (options.method ?? 'GET').toUpperCase();
+  const signal =
+    options.signal ??
+    (method === 'GET' ? AbortSignal.timeout(LOAD_TIMEOUT_MS) : undefined);
+
   const response = await fetch(finalUrl, {
     cache: 'no-store',
     ...options,
+    signal,
     headers,
   });
 
