@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ArrowLeft, Send } from 'lucide-react';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
-import { z } from 'zod';
+import { z } from '@/utils/zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 

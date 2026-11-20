@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '@/utils/zod';
 
 export const MAX_PRESETS = 7;
 
