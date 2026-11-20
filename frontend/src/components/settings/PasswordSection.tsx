@@ -114,14 +114,15 @@ export default function PasswordSection() {
   };
 
   return (
-    <section className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-8">
+    <section className="p-6 md:p-8">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center text-purple-400">
-            <Key className="w-6 h-6" />
-          </div>
+          <Key
+            aria-hidden="true"
+            className="w-5 h-5 shrink-0 text-neutral-400"
+          />
           <div>
-            <h2 className="text-xl font-bold text-white">
+            <h2 className="text-lg font-bold text-white">
               Seguridad de la cuenta
             </h2>
             <p className="text-neutral-400 text-sm">

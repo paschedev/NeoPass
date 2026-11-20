@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react';
-import { Ticket } from 'lucide-react';
 
 // El marco de Ingresar y Registro: una columna angosta y centrada sobre el
-// fondo, con el resplandor de la landing (la barra de arriba lleva al inicio).
+// fondo liso (la barra de arriba lleva al inicio).
 export default function AuthShell({
   title,
   subtitle,
@@ -13,17 +12,9 @@ export default function AuthShell({
   children: ReactNode;
 }) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-neutral-950 px-4 pt-6 pb-24 md:pb-12">
-      <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-40 -left-32 w-96 h-96 md:w-[36rem] md:h-[36rem] rounded-full bg-brand-600/15 blur-3xl motion-safe:animate-drift" />
-        <div className="absolute -bottom-40 -right-32 w-96 h-96 md:w-[32rem] md:h-[32rem] rounded-full bg-brand-accent/10 blur-3xl motion-safe:animate-drift [--delay:-12s]" />
-      </div>
-
-      <main className="relative mx-auto w-full max-w-sm pt-16 md:pt-24">
+    <div className="min-h-screen bg-neutral-950 px-4 pt-6 pb-24 md:pb-12">
+      <main className="mx-auto w-full max-w-sm pt-16 md:pt-24">
         <div className="text-center mb-8">
-          <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-neutral-900 shadow-lg shadow-brand-600/10">
-            <Ticket className="h-6 w-6 text-brand-400" />
-          </div>
           <h1 className="font-outfit text-2xl md:text-3xl font-bold tracking-tight text-white">
             {title}
           </h1>

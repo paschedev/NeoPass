@@ -2,12 +2,6 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import {
-  Calendar as CalendarIcon,
-  DollarSign,
-  Library,
-  Ticket,
-} from 'lucide-react';
 import { formatCurrency } from '@/utils/format';
 import MetricCard from './MetricCard';
 import RecentSales from './RecentSales';
@@ -25,32 +19,27 @@ export default function DashboardTab({ stats }: { stats: DashboardStats }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+      {/* Una franja con divisiones: en el celular los ingresos ocupan la
+          primera fila (el número más largo) y las otras tres van debajo. */}
+      <dl className="grid grid-cols-3 lg:grid-cols-4 gap-px bg-white/10 border border-white/10 rounded-2xl overflow-hidden mb-10">
         <MetricCard
           title="Ingresos totales"
           value={formatCurrency(stats.totalRevenue)}
-          icon={<DollarSign className="text-emerald-400 w-6 h-6" />}
-          color="emerald"
+          className="col-span-3 lg:col-span-1"
         />
         <MetricCard
           title="Entradas vendidas"
           value={stats.totalTicketsSold.toString()}
-          icon={<Ticket className="text-indigo-400 w-6 h-6" />}
-          color="indigo"
         />
         <MetricCard
           title="Eventos activos"
           value={stats.activeEvents.toString()}
-          icon={<CalendarIcon className="text-purple-400 w-6 h-6" />}
-          color="purple"
         />
         <MetricCard
           title="Eventos totales"
           value={stats.totalEvents.toString()}
-          icon={<Library className="text-blue-400 w-6 h-6" />}
-          color="blue"
         />
-      </div>
+      </dl>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <SalesChart points={stats.chartData} />

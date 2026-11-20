@@ -201,7 +201,7 @@ export default function EventForm({
               <input
                 id="title"
                 type="text"
-                placeholder="Ej: Tech Meetup 2026"
+                placeholder="Ej: Techno Night"
                 className={fieldClass(errors.title?.message)}
                 {...register('title')}
               />
@@ -304,7 +304,7 @@ export default function EventForm({
                 id="venueName"
                 type="text"
                 readOnly={inProgress}
-                placeholder="Ej: Centro de Convenciones"
+                placeholder="Ej: Club Central"
                 className={fieldClass(errors.venueName?.message)}
                 {...register('venueName')}
               />
