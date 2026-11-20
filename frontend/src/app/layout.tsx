@@ -35,11 +35,6 @@ export default function RootLayout({
         className="font-inter bg-neutral-950 text-neutral-50 antialiased selection:bg-indigo-500/30"
       >
         <main className="min-h-screen flex flex-col relative">
-          {/* Subtle background glow */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none -z-10">
-            <div className="hidden md:block absolute top-0 -left-10 w-96 h-96 bg-indigo-600/20 rounded-full blur-[128px]" />
-            <div className="hidden md:block absolute top-1/2 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-[128px]" />
-          </div>
           <Navbar />
           <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
           <BottomNav />

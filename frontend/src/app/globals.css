@@ -8,15 +8,6 @@
 /* Animaciones. Van inline para que cada elemento pueda retrasar la suya con
    [--delay:…]: un [animation-delay:…] suelto lo pisa el shorthand. */
 @theme inline {
-  /* El resplandor del fondo de la landing, que se mueve lento. */
-  --animate-drift: drift 24s ease-in-out var(--delay, 0s) infinite alternate;
-
-  @keyframes drift {
-    to {
-      transform: translate(10%, 8%) scale(1.15);
-    }
-  }
-
   /* La entrada del hero al cargar la página: sube y aparece. */
   --animate-fade-up: fade-up 700ms cubic-bezier(0.16, 1, 0.3, 1)
     var(--delay, 0s) both;
