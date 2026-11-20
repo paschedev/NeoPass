@@ -87,6 +87,40 @@ describe('Página del evento', () => {
     expect(await screen.findByText('Organiza Productora Sur')).toBeVisible();
   });
 
+  it('muestra el flyer entero, sin recortarlo', async () => {
+    const imageUrl =
+      'https://res.cloudinary.com/neopass/image/upload/v1/flyer.png';
+    vi.mocked(apiFetch).mockImplementation(async (path) =>
+      path === '/events/e1'
+        ? Response.json({ ...event, imageUrl })
+        : Response.json([]),
+    );
+
+    render(<EventPage />);
+
+    const flyer = await screen.findByRole('img', { name: 'Fiesta Bresh' });
+    expect(flyer).toHaveAttribute(
+      'src',
+      'https://res.cloudinary.com/neopass/image/upload/f_auto,q_auto/v1/flyer.png',
+    );
+  });
+
+  it('dice cuándo y dónde es', async () => {
+    vi.mocked(apiFetch).mockImplementation(async (path) =>
+      path === '/events/e1' ? Response.json(event) : Response.json([]),
+    );
+
+    render(<EventPage />);
+
+    const when = await screen.findByText('Cuándo');
+    expect(when.nextElementSibling).toHaveTextContent(
+      /jue, 19 nov, 23:00 hs\s*hasta el vie, 20 nov, 05:00 hs/,
+    );
+    expect(screen.getByText('Dónde').nextElementSibling).toHaveTextContent(
+      /Niceto Club\s*Niceto Vega 5510/,
+    );
+  });
+
   function onSale(buyerFeePercentage: string) {
     return {
       ...event,
