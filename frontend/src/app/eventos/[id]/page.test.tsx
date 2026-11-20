@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { apiFetch } from '@/utils/api';
 import EventPage from './page';
 
@@ -102,7 +108,9 @@ describe('Página del evento', () => {
 
   it('muestra el cargo de servicio como monto, sin porcentaje, y el total que cobra Mercado Pago', async () => {
     vi.mocked(apiFetch).mockImplementation(async (path) =>
-      path === '/events/e1' ? Response.json(onSale('18.15')) : Response.json([]),
+      path === '/events/e1'
+        ? Response.json(onSale('18.15'))
+        : Response.json([]),
     );
 
     render(<EventPage />);
@@ -117,7 +125,9 @@ describe('Página del evento', () => {
   it('calcula el cargo con el porcentaje que informa el evento para el comprador', async () => {
     // Un organizador que cobra a 35 días: el comprador paga 10,67 %.
     vi.mocked(apiFetch).mockImplementation(async (path) =>
-      path === '/events/e1' ? Response.json(onSale('10.67')) : Response.json([]),
+      path === '/events/e1'
+        ? Response.json(onSale('10.67'))
+        : Response.json([]),
     );
 
     render(<EventPage />);
@@ -161,5 +171,82 @@ describe('Página del evento', () => {
 
     await waitFor(() => expect(sentTokens).toHaveLength(2));
     expect(sentTokens[0]).not.toBe(sentTokens[1]);
+  });
+
+  describe('con mucha demanda', () => {
+    afterEach(() => vi.useRealTimers());
+
+    const busy = (status: number, retryAfter?: string) =>
+      Response.json(
+        { message: 'Hay mucha demanda en este momento.' },
+        { status, headers: retryAfter ? { 'Retry-After': retryAfter } : {} },
+      );
+
+    it('avisa que hay mucha gente, cuenta los segundos y reintenta sola hasta mostrar el evento', async () => {
+      vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+      let eventCalls = 0;
+      vi.mocked(apiFetch).mockImplementation(async (path) => {
+        if (path !== '/events/e1') return Response.json([]);
+        eventCalls += 1;
+        return eventCalls === 1 ? busy(429, '3') : Response.json(event);
+      });
+
+      render(<EventPage />);
+
+      expect(await screen.findByText('Hay mucha gente entrando')).toBeVisible();
+      expect(screen.getByText(/Reintentamos en 0:0[34]/)).toBeVisible();
+      expect(screen.queryByText('Evento no encontrado')).toBeNull();
+
+      await act(async () => {
+        vi.advanceTimersByTime(4_500);
+      });
+
+      expect(await screen.findByText('Fiesta Bresh')).toBeVisible();
+      expect(eventCalls).toBe(2);
+    });
+
+    it('sin respuesta a tiempo ofrece reintentar ahora', async () => {
+      let eventCalls = 0;
+      vi.mocked(apiFetch).mockImplementation(async (path) => {
+        if (path !== '/events/e1') return Response.json([]);
+        eventCalls += 1;
+        if (eventCalls === 1) {
+          throw new DOMException('Tardó demasiado', 'TimeoutError');
+        }
+        return Response.json(event);
+      });
+
+      render(<EventPage />);
+      expect(
+        await screen.findByText('No pudimos cargar el evento'),
+      ).toBeVisible();
+      fireEvent.click(screen.getByRole('button', { name: 'Reintentar ahora' }));
+
+      expect(await screen.findByText('Fiesta Bresh')).toBeVisible();
+    });
+
+    it('con la base saturada también avisa y no dice que el evento no existe', async () => {
+      vi.mocked(apiFetch).mockImplementation(async (path) =>
+        path === '/events/e1' ? busy(503) : Response.json([]),
+      );
+
+      render(<EventPage />);
+
+      expect(await screen.findByText('Hay mucha gente entrando')).toBeVisible();
+      expect(screen.queryByText('Evento no encontrado')).toBeNull();
+    });
+
+    it('"Evento no encontrado" solo cuando el evento no existe', async () => {
+      vi.mocked(apiFetch).mockImplementation(async (path) =>
+        path === '/events/e1'
+          ? Response.json({ message: 'No encontrado' }, { status: 404 })
+          : Response.json([]),
+      );
+
+      render(<EventPage />);
+
+      expect(await screen.findByText('Evento no encontrado')).toBeVisible();
+      expect(screen.queryByText('Reintentar ahora')).toBeNull();
+    });
   });
 });

@@ -8,6 +8,7 @@ import { BaseExceptionFilter } from '@nestjs/core';
 import { Prisma } from '@prisma/client';
 import type { Request } from 'express';
 import { isDatabaseBusyError } from '../prisma/prisma-errors';
+import { BUSY_MESSAGE } from './throttling';
 
 // Under a peak the database may not keep up: the buyer gets a 503 they can
 // retry instead of a generic 500. Any other Prisma error keeps Nest's default
@@ -23,11 +24,6 @@ export class DatabaseBusyFilter extends BaseExceptionFilter {
     this.logger.warn(
       `Database busy (${exception.code}) on ${request.method} ${request.path}`,
     );
-    super.catch(
-      new ServiceUnavailableException(
-        'Hay mucha demanda en este momento. Probá de nuevo en unos segundos.',
-      ),
-      host,
-    );
+    super.catch(new ServiceUnavailableException(BUSY_MESSAGE), host);
   }
 }

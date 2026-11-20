@@ -70,6 +70,29 @@ export class UserRepository {
     return count === 1;
   }
 
+  // A new recovery link, unless the last one is too recent: a link expires a
+  // fixed time after it is sent, so an expiry after `recentAfter` means it was
+  // sent a moment ago. One conditional write, so two requests at once send a
+  // single mail. False when the last link is that recent.
+  async startPasswordReset(
+    id: string,
+    tokenHash: string,
+    expiresAt: Date,
+    recentAfter: Date,
+  ) {
+    const { count } = await this.prisma.user.updateMany({
+      where: {
+        id,
+        OR: [
+          { passwordResetExpires: null },
+          { passwordResetExpires: { lte: recentAfter } },
+        ],
+      },
+      data: { passwordResetToken: tokenHash, passwordResetExpires: expiresAt },
+    });
+    return count === 1;
+  }
+
   async update(id: string, data: Prisma.UserUpdateInput): Promise<User> {
     return this.prisma.user.update({
       where: { id },

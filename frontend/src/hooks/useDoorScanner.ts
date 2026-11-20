@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch } from '@/utils/api';
+import { isBusyStatus } from '@/utils/busy-retry';
 import { getApiErrorMessage } from '@/utils/api-error';
 import { nextScan } from '@/utils/scan-cooldown';
 import {
@@ -33,6 +34,13 @@ export type DoorScannerState =
 
 const NO_CONNECTION: ScanResult = {
   status: 'NO_CONNECTION',
+  message: 'NO SE PUDO VALIDAR',
+};
+
+// Too many people or the server failing: the ticket was not checked, so it is
+// never shown as invalid.
+const BUSY: ScanResult = {
+  status: 'BUSY',
   message: 'NO SE PUDO VALIDAR',
 };
 
@@ -95,14 +103,13 @@ export function useDoorScanner() {
         const data = await response.json();
         if (response.ok) {
           showResult(data as ScanResult);
+        } else if (isBusyStatus(response.status) || response.status >= 500) {
+          showResult(BUSY, true);
         } else {
-          showResult(
-            {
-              status: 'INVALID',
-              message: getApiErrorMessage(data, 'Error del servidor'),
-            },
-            response.status >= 500,
-          );
+          showResult({
+            status: 'INVALID',
+            message: getApiErrorMessage(data, 'Error del servidor'),
+          });
         }
       } catch {
         // Sin respuesta (señal, servidor caído): puede que haya entrado o no,
