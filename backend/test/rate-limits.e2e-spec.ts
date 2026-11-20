@@ -62,6 +62,66 @@ describe('Límites por minuto', () => {
     });
   });
 
+  describe('IP del cliente detrás del proxy de Railway', () => {
+    // Measured in production (2026-11-19): Railway replaces any
+    // X-Forwarded-For the client sends with "client, edge node", and the
+    // request reaches the app from an internal hop (here, the test's own
+    // connection). Each edge node has its own public IP.
+    const EDGE_A = '34.120.0.1';
+    const EDGE_B = '34.120.0.2';
+    const viaRailway = (forwardedFor: string) =>
+      request(server()).get('/').set('X-Forwarded-For', forwardedFor);
+    const remaining = (res: request.Response) =>
+      Number(res.headers['x-ratelimit-remaining']);
+
+    it('dos compradores que entran por el mismo nodo tienen cada uno su límite', async () => {
+      const [first, second] = [newAddress(), newAddress()];
+      await viaRailway(`${first}, ${EDGE_A}`).expect(200);
+
+      const firstAgain = await viaRailway(`${first}, ${EDGE_A}`).expect(200);
+      const other = await viaRailway(`${second}, ${EDGE_A}`).expect(200);
+
+      expect(remaining(firstAgain)).toBe(98);
+      expect(remaining(other)).toBe(99);
+    });
+
+    it('el mismo comprador que entra por dos nodos distintos tiene un solo límite', async () => {
+      const buyer = newAddress();
+
+      const first = await viaRailway(`${buyer}, ${EDGE_A}`).expect(200);
+      const second = await viaRailway(`${buyer}, ${EDGE_B}`).expect(200);
+
+      expect(remaining(first)).toBe(99);
+      expect(remaining(second)).toBe(98);
+    });
+
+    it('una IP inventada en los encabezados no abre un límite nuevo', async () => {
+      const buyer = newAddress();
+      await viaRailway(`${buyer}, ${EDGE_A}`).expect(200);
+
+      // Even if Railway kept what the client sends, ahead of the real address.
+      const forged = await viaRailway(`203.0.113.7, ${buyer}, ${EDGE_A}`)
+        .set('X-Real-IP', '198.51.100.9')
+        .expect(200);
+      const forgedAgain = await viaRailway(
+        `198.51.100.8, ${buyer}, ${EDGE_B}`,
+      ).expect(200);
+
+      expect(remaining(forged)).toBe(98);
+      expect(remaining(forgedAgain)).toBe(97);
+    });
+
+    it('el que llega al tope recibe el aviso y otro comprador del mismo nodo sigue', async () => {
+      const [buyer, other] = [newAddress(), newAddress()];
+      for (let i = 0; i < 100; i++) {
+        await viaRailway(`${buyer}, ${i % 2 ? EDGE_A : EDGE_B}`).expect(200);
+      }
+
+      await viaRailway(`${buyer}, ${EDGE_A}`).expect(429);
+      await viaRailway(`${other}, ${EDGE_A}`).expect(200);
+    });
+  });
+
   describe('escáneres de la puerta', () => {
     // Every scanner of a door shares the venue's WiFi, so the same IP.
     function scan(user: Parameters<typeof authHeader>[1], ip: string) {

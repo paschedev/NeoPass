@@ -150,6 +150,27 @@ describe('RRPP', () => {
       expect(await clicks(staff.id)).toBe(2);
     });
 
+    // Railway sends "visitor, edge node" (see rate-limits.e2e-spec.ts).
+    it('dos visitantes que entran por el mismo nodo del proxy suman un click cada uno', async () => {
+      const { event } = await createOrganizerWithEvent(t.prisma);
+      const { staff } = await addStaff(event.id);
+
+      await visit(event.id, staff.id, '181.45.2.1, 34.120.0.1').expect(200);
+      await visit(event.id, staff.id, '181.45.2.2, 34.120.0.1').expect(200);
+
+      expect(await clicks(staff.id)).toBe(2);
+    });
+
+    it('el mismo visitante que entra por dos nodos del proxy suma un solo click', async () => {
+      const { event } = await createOrganizerWithEvent(t.prisma);
+      const { staff } = await addStaff(event.id);
+
+      await visit(event.id, staff.id, '181.45.2.3, 34.120.0.1').expect(200);
+      await visit(event.id, staff.id, '181.45.2.3, 34.120.0.2').expect(200);
+
+      expect(await clicks(staff.id)).toBe(1);
+    });
+
     it.each([
       ['una invitación pendiente', { status: 'PENDING' }],
       ['una invitación rechazada', { status: 'REJECTED' }],
