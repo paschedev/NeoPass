@@ -5,6 +5,7 @@ import { OrdersProcessor } from '../src/orders/orders.processor';
 import { OrdersService } from '../src/orders/orders.service';
 import { PaymentsProcessor } from '../src/payments/payments.processor';
 import { PaymentsService } from '../src/payments/payments.service';
+import { PaymentsRepository } from '../src/payments/repositories/payments.repository';
 import { mercadoPagoMock } from './mocks/mercadopago';
 import {
   createOrder,
@@ -144,6 +145,34 @@ describe('Estados de la orden al pagar y al vencer', () => {
       pay('pago-1', order.id, 2 * PRICE),
     ]);
 
+    expect(await state(order.id, ticketType)).toEqual({
+      status: 'PAID',
+      reserved: 0,
+      sold: 2,
+      tickets: 2,
+      payments: 1,
+    });
+    expect(await issues(organizer.id)).toEqual([]);
+  });
+
+  // The window of the test above, every time: the second notification asked
+  // "is this payment registered?" just before the first one committed, so it
+  // reads the order already paid, with this same payment.
+  it('si el segundo aviso del mismo pago llega justo cuando el primero termina de pagar, no avisa un pago duplicado', async () => {
+    const { organizer, ticketType, buyer } = await setup();
+    const order = await createOrder(t.prisma, {
+      user: buyer,
+      ticketType,
+      quantity: 2,
+    });
+    await pay('pago-1', order.id, 2 * PRICE);
+    const staleCheck = jest
+      .spyOn(t.app.get(PaymentsRepository), 'isPaymentRegistered')
+      .mockResolvedValueOnce(false);
+
+    await pay('pago-1', order.id, 2 * PRICE);
+
+    staleCheck.mockRestore();
     expect(await state(order.id, ticketType)).toEqual({
       status: 'PAID',
       reserved: 0,
