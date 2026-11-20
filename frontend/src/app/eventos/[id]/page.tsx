@@ -2,14 +2,7 @@
 
 import { useEffect, useRef, useState, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import {
-  Calendar,
-  MapPin,
-  Ticket,
-  CreditCard,
-  Users,
-  ArrowLeft,
-} from 'lucide-react';
+import { Ticket, CreditCard, Users, ArrowLeft } from 'lucide-react';
 import toast from '@/utils/toast';
 import CustomSelect from '@/components/CustomSelect';
 import VenueMap from '@/components/events/VenueMap';
@@ -65,6 +58,7 @@ function EventContent() {
   const [captchaToken, setCaptchaToken] = useState<string>('');
   const turnstileRef = useRef<TurnstileInstance>(null);
   const [takingDown, setTakingDown] = useState(false);
+  const [flyerRatio, setFlyerRatio] = useState<number | null>(null);
 
   // Cloudflare accepts each captcha token once: after a failed attempt the
   // widget solves a new one, and "Comprar" waits for it.
@@ -232,99 +226,90 @@ function EventContent() {
           />
         </>
       )}
-      <div className="bg-black/40 border border-white/10 rounded-3xl overflow-hidden">
-        <div className="h-64 md:h-96 bg-gradient-to-br from-indigo-900/60 to-purple-900/60 relative flex items-end p-8 md:p-12 overflow-hidden">
-          {event.imageUrl && (
+      <article className="bg-black/40 border border-white/10 rounded-2xl overflow-hidden">
+        {/* El flyer entero y con su brillo. Mientras carga reserva el lugar
+            con la proporción recomendada (16:9); si es otra, se acomoda una
+            sola vez. Uno vertical se ve entero, con negro a los costados. */}
+        {event.imageUrl && (
+          <div
+            className="bg-black"
+            style={{ aspectRatio: flyerRatio ?? 16 / 9, maxHeight: '70vh' }}
+          >
             <img
-              src={optimizeCloudinaryUrl(event.imageUrl, true)}
+              src={optimizeCloudinaryUrl(event.imageUrl)}
               alt={event.title}
-              className="absolute inset-0 w-full h-full object-cover opacity-60"
+              onLoad={(e) => {
+                const { naturalWidth, naturalHeight } = e.currentTarget;
+                if (naturalWidth && naturalHeight)
+                  setFlyerRatio(naturalWidth / naturalHeight);
+              }}
+              className="w-full h-full object-contain"
             />
-          )}
-          <div className="absolute inset-0 bg-black/30 bg-gradient-to-t from-black/80 to-transparent" />
-          <div className="relative z-10 w-full">
-            <div className="inline-block bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-sm font-medium mb-4 border border-white/20">
+          </div>
+        )}
+
+        {/* En el celular: datos, compra y después el resto. En PC la compra
+            queda a la derecha y acompaña el scroll; la segunda fila es
+            flexible para que una compra alta no separe los datos del resto. */}
+        <div className="grid gap-10 p-5 md:p-8 lg:p-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:grid-rows-[auto_1fr] lg:gap-x-12 lg:items-start">
+          <header className="min-w-0 lg:col-start-1 lg:row-start-1">
+            <p
+              className={`text-sm font-semibold mb-2 ${
+                event.status === 'PUBLISHED'
+                  ? 'text-emerald-400'
+                  : 'text-neutral-400'
+              }`}
+            >
               {event.status === 'PUBLISHED'
-                ? '🎫 Entradas a la venta'
+                ? 'Entradas a la venta'
                 : 'Próximamente'}
-            </div>
-            <h1 className="font-outfit text-4xl md:text-6xl font-bold mb-4">
+            </p>
+            <h1 className="font-outfit text-3xl md:text-5xl font-bold leading-tight break-words">
               {event.title}
             </h1>
             {event.organizerName && (
-              <p className="text-neutral-200 text-sm md:text-base -mt-2">
+              <p className="mt-2 text-neutral-400">
                 Organiza {event.organizerName}
               </p>
             )}
-          </div>
-        </div>
-
-        <div className="flex flex-col gap-12 p-8 md:p-12">
-          <div className="space-y-8">
-            <div>
-              <h2 className="text-xl font-bold mb-4">Acerca del evento</h2>
-              <p className="text-neutral-300 leading-relaxed whitespace-pre-wrap">
-                {event.description}
-              </p>
-            </div>
-
-            {event.youtubeLink && getYouTubeEmbedUrl(event.youtubeLink) && (
-              <div className="w-full aspect-video shadow-2xl shadow-indigo-500/10 relative z-30 rounded-2xl overflow-hidden bg-black border border-white/5 isolate">
-                <iframe
-                  src={getYouTubeEmbedUrl(event.youtubeLink)!}
-                  title="YouTube video player"
-                  frameBorder="0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="w-full h-full border-0 outline-none"
-                ></iframe>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white/5 rounded-2xl p-6 border border-white/5">
+            <dl className="mt-6 grid gap-4 sm:grid-cols-2 border-y border-white/10 py-5">
               <div>
-                <div className="flex items-center gap-3 text-indigo-400 mb-2 font-medium">
-                  <Calendar className="w-5 h-5" /> Fecha y Hora
-                </div>
-                <div className="text-white">
-                  <span className="text-neutral-400">Empieza:</span>{' '}
+                <dt className="text-sm text-neutral-500">Cuándo</dt>
+                <dd className="mt-1 text-white">
                   {formatWeekdayDateTime(event.startDate)} hs
-                </div>
-                <div className="text-white mt-1">
-                  <span className="text-neutral-400">Termina:</span>{' '}
-                  {formatWeekdayDateTime(event.endDate)} hs
-                </div>
+                  <span className="block text-neutral-400">
+                    hasta el {formatWeekdayDateTime(event.endDate)} hs
+                  </span>
+                </dd>
               </div>
-              <div>
-                <div className="flex items-center gap-3 text-emerald-400 mb-2 font-medium">
-                  <MapPin className="w-5 h-5" /> Ubicación
-                </div>
-                <div className="text-white">{event.venueName}</div>
-                <div className="text-neutral-400 text-sm mt-1">
-                  {event.venueAddress}
-                </div>
+              <div className="min-w-0">
+                <dt className="text-sm text-neutral-500">Dónde</dt>
+                <dd className="mt-1 text-white break-words">
+                  {event.venueName}
+                  <span className="block text-neutral-400">
+                    {event.venueAddress}
+                  </span>
+                </dd>
               </div>
-            </div>
+            </dl>
+          </header>
 
-            <VenueMap
-              latitude={event.latitude}
-              longitude={event.longitude}
-              venuePlaceId={event.venuePlaceId}
-              venueName={event.venueName}
-              venueAddress={event.venueAddress}
-            />
-          </div>
-
-          <div>
-            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 md:p-8 shadow-2xl">
-              <h3 className="font-bold text-xl mb-6 flex items-center gap-2">
-                <Ticket className="w-6 h-6 text-indigo-400" /> Comprar entradas
-              </h3>
+          <section
+            aria-labelledby="comprar-entradas"
+            className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-24"
+          >
+            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 md:p-6">
+              <h2
+                id="comprar-entradas"
+                className="font-bold text-xl mb-6 flex items-center gap-2"
+              >
+                <Ticket className="w-5 h-5 text-neutral-400" /> Comprar entradas
+              </h2>
 
               {/* RRPP Selector */}
               <div className="mb-6 bg-black/40 p-4 rounded-xl border border-white/5">
                 <label className="flex items-center gap-2 text-sm font-medium text-neutral-300 mb-2">
-                  <Users className="w-4 h-4 text-purple-400" />
+                  <Users className="w-4 h-4 text-neutral-400" />
                   Promotor (opcional)
                 </label>
                 <CustomSelect
@@ -497,7 +482,7 @@ function EventContent() {
                   <button
                     onClick={handleBuy}
                     disabled={buying || totals.tickets === 0 || !captchaToken}
-                    className="w-full md:w-auto px-8 bg-indigo-600 hover:bg-indigo-500 text-white py-3.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full md:w-auto lg:w-full px-8 bg-indigo-600 hover:bg-indigo-500 text-white py-3.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {buying ? (
                       'Procesando...'
@@ -511,9 +496,39 @@ function EventContent() {
                 </div>
               </div>
             </div>
+          </section>
+
+          <div className="min-w-0 space-y-8 lg:col-start-1 lg:row-start-2">
+            <div>
+              <h2 className="text-xl font-bold mb-4">Acerca del evento</h2>
+              <p className="text-neutral-300 leading-relaxed whitespace-pre-wrap">
+                {event.description}
+              </p>
+            </div>
+
+            {event.youtubeLink && getYouTubeEmbedUrl(event.youtubeLink) && (
+              <div className="w-full aspect-video relative z-30 rounded-xl overflow-hidden bg-black border border-white/10 isolate">
+                <iframe
+                  src={getYouTubeEmbedUrl(event.youtubeLink)!}
+                  title="YouTube video player"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  className="w-full h-full border-0 outline-none"
+                ></iframe>
+              </div>
+            )}
+
+            <VenueMap
+              latitude={event.latitude}
+              longitude={event.longitude}
+              venuePlaceId={event.venuePlaceId}
+              venueName={event.venueName}
+              venueAddress={event.venueAddress}
+            />
           </div>
         </div>
-      </div>
+      </article>
     </div>
   );
 }

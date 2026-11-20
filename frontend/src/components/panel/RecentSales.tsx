@@ -9,8 +9,8 @@ export default function RecentSales({
   onShowAll: () => void;
 }) {
   return (
-    <div className="bg-neutral-900 border border-white/5 rounded-3xl p-8 shadow-2xl">
-      <h2 className="font-outfit text-xl font-bold mb-6">Últimas Ventas</h2>
+    <div className="bg-neutral-900 border border-white/10 rounded-2xl p-5 md:p-8">
+      <h2 className="font-outfit text-xl font-bold mb-6">Últimas ventas</h2>
       <div className="space-y-2">
         {transactions.slice(0, 5).map((sale, i) => (
           <div

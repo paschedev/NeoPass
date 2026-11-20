@@ -12,13 +12,14 @@ export default function GoogleSection() {
   if (!isGoogleEnabled() || !user) return null;
 
   return (
-    <section className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-8">
+    <section className="p-6 md:p-8">
       <div className="flex items-center gap-4 mb-6">
-        <div className="w-12 h-12 bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-400">
-          <Link2 className="w-6 h-6" />
-        </div>
+        <Link2
+          aria-hidden="true"
+          className="w-5 h-5 shrink-0 text-neutral-400"
+        />
         <div>
-          <h2 className="text-xl font-bold text-white">Cuenta de Google</h2>
+          <h2 className="text-lg font-bold text-white">Cuenta de Google</h2>
           <p className="text-neutral-400 text-sm">
             {user.hasGoogle
               ? 'Entrás con el botón Continuar con Google'

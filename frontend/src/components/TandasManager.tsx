@@ -60,7 +60,7 @@ export default function TandasManager({
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2">
-            <Ticket className="text-pink-400 w-5 h-5" /> Tandas y Entradas
+            <Ticket className="text-pink-400 w-5 h-5" /> Tandas y entradas
           </h2>
           <p className="text-sm text-neutral-400 mt-1">
             Administrá las tandas de venta, precios y disponibilidad.
@@ -72,7 +72,7 @@ export default function TandasManager({
             onClick={addBatch}
             className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
           >
-            <Plus className="w-4 h-4" /> Nueva Tanda
+            <Plus className="w-4 h-4" /> Nueva tanda
           </button>
         )}
       </div>

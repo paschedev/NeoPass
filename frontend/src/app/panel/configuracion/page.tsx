@@ -17,16 +17,19 @@ export default function ConfiguracionPage() {
         Configuración
       </h1>
 
-      <EmailSection />
-      <PasswordSection />
-      <GoogleSection />
+      {/* Una sola lista: cada sección es una fila separada por una línea. */}
+      <div className="bg-white/[0.02] border border-white/10 rounded-2xl divide-y divide-white/10">
+        <EmailSection />
+        <PasswordSection />
+        <GoogleSection />
 
-      {isOrganizer(user) && (
-        <>
-          <MercadoPagoSection linked={!!user?.hasLinkedMp} />
-          <PresetsLinkSection />
-        </>
-      )}
+        {isOrganizer(user) && (
+          <>
+            <MercadoPagoSection linked={!!user?.hasLinkedMp} />
+            <PresetsLinkSection />
+          </>
+        )}
+      </div>
     </div>
   );
 }

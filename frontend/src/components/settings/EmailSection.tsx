@@ -69,17 +69,18 @@ export default function EmailSection() {
     <section
       id="correo"
       aria-labelledby="email-section-title"
-      className="bg-white/5 border border-white/10 rounded-3xl p-8 mb-8 scroll-mt-24"
+      className="p-6 md:p-8 scroll-mt-24"
     >
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4 min-w-0">
-          <div className="w-12 h-12 shrink-0 bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-400">
-            <Mail className="w-6 h-6" />
-          </div>
+          <Mail
+            aria-hidden="true"
+            className="w-5 h-5 shrink-0 text-neutral-400"
+          />
           <div className="min-w-0">
             <h2
               id="email-section-title"
-              className="text-xl font-bold text-white"
+              className="text-lg font-bold text-white"
             >
               Correo
             </h2>

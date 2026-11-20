@@ -23,8 +23,7 @@ export default function SalesChart({ points }: { points: RevenuePoint[] }) {
   const maxVal = getSmartMax(Math.max(...series.map((bar) => bar.val), 100));
 
   return (
-    <div className="lg:col-span-2 bg-neutral-900 border border-white/5 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-      <div className="hidden md:block absolute top-0 right-0 w-96 h-96 bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none" />
+    <div className="lg:col-span-2 bg-neutral-900 border border-white/10 rounded-2xl p-5 md:p-8 relative overflow-hidden">
       <div className="flex items-center justify-between mb-8 relative z-30">
         <h2 className="font-outfit text-xl font-bold">Ventas</h2>
         <CustomSelect
@@ -61,7 +60,7 @@ export default function SalesChart({ points }: { points: RevenuePoint[] }) {
               initial={{ height: '0%' }}
               animate={{ height: `${(bar.val / maxVal) * 100}%` }}
               transition={{ duration: 1, delay: i * 0.02, ease: 'easeOut' }}
-              className={`w-full ${bar.future ? 'bg-transparent' : 'bg-gradient-to-t from-indigo-600 to-purple-400 opacity-80 group-hover:opacity-100'} rounded-t-lg transition-opacity relative`}
+              className={`w-full ${bar.future ? 'bg-transparent' : 'bg-indigo-500 group-hover:bg-indigo-400'} rounded-t-lg transition-colors relative`}
             >
               {!bar.future && (
                 <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-white text-black text-[10px] sm:text-xs font-bold px-1 sm:px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">

@@ -36,12 +36,7 @@ export default function EventsTab({
       transition={{ duration: 0.3 }}
     >
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-4">
-        <div>
-          <h2 className="font-outfit text-2xl font-bold">Mis Eventos</h2>
-          <p className="text-sm text-neutral-400">
-            Gestioná y analizá el rendimiento de tus eventos.
-          </p>
-        </div>
+        <h2 className="font-outfit text-2xl font-bold">Mis eventos</h2>
       </div>
 
       {loading ? (

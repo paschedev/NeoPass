@@ -196,7 +196,7 @@ export default function VenueLocationField({
           placeholder={
             searchable
               ? 'Buscá la dirección o el nombre del lugar'
-              : 'Ej: Av. Principal 1234, CABA'
+              : 'Ej: Av. Colón 1100, Córdoba'
           }
           className={className}
           {...addressField}
