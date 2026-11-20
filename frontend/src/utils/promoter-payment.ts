@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '@/utils/zod';
 import { formatCurrency } from './format';
 
 // Un monto como lo escribe alguien en Argentina: "1.500,50", "1500", "150.50".

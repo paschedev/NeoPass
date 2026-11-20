@@ -18,7 +18,7 @@ import PasswordInput from '@/components/forms/PasswordInput';
 import AuthShell, { AuthDivider } from '@/components/auth/AuthShell';
 import GoogleSignIn from '@/components/auth/GoogleSignIn';
 import LastUsedBadge from '@/components/auth/LastUsedBadge';
-import { z } from 'zod';
+import { z } from '@/utils/zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 

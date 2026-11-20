@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '@/utils/zod';
 import { getEventPhase } from './event-edit';
 import { formatWeekdayDateTime } from './format';
 

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '@/utils/zod';
 import { calculateCheckoutTotals } from './checkout';
 import { formatCurrency } from './format';
 import { MERCADO_PAGO_FEE_RATE, splitServiceFee } from './service-fee-split';

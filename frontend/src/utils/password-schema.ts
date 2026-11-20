@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '@/utils/zod';
 
 // Same rules as the backend: at least 8 characters.
 const newPasswordFields = {

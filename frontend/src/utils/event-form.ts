@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from '@/utils/zod';
 import { getBatchWindowErrors } from './batches';
 import type { EventFormValues, EventPhase } from './event-edit';
 import { fromDateTimeLocalInput, toDateTimeLocalInput } from './format';

@@ -18,7 +18,7 @@ import GoogleSignIn from '@/components/auth/GoogleSignIn';
 import { isGoogleEnabled } from '@/utils/google-sign-in';
 import { acceptedLegalVersions, DATA_PROTECTION_NOTICES } from '@/utils/legal';
 import { saveSession, type SessionUser } from '@/hooks/useCurrentUser';
-import { z } from 'zod';
+import { z } from '@/utils/zod';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 

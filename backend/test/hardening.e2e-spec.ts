@@ -34,12 +34,13 @@ describe('Endurecimientos', () => {
       'https://neopass.ar',
       'https://www.neopass.ar',
       testEnv.FRONTEND_URL,
-      'http://localhost:3000',
     ])('acepta pedidos desde %s', async (origin) => {
       expect(await allowedOrigin(origin)).toBe(origin);
     });
 
     it.each([
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
       'https://ventipass.com',
       'https://neopass.com',
       'https://venti-pass.vercel.app',
