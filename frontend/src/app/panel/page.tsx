@@ -148,19 +148,19 @@ function OrganizerDashboardContent() {
             <div className="hidden md:block absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-[64px] pointer-events-none" />
             <div className="relative z-10">
               <h2 className="text-xl font-bold mb-1 text-white flex items-center gap-2">
-                <Link2 className="w-5 h-5 text-indigo-400" /> Vincular Mercado
+                <Link2 className="w-5 h-5 text-indigo-400" /> Vinculá Mercado
                 Pago
               </h2>
               <p className="text-sm text-indigo-200/80">
-                Requerido para activar el sistema Marketplace y recibir cobros
-                directamente en tu cuenta (CBU/CVU).
+                Lo necesitás para crear eventos. Cada venta se acredita directo
+                en tu cuenta.
               </p>
             </div>
             <button
               onClick={() => setShowMpModal(true)}
               className="relative z-10 bg-white text-indigo-950 px-6 py-3 rounded-full font-semibold transition-all hover:scale-105 active:scale-95 whitespace-nowrap"
             >
-              Configurar ahora
+              Vincular
             </button>
           </motion.div>
         )}
