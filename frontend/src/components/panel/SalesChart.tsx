@@ -204,11 +204,24 @@ export default function SalesChart({ points }: { points: RevenuePoint[] }) {
             className={`absolute top-0 whitespace-nowrap ${i === 0 ? '' : i === last ? '-translate-x-full' : '-translate-x-1/2'}`}
             style={{ left: `${(i / last) * 100}%` }}
           >
-            {dayLabel(days[i].date, period)}
+            <AxisLabel text={dayLabel(days[i].date, period)} period={period} />
           </span>
         ))}
       </div>
     </div>
+  );
+}
+
+// En la semana, el celular muestra solo el número: "Dom 15" y "Lun 16" no
+// entran uno al lado del otro en 375 px.
+function AxisLabel({ text, period }: { text: string; period: ChartPeriod }) {
+  if (period !== 7) return text;
+  const [weekday, day] = text.split(' ');
+  return (
+    <>
+      <span className="hidden sm:inline">{weekday} </span>
+      {day}
+    </>
   );
 }
 

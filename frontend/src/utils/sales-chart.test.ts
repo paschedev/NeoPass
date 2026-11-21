@@ -146,10 +146,11 @@ describe('getSmartMax', () => {
   it.each([
     [0, 100],
     [100, 100],
-    [150, 200],
+    [150, 150],
     [350, 400],
     [4500, 5000],
     [9000, 10000],
+    [2046500, 2500000],
   ])('el eje para un máximo de %i llega a %i', (max, expected) => {
     expect(getSmartMax(max)).toBe(expected);
   });

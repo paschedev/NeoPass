@@ -148,11 +148,14 @@ export function smoothPath(points: [number, number][]): string {
   return path;
 }
 
-// Tope "redondo" del eje Y: 150 → 200, 4.500 → 5.000.
+// Tope "redondo" del eje Y, apenas arriba del total para que la línea use la
+// altura del gráfico: 350 → 400, 2.046.500 → 2.500.000.
+const NICE_STEPS = [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+
 export function getSmartMax(max: number): number {
   if (max === 0) return 100;
   const magnitude = Math.pow(10, Math.floor(Math.log10(max)));
   const fraction = max / magnitude;
-  const niceFraction = [1, 2, 4, 5, 8].find((step) => fraction <= step) ?? 10;
-  return niceFraction * magnitude;
+  const step = NICE_STEPS.find((nice) => fraction <= nice) ?? 10;
+  return step * magnitude;
 }
