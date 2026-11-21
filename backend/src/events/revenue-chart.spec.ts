@@ -13,12 +13,14 @@ describe('buildRevenueChart', () => {
   // 25/09 a las 23:00 en Argentina (UTC-3).
   const now = new Date('2026-09-26T02:00:00Z');
 
-  it('tiene los últimos 30 días y termina hoy en hora de Argentina', () => {
+  // Dos períodos de 30 días: el gráfico compara los últimos 30 con los
+  // anteriores.
+  it('tiene los últimos 60 días y termina hoy en hora de Argentina', () => {
     const chart = buildRevenueChart([], [EVENT], now);
 
-    expect(chart).toHaveLength(30);
-    expect(chart[0].date).toBe('2026-08-27');
-    expect(chart[29].date).toBe('2026-09-25');
+    expect(chart).toHaveLength(60);
+    expect(chart[0].date).toBe('2026-07-28');
+    expect(chart[59].date).toBe('2026-09-25');
   });
 
   it('una venta a las 22:30 de Argentina cuenta para ese día aunque en UTC ya sea el siguiente', () => {
@@ -41,7 +43,7 @@ describe('buildRevenueChart', () => {
       now,
     );
 
-    expect(chart[29].revenue).toBe(1000);
+    expect(chart.at(-1)?.revenue).toBe(1000);
   });
 
   it('suma las ventas del día al centavo, sin errores de redondeo', () => {
@@ -55,6 +57,6 @@ describe('buildRevenueChart', () => {
       now,
     );
 
-    expect(chart[29].revenue).toBe(4500.45);
+    expect(chart.at(-1)?.revenue).toBe(4500.45);
   });
 });
