@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import Wordmark from '@/components/Wordmark';
+import Logo from '@/components/brand/Logo';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { LEGAL_DOCUMENTS } from '@/utils/legal';
 import { isOrganizer } from '@/utils/roles';
@@ -70,7 +70,7 @@ export default function LandingFooter() {
       <div className="container mx-auto px-4 pt-40 md:pt-64 pb-10">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-10">
           <div className="col-span-2 md:col-span-1 flex flex-col items-start">
-            <Wordmark className="text-3xl text-white" />
+            <Logo className="h-8 w-auto text-white" />
             <a
               href={INSTAGRAM_URL}
               target="_blank"
