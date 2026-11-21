@@ -122,6 +122,9 @@ describe('Mis entradas', () => {
 
     expect(await screen.findByText('No tenés entradas')).toBeInTheDocument();
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Explorar eventos' }),
+    ).toHaveAttribute('href', '/eventos');
   });
 
   it('sin confirmar el correo y sin regalos, invita a confirmarlo por si le regalan entradas', async () => {
