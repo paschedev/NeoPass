@@ -1,7 +1,6 @@
 'use client';
 
 import type { MouseEvent } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import {
   Calendar,
@@ -12,6 +11,7 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
+import { TelaSuperior } from '@/components/brand/Telas';
 import HeroBadge from '@/components/landing/HeroBadge';
 import LandingDemo from '@/components/landing/LandingDemo';
 import LandingFooter from '@/components/landing/LandingFooter';
@@ -186,16 +186,15 @@ export default function Home() {
           </a>
         </section>
 
-        {/* Detrás se asoma la foto del cierre: en PC queda fija y la sección es
-            una ventana (el clip-path la recorta), como en el cierre; en celular
-            se desplaza con la sección. Oscurecida y fundida arriba y abajo con
-            el fondo de la página, para que se lea (las razones no tienen
-            fondo propio: la capa oscura es la que da el contraste).
+        {/* Detrás entra una tela por la derecha: en PC queda fija y la sección
+            es una ventana (el clip-path la recorta); en celular se desplaza con
+            la sección. Una capa oscura la baja detrás del texto y se funde
+            arriba y abajo con el fondo de la página.
             - El fondo sobra 4 px arriba y abajo: el navegador redondea distinto
-              el recorte de la foto fija y la capa oscura, y en el borde quedaba
-              una fila de foto sin oscurecer (una línea naranja).
-            - Sin desenfoque en las tarjetas: sobre la foto fija se recalcula
-              en cada cuadro del scroll y baja los FPS. */}
+              el recorte de la capa fija y la oscura, y en el borde quedaba una
+              fila sin oscurecer.
+            - Sin desenfoque en las razones: sobre una capa fija se recalcula en
+              cada cuadro del scroll y baja los FPS. */}
         <section
           id="razones"
           aria-labelledby="por-que-neopass"
@@ -205,16 +204,10 @@ export default function Home() {
             aria-hidden="true"
             className="absolute inset-x-0 -inset-y-1 -z-10"
           >
-            <div className="absolute inset-0 md:fixed">
-              <Image
-                src="/landing/cierre.webp"
-                alt=""
-                fill
-                sizes="100vw"
-                className="object-cover"
-              />
+            <div className="absolute inset-0 overflow-clip md:fixed">
+              <TelaSuperior className="absolute top-0 -right-[58%] w-[130%] md:top-[6%] md:-right-[2%] md:w-[58%] md:max-w-[1000px]" />
             </div>
-            <div className="absolute inset-0 bg-neutral-950/75" />
+            <div className="absolute inset-0 bg-neutral-950/45" />
             <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-neutral-950 to-transparent" />
             <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-neutral-950 to-transparent" />
           </div>
