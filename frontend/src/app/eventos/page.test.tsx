@@ -27,7 +27,9 @@ const busy = (status: number, retryAfter?: string) =>
 describe('Lista de eventos', () => {
   afterEach(() => {
     vi.useRealTimers();
-    vi.clearAllMocks();
+    // Reset, not clear: it also drops the answers queued with `...Once`, so a
+    // test that fails does not hand its leftovers to the next one.
+    vi.resetAllMocks();
   });
 
   it('con mucha demanda avisa, reintenta sola y muestra los eventos', async () => {
@@ -39,6 +41,9 @@ describe('Lista de eventos', () => {
     render(<EventosPage />);
 
     expect(await screen.findByText('Hay mucha gente entrando')).toBeVisible();
+    // The countdown starts in an effect, which on a busy machine can run after
+    // the notice shows up: moving the clock before that leaves it stuck.
+    await vi.waitFor(() => expect(vi.getTimerCount()).toBeGreaterThan(0));
     await act(async () => {
       vi.advanceTimersByTime(3_500);
     });
