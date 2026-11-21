@@ -1,7 +1,8 @@
 import { Prisma } from '@prisma/client';
 import { ARGENTINA_TIME_ZONE } from '../common/argentina-time-zone';
 
-const CHART_DAYS = 30;
+// Two 30-day periods: the chart compares the last 30 days with the 30 before.
+export const CHART_DAYS = 60;
 // Argentina has no daylight saving time: a day is always 24 h.
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -22,7 +23,7 @@ interface ChartOrder {
 }
 
 // Organizer revenue (ticket face value, without the NeoPass fee) per day of
-// the last 30 days, with days as organizers live them: Argentina time.
+// the last CHART_DAYS days, with days as organizers live them: Argentina time.
 export function buildRevenueChart(
   orders: ChartOrder[],
   eventIds: string[],
