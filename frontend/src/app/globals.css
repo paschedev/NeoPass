@@ -36,6 +36,15 @@
       transform: scale(1.06);
     }
   }
+
+  /* La textura del anillo vidrioso: gira debajo de una luz quieta. */
+  --animate-girar: girar 9s linear infinite;
+
+  @keyframes girar {
+    to {
+      transform: rotate(1turn);
+    }
+  }
 }
 
 /* Colores de la marca: hoy, los mismos índigo y violeta de siempre. Cuando

@@ -1,12 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  ChevronDown,
-  Lock,
-  MailCheck,
-  Ticket as TicketIcon,
-} from 'lucide-react';
+import Link from 'next/link';
+import { ChevronDown, Lock, MailCheck } from 'lucide-react';
+import Anillo from '@/components/brand/Anillo';
 import toast from '@/utils/toast';
 import TicketCard from '@/components/tickets/TicketCard';
 import TicketModal from '@/components/tickets/TicketModal';
@@ -181,15 +178,19 @@ export default function MisEntradasPage() {
 
       {tickets.length === 0 && locked === 0 ? (
         <div className="bg-white/5 border border-white/10 rounded-3xl p-12 text-center">
-          <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <TicketIcon className="w-10 h-10 text-indigo-400" />
-          </div>
+          <Anillo className="mx-auto mb-6" />
           <h3 className="text-2xl font-bold text-white mb-2">
             No tenés entradas
           </h3>
           <p className="text-neutral-400">
             Todavía no compraste entradas para ningún evento.
           </p>
+          <Link
+            href="/eventos"
+            className="mt-6 inline-flex items-center rounded-full bg-white px-5 py-2.5 font-semibold text-black transition-colors hover:bg-neutral-200"
+          >
+            Explorar eventos
+          </Link>
         </div>
       ) : (
         <>
