@@ -16,7 +16,7 @@ import { useNotificationFeed } from '@/hooks/useNotificationFeed';
 import { useStaffInvitation } from '@/hooks/useStaffInvitation';
 import { NoticeLink } from '@/components/notifications/NoticeLink';
 import Avatar from '@/components/account/Avatar';
-import Wordmark from '@/components/Wordmark';
+import Logo from '@/components/brand/Logo';
 import { noticeTime, pendingInvitationStaffId } from '@/utils/notifications';
 import { SUPPORT_EMAIL } from '@/utils/support';
 
@@ -75,12 +75,12 @@ export default function Navbar() {
         <div className="flex items-center">
           <Link
             href="/"
-            className="hidden md:block text-2xl text-white hover:opacity-80 transition-opacity"
+            className="hidden md:block text-white hover:opacity-80 transition-opacity"
           >
-            <Wordmark />
+            <Logo className="h-6 w-auto" />
           </Link>
-          <div className="md:hidden text-2xl text-white select-none">
-            <Wordmark />
+          <div className="md:hidden text-white select-none">
+            <Logo className="h-5 w-auto" />
           </div>
         </div>
 
