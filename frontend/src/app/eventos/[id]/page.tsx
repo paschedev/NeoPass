@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { Ticket, CreditCard, Users, ArrowLeft } from 'lucide-react';
+import { CreditCard, ArrowLeft, Minus, Plus } from 'lucide-react';
 import toast from '@/utils/toast';
 import CustomSelect from '@/components/CustomSelect';
 import VenueMap from '@/components/events/VenueMap';
@@ -294,207 +294,200 @@ function EventContent() {
             </dl>
           </header>
 
+          {/* En el celular la compra va plana, como Cuándo y Dónde: líneas
+              horizontales y ningún recuadro adentro del marco de la página.
+              En PC es la única tarjeta de la columna que acompaña el scroll. */}
           <section
             aria-labelledby="comprar-entradas"
-            className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-24"
+            className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-24 lg:bg-white/[0.03] lg:border lg:border-white/10 lg:rounded-2xl lg:p-6"
           >
-            <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-5 md:p-6">
-              <h2
-                id="comprar-entradas"
-                className="font-bold text-xl mb-6 flex items-center gap-2"
-              >
-                <Ticket className="w-5 h-5 text-neutral-400" /> Comprar entradas
-              </h2>
+            <h2
+              id="comprar-entradas"
+              className="font-bold text-xl text-indigo-400 mb-5"
+            >
+              Comprar entradas
+            </h2>
 
-              {/* RRPP Selector */}
-              <div className="mb-6 bg-black/40 p-4 rounded-xl border border-white/5">
-                <label className="flex items-center gap-2 text-sm font-medium text-neutral-300 mb-2">
-                  <Users className="w-4 h-4 text-neutral-400" />
-                  Promotor (opcional)
-                </label>
-                <CustomSelect
-                  value={selectedRpp}
-                  onChange={setSelectedRpp}
-                  disabled={!!rppFromUrl}
-                  placeholder="Elegí un promotor..."
-                  options={[
-                    { value: '', label: '(Ninguno)' },
-                    ...(rppFromUrl &&
-                    !promoters.find((p) => p.id === rppFromUrl)
-                      ? [
-                          {
-                            value: rppFromUrl,
-                            label: 'Promotor del link',
-                          },
-                        ]
-                      : []),
-                    ...promoters.map((p) => ({ value: p.id, label: p.name })),
-                  ]}
-                />
-                {rppFromUrl && (
-                  <p className="text-[11px] text-emerald-400 mt-2 font-medium flex items-center gap-1">
-                    ✓ Llegaste por el link de este promotor
-                  </p>
-                )}
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-neutral-400 mb-2">
+                Promotor (opcional)
+              </label>
+              <CustomSelect
+                value={selectedRpp}
+                onChange={setSelectedRpp}
+                disabled={!!rppFromUrl}
+                placeholder="Elegí un promotor..."
+                options={[
+                  { value: '', label: '(Ninguno)' },
+                  ...(rppFromUrl && !promoters.find((p) => p.id === rppFromUrl)
+                    ? [{ value: rppFromUrl, label: 'Promotor del link' }]
+                    : []),
+                  ...promoters.map((p) => ({ value: p.id, label: p.name })),
+                ]}
+              />
+              {rppFromUrl && (
+                <p className="text-xs text-emerald-400 mt-2 font-medium">
+                  ✓ Llegaste por el link de este promotor
+                </p>
+              )}
+            </div>
 
-              <div className="space-y-4">
-                {(() => {
-                  // The API only sends upcoming, on sale and sold out batches.
-                  const saleBatches = event.ticketBatches || [];
-
-                  if (saleBatches.length === 0) {
-                    return (
-                      <div className="text-center text-neutral-500 py-4">
-                        No hay entradas a la venta actualmente
-                      </div>
-                    );
-                  }
-
-                  return saleBatches.map((batch: any) => (
-                    <div key={batch.id} className="mb-6 last:mb-0">
-                      <h4 className="text-white font-bold mb-3 uppercase tracking-wide text-xs">
-                        {batch.name}
-                      </h4>
-                      <div className="bg-black/40 border border-white/10 rounded-xl flex flex-col divide-y divide-white/5">
-                        {batch.saleStatus === 'UPCOMING' && (
-                          <div className="p-4 text-sm text-neutral-400">
-                            Próximamente · desde{' '}
-                            {formatShortDateTime(batch.publishAt)} hs
-                          </div>
-                        )}
-                        {batch.saleStatus === 'SOLD_OUT' && (
-                          <div className="p-4 text-sm font-medium text-amber-400">
-                            Agotada
-                          </div>
-                        )}
-                        {batch.saleStatus === 'ON_SALE' &&
-                          batch.ticketTypes?.map((ticket: any) => {
-                            const available: number = ticket.available;
-                            const qty = cart[ticket.id] || 0;
-                            return (
-                              <div
-                                key={ticket.id}
-                                className="p-4 flex flex-col gap-3 hover:bg-white/[0.02] transition-colors first:rounded-t-xl last:rounded-b-xl"
-                              >
-                                <div className="flex justify-between items-start gap-4">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-white break-words">
-                                      {ticket.name}
-                                    </div>
-                                    <div className="text-xs text-neutral-500">
-                                      Disponibles: {available}
-                                    </div>
-                                  </div>
-                                  <div className="font-bold text-lg text-emerald-400 shrink-0">
-                                    {formatCurrency(ticket.price)}
-                                  </div>
-                                </div>
-                                <div className="flex items-center justify-between mt-1">
-                                  <div className="text-sm font-medium text-neutral-400">
-                                    Cantidad
-                                  </div>
-                                  <div className="flex items-center gap-3 bg-white/5 rounded-lg p-1">
-                                    <button
-                                      onClick={() =>
-                                        handleQuantityChange(
-                                          ticket.id,
-                                          -1,
-                                          available,
-                                        )
-                                      }
-                                      className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-md transition-colors disabled:opacity-50"
-                                      disabled={qty <= 0}
-                                    >
-                                      -
-                                    </button>
-                                    <span className="w-6 text-center text-white font-bold">
-                                      {qty}
-                                    </span>
-                                    <button
-                                      onClick={() =>
-                                        handleQuantityChange(
-                                          ticket.id,
-                                          1,
-                                          available,
-                                        )
-                                      }
-                                      className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-md transition-colors disabled:opacity-50"
-                                      disabled={
-                                        qty >= available ||
-                                        totals.tickets >= MAX_TICKETS_PER_ORDER
-                                      }
-                                    >
-                                      +
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    </div>
-                  ));
-                })()}
-              </div>
-
-              {/* Checkout Button Global */}
-              <div className="pt-4 mt-6 border-t border-white/10">
-                <div className="space-y-2 mb-4">
-                  {totals.tickets > 0 && (
+            {/* The API only sends upcoming, on sale and sold out batches. */}
+            <div className="mt-6 border-y border-white/10 divide-y divide-white/10">
+              {(event.ticketBatches || []).length === 0 && (
+                <p className="py-4 text-sm text-neutral-500">
+                  No hay entradas a la venta actualmente
+                </p>
+              )}
+              {(event.ticketBatches || []).map((batch: any) => (
+                <div key={batch.id} className="py-4">
+                  {batch.saleStatus === 'ON_SALE' ? (
                     <>
-                      <div className="flex justify-between text-sm text-neutral-400">
-                        <span>Subtotal</span>
-                        <span>{formatCurrency(totals.subtotal)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm text-neutral-400">
-                        <span>Cargo de servicio</span>
-                        <span>{formatCurrency(totals.serviceFee)}</span>
-                      </div>
+                      <h3 className="text-sm text-neutral-500 break-words">
+                        {batch.name}
+                      </h3>
+                      <ul className="mt-1 divide-y divide-white/[0.06]">
+                        {batch.ticketTypes?.map((ticket: any) => {
+                          const available: number = ticket.available;
+                          const qty = cart[ticket.id] || 0;
+                          return (
+                            <li
+                              key={ticket.id}
+                              className="py-3 last:pb-0 flex items-center justify-between gap-4"
+                            >
+                              <div className="min-w-0">
+                                <p className="font-medium text-white break-words">
+                                  {ticket.name}
+                                </p>
+                                <p className="text-sm text-neutral-500">
+                                  <span className="font-semibold text-emerald-400 tabular-nums">
+                                    {formatCurrency(ticket.price)}
+                                  </span>{' '}
+                                  · {available}{' '}
+                                  {available === 1 ? 'disponible' : 'disponibles'}
+                                </p>
+                              </div>
+                              <div className="shrink-0 flex items-center gap-0.5 bg-white/5 border border-white/10 rounded-lg p-[3px]">
+                                <button
+                                  type="button"
+                                  aria-label={`Quitar una ${ticket.name}`}
+                                  onClick={() =>
+                                    handleQuantityChange(ticket.id, -1, available)
+                                  }
+                                  className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-md transition-colors disabled:opacity-35 disabled:hover:bg-transparent"
+                                  disabled={qty <= 0}
+                                >
+                                  <Minus className="w-3.5 h-3.5" aria-hidden />
+                                </button>
+                                <output
+                                  aria-live="polite"
+                                  className="w-6 text-center text-white font-bold tabular-nums"
+                                >
+                                  {qty}
+                                </output>
+                                <button
+                                  type="button"
+                                  aria-label={`Sumar una ${ticket.name}`}
+                                  onClick={() =>
+                                    handleQuantityChange(ticket.id, 1, available)
+                                  }
+                                  className="w-8 h-8 flex items-center justify-center text-white hover:bg-white/10 rounded-md transition-colors disabled:opacity-35 disabled:hover:bg-transparent"
+                                  disabled={
+                                    qty >= available ||
+                                    totals.tickets >= MAX_TICKETS_PER_ORDER
+                                  }
+                                >
+                                  <Plus className="w-3.5 h-3.5" aria-hidden />
+                                </button>
+                              </div>
+                            </li>
+                          );
+                        })}
+                      </ul>
                     </>
-                  )}
-                  <div className="flex justify-between items-center">
-                    <span className="text-neutral-400">Total</span>
-                    <span className="text-2xl font-bold text-emerald-400">
-                      {formatCurrency(totals.total)}
-                    </span>
-                  </div>
-                  {totals.tickets >= MAX_TICKETS_PER_ORDER && (
-                    <p className="text-xs text-amber-400 text-right">
-                      Podés comprar hasta {MAX_TICKETS_PER_ORDER} entradas por
-                      orden.
-                    </p>
+                  ) : (
+                    <div className="flex items-baseline justify-between gap-4">
+                      <h3 className="text-sm text-neutral-500 break-words min-w-0">
+                        {batch.name}
+                      </h3>
+                      {batch.saleStatus === 'SOLD_OUT' ? (
+                        <p className="shrink-0 text-sm font-medium text-amber-400">
+                          Agotada
+                        </p>
+                      ) : (
+                        <p className="text-sm text-neutral-400 text-right">
+                          Próximamente · desde{' '}
+                          {formatShortDateTime(batch.publishAt)} hs
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
+              ))}
+            </div>
 
-                <div className="flex flex-col items-center md:items-end gap-4 w-full">
-                  <div className="w-full flex justify-center md:justify-end relative z-50">
-                    <Turnstile
-                      ref={turnstileRef}
-                      siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
-                      onSuccess={(token) => setCaptchaToken(token)}
-                      onError={() => setCaptchaToken('')}
-                      options={TURNSTILE_OPTIONS}
-                      className="w-full"
-                    />
-                  </div>
-
-                  <button
-                    onClick={handleBuy}
-                    disabled={buying || totals.tickets === 0 || !captchaToken}
-                    className="w-full md:w-auto lg:w-full px-8 bg-indigo-600 hover:bg-indigo-500 text-white py-3.5 rounded-xl font-medium transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                  >
-                    {buying ? (
-                      'Procesando...'
-                    ) : (
-                      <>
-                        <CreditCard className="w-5 h-5" /> Comprar{' '}
-                        {totals.tickets > 0 ? `(${totals.tickets})` : ''}
-                      </>
-                    )}
-                  </button>
-                </div>
+            {/* Todo a la vista desde el principio (en $0 y con el tope) para
+                que sumar la primera entrada no baje el botón. */}
+            <div className="mt-5 space-y-1.5">
+              <div className="flex justify-between text-sm text-neutral-400 tabular-nums">
+                <span>Subtotal</span>
+                <span>{formatCurrency(totals.subtotal)}</span>
               </div>
+              <div className="flex justify-between text-sm text-neutral-400 tabular-nums">
+                <span>Cargo de servicio</span>
+                <span>{formatCurrency(totals.serviceFee)}</span>
+              </div>
+              <div className="flex justify-between items-center pt-1">
+                <span className="text-neutral-400">Total</span>
+                <span className="text-2xl font-bold text-emerald-400 tabular-nums">
+                  {formatCurrency(totals.total)}
+                </span>
+              </div>
+              <p
+                className={`text-xs text-right ${
+                  totals.tickets >= MAX_TICKETS_PER_ORDER
+                    ? 'text-amber-400'
+                    : 'text-neutral-500'
+                }`}
+              >
+                Hasta {MAX_TICKETS_PER_ORDER} entradas por compra
+              </p>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-4">
+              <div className="w-full flex justify-center relative z-50">
+                <Turnstile
+                  ref={turnstileRef}
+                  siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+                  onSuccess={(token) => setCaptchaToken(token)}
+                  onError={() => setCaptchaToken('')}
+                  options={TURNSTILE_OPTIONS}
+                  className="w-full"
+                />
+              </div>
+
+              {/* La cantidad cuelga a la derecha de "Comprar" sin correrlo. */}
+              <button
+                onClick={handleBuy}
+                disabled={buying || totals.tickets === 0 || !captchaToken}
+                className="w-full px-8 bg-indigo-600 hover:bg-indigo-500 text-white py-3.5 rounded-xl font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:hover:bg-indigo-600"
+              >
+                {buying ? (
+                  'Procesando...'
+                ) : (
+                  <>
+                    <CreditCard className="w-5 h-5" aria-hidden />
+                    <span className="relative">
+                      Comprar
+                      {totals.tickets > 0 && (
+                        <span className="absolute left-full ml-1 tabular-nums">
+                          ({totals.tickets})
+                        </span>
+                      )}
+                    </span>
+                  </>
+                )}
+              </button>
             </div>
           </section>
 
