@@ -32,11 +32,11 @@ export const ISOLOGO = {
   gradient: { x1: 0, y1: 146.83, x2: 299.19, y2: 98.96 },
 } as const;
 
-// La N delante del wordmark, en un solo dibujo.
+// El wordmark con la N al final, en un solo dibujo.
 export const LOCKUP = {
-  width: 824.91,
+  width: 819.56,
   height: 115.7,
   isologoScale: 0.40449,
-  wordmarkX: 158.42,
+  isologoX: 698.54,
   wordmarkY: 6.68,
 } as const;

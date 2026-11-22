@@ -45,9 +45,12 @@ function InstagramIcon() {
   );
 }
 
-// El cierre de la landing: el borde de arriba en diagonal, una tela que entra
-// por la derecha en ese espacio libre y, debajo, los accesos y el contacto. La
-// capa oscura apaga la tela antes de llegar a los links.
+// El cierre de la landing: el borde de arriba en diagonal, la misma tela de
+// las razones entrando por la derecha y, debajo, los accesos y el contacto. En
+// PC la tela queda fija mientras la página pasa (el clip-path del pie la
+// recorta), como en las razones; en celular se desplaza con el pie. Arriba se
+// funde con el fondo para que la diagonal no la corte en seco, y la capa
+// oscura la apaga antes de llegar a los links.
 export default function LandingFooter() {
   const { user, ready } = useCurrentUser();
 
@@ -55,9 +58,12 @@ export default function LandingFooter() {
     <footer className="relative isolate text-neutral-300 [clip-path:polygon(0_3rem,100%_0,100%_100%,0_100%)] md:[clip-path:polygon(0_6rem,100%_0,100%_100%,0_100%)]">
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10 overflow-clip"
+        className="pointer-events-none absolute inset-0 -z-10"
       >
-        <TelaSuperior className="absolute top-0 -right-[30%] w-[110%] md:-right-[4%] md:w-[52%] md:max-w-[900px]" />
+        <div className="absolute inset-0 overflow-clip md:fixed">
+          <TelaSuperior className="absolute top-0 -right-[30%] w-[110%] md:top-[6%] md:-right-[2%] md:w-[58%] md:max-w-[1000px]" />
+        </div>
+        <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-neutral-950 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/10 via-neutral-950/80 to-neutral-950" />
       </div>
 
