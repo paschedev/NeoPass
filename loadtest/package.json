@@ -1,0 +1,10 @@
+{
+  "name": "neopass-loadtest",
+  "private": true,
+  "type": "module",
+  "description": "Prueba de carga de NeoPass: Mercado Pago y Resend simulados y escenarios de k6. Solo para el entorno de prueba.",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  }
+}
