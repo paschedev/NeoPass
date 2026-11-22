@@ -41,29 +41,13 @@ const EDGE: CSSProperties = {
   WebkitMaskImage: EDGE_FADE,
 };
 
-// Tamaños: "compacto" es más chico en el celular y normal desde md (el hero,
-// donde cada píxel de alto empuja los botones).
-const SIZES = {
-  normal: { tile: 'size-24 rounded-3xl', ring: 'size-16' },
-  compacto: {
-    tile: 'size-16 rounded-2xl md:size-24 md:rounded-3xl',
-    ring: 'size-11 md:size-16',
-  },
-};
-
-export default function Anillo({
-  className = '',
-  size = 'normal',
-}: {
-  className?: string;
-  size?: keyof typeof SIZES;
-}) {
+export default function Anillo({ className = '' }: { className?: string }) {
   return (
     <div
       aria-hidden="true"
-      className={`grid place-items-center border border-white/10 bg-[radial-gradient(120%_100%_at_50%_0%,#1a1a22,#0b0b0f_70%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_40px_-18px_rgba(0,0,0,0.9)] ${SIZES[size].tile} ${className}`}
+      className={`grid size-24 place-items-center rounded-3xl border border-white/10 bg-[radial-gradient(120%_100%_at_50%_0%,#1a1a22,#0b0b0f_70%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_18px_40px_-18px_rgba(0,0,0,0.9)] ${className}`}
     >
-      <div className={`relative ${SIZES[size].ring}`}>
+      <div className="relative size-16">
         <div
           className="absolute inset-0 overflow-hidden rounded-full"
           style={MASKED}
