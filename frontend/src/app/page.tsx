@@ -11,7 +11,6 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
-import Anillo from '@/components/brand/Anillo';
 import Logo from '@/components/brand/Logo';
 import { TelaSuperior } from '@/components/brand/Telas';
 import HeroBadge from '@/components/landing/HeroBadge';
@@ -120,13 +119,20 @@ export default function Home() {
       <div className="flex-1">
         {/* Hero: en PC ocupa justo la pantalla, como en celular. */}
         <section className="relative pt-24 pb-32 overflow-clip md:min-h-svh md:flex md:flex-col md:justify-center md:py-16">
+          {/* Detrás, la marca repetida y muy apagada, como la pared de
+              patrocinadores de una conferencia: en el celular la N sola, en PC
+              filas de neopass y N inclinadas como las letras. Se apaga detrás
+              del texto y abajo (globals.css, .patron-inicio). Quieta y sin
+              clics. */}
+          <div
+            aria-hidden="true"
+            className="patron-inicio pointer-events-none absolute inset-0"
+          >
+            <div className="absolute inset-0 bg-[url(/landing/patron-celular.svg)] bg-[length:60.48px_60.48px] bg-top md:hidden" />
+            <div className="absolute -inset-[30%] hidden -rotate-9 bg-[url(/landing/patron-pc.svg)] bg-[length:290.77px_108px] bg-top md:block" />
+          </div>
+
           <div className="reveal-out container mx-auto px-4 relative z-10 flex flex-col items-center text-center">
-            {/* El anillo vidrioso arriba de la etiqueta rotativa. En el
-                celular los dos van más chicos y más juntos, así los botones
-                siguen a la vista. */}
-            <div className="mb-4 md:mb-6 motion-safe:animate-fade-up">
-              <Anillo size="compacto" />
-            </div>
             <HeroBadge className="inline-flex mb-6 md:mb-8 motion-safe:animate-fade-up" />
 
             {/* El nombre es el logo: sus minúsculas miden lo que las
