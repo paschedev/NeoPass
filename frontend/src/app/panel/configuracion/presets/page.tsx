@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Edit2, Plus, Ticket, Trash2 } from 'lucide-react';
+import { ArrowLeft, Edit2, Plus, Trash2 } from 'lucide-react';
+import Anillo from '@/components/brand/Anillo';
 import toast from '@/utils/toast';
 import { apiFetch } from '@/utils/api';
 import { getApiErrorMessage } from '@/utils/api-error';
@@ -103,10 +104,7 @@ export default function PresetsPage() {
 
       <div className="flex items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="font-outfit text-3xl font-bold text-white mb-2 flex items-center gap-3">
-            <div className="w-10 h-10 bg-pink-500/20 text-pink-400 rounded-xl flex items-center justify-center">
-              <Ticket className="w-5 h-5" />
-            </div>
+          <h1 className="font-outfit text-3xl font-bold text-white mb-2">
             Plantillas de entradas
           </h1>
           <p className="text-neutral-400">
@@ -126,38 +124,37 @@ export default function PresetsPage() {
         </button>
       </div>
 
-      <div className="space-y-4">
-        {editing === NEW && (
-          <div className="bg-white/5 border border-indigo-500/50 rounded-2xl p-4 flex">
-            <PresetNameForm onSave={save} onCancel={() => setEditing(null)} />
-          </div>
-        )}
-
-        {loading ? (
-          <div className="text-center py-12 text-neutral-400">
-            Cargando plantillas...
-          </div>
-        ) : presets.length === 0 && editing !== NEW ? (
-          <div className="text-center py-12 border border-dashed border-white/10 rounded-2xl">
-            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 text-neutral-600">
-              <Ticket className="w-8 h-8" />
+      {/* Una sola lista, como Configuración: cada plantilla es una fila
+          separada por una línea, y la nueva entra arriba. */}
+      {loading ? (
+        <div className="text-center py-12 text-neutral-400">
+          Cargando plantillas...
+        </div>
+      ) : presets.length === 0 && editing !== NEW ? (
+        <div className="text-center py-12 px-6 bg-white/[0.02] border border-white/10 rounded-2xl">
+          <Anillo className="mx-auto mb-6" />
+          <p className="text-neutral-400 mb-4">
+            No tenés plantillas guardadas.
+          </p>
+          <button
+            type="button"
+            onClick={() => setEditing(NEW)}
+            className="text-indigo-400 hover:text-indigo-300 font-medium text-sm transition-colors"
+          >
+            Crear tu primera plantilla
+          </button>
+        </div>
+      ) : (
+        <div className="bg-white/[0.02] border border-white/10 rounded-2xl divide-y divide-white/10">
+          {editing === NEW && (
+            <div className="p-4 flex">
+              <PresetNameForm onSave={save} onCancel={() => setEditing(null)} />
             </div>
-            <p className="text-neutral-400 mb-4">
-              No tenés plantillas guardadas.
-            </p>
-            <button
-              type="button"
-              onClick={() => setEditing(NEW)}
-              className="text-indigo-400 hover:text-indigo-300 font-medium text-sm transition-colors"
-            >
-              Crear tu primera plantilla
-            </button>
-          </div>
-        ) : (
-          presets.map((preset) => (
+          )}
+          {presets.map((preset) => (
             <div
               key={preset.id}
-              className="bg-white/5 border border-white/10 rounded-2xl p-4 flex items-center justify-between group hover:border-white/20 transition-colors"
+              className="px-4 py-3 md:px-6 flex items-center justify-between group"
             >
               {editing === preset.id ? (
                 <PresetNameForm
@@ -175,7 +172,7 @@ export default function PresetsPage() {
                       type="button"
                       onClick={() => setEditing(preset.id)}
                       aria-label={`Editar ${preset.name}`}
-                      className="w-10 h-10 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 rounded-xl flex items-center justify-center transition-colors"
+                      className="w-10 h-10 text-neutral-400 hover:text-white hover:bg-white/10 rounded-xl flex items-center justify-center transition-colors"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
@@ -183,7 +180,7 @@ export default function PresetsPage() {
                       type="button"
                       onClick={() => setPresetToDelete(preset)}
                       aria-label={`Eliminar ${preset.name}`}
-                      className="w-10 h-10 bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-xl flex items-center justify-center transition-colors"
+                      className="w-10 h-10 text-neutral-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl flex items-center justify-center transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -191,18 +188,15 @@ export default function PresetsPage() {
                 </>
               )}
             </div>
-          ))
-        )}
-      </div>
+          ))}
+        </div>
+      )}
 
       <Modal
         open={!!presetToDelete}
         onClose={() => setPresetToDelete(null)}
-        className="bg-neutral-900 border border-white/10 p-8 rounded-3xl w-full max-w-sm relative shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+        className="bg-neutral-900 border border-white/10 p-8 rounded-2xl w-full max-w-sm relative animate-in fade-in zoom-in-95 duration-200"
       >
-        <div className="w-16 h-16 bg-red-500/10 text-red-400 rounded-2xl flex items-center justify-center mx-auto mb-6">
-          <Trash2 className="w-8 h-8" />
-        </div>
         <h2 className="text-xl font-bold text-center mb-2">
           Eliminar plantilla
         </h2>

@@ -11,6 +11,8 @@ import {
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
+import Anillo from '@/components/brand/Anillo';
+import Logo from '@/components/brand/Logo';
 import { TelaSuperior } from '@/components/brand/Telas';
 import HeroBadge from '@/components/landing/HeroBadge';
 import LandingDemo from '@/components/landing/LandingDemo';
@@ -119,11 +121,20 @@ export default function Home() {
         {/* Hero: en PC ocupa justo la pantalla, como en celular. */}
         <section className="relative pt-24 pb-32 overflow-clip md:min-h-svh md:flex md:flex-col md:justify-center md:py-16">
           <div className="reveal-out container mx-auto px-4 relative z-10 flex flex-col items-center text-center">
-            <HeroBadge className="hidden md:inline-flex mb-8 motion-safe:animate-fade-up" />
+            {/* El anillo vidrioso arriba de la etiqueta rotativa. En el
+                celular los dos van más chicos y más juntos, así los botones
+                siguen a la vista. */}
+            <div className="mb-4 md:mb-6 motion-safe:animate-fade-up">
+              <Anillo size="compacto" />
+            </div>
+            <HeroBadge className="inline-flex mb-6 md:mb-8 motion-safe:animate-fade-up" />
 
+            {/* El nombre es el logo: sus minúsculas miden lo que las
+                mayúsculas del título y la base de sus letras cae en la línea
+                del texto (el 16,5 % de abajo es la cola de la "p"). */}
             <h1 className="font-outfit text-5xl md:text-7xl font-bold tracking-tight mb-6 max-w-4xl text-white motion-safe:animate-fade-up [--delay:100ms]">
               Viví experiencias únicas con{' '}
-              <span className="text-brand-400">NeoPass</span>
+              <Logo className="inline-block h-[0.85em] w-auto align-[-0.14em]" />
             </h1>
 
             <p className="text-lg md:text-xl text-neutral-400 max-w-2xl mb-10 leading-relaxed motion-safe:animate-fade-up [--delay:200ms]">
