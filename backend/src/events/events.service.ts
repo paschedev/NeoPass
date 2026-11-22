@@ -24,7 +24,7 @@ import {
   ChangedEvent,
   EventChanges,
 } from '../notifications/event-change-notices';
-import { buildRevenueChart } from './revenue-chart';
+import { buildRevenueChart, CHART_DAYS } from './revenue-chart';
 import { getBatchSaleStatus } from './batch-sale-status';
 import { getEventPhase } from './event-phase';
 import { buildEventSales } from './event-sales';
@@ -764,13 +764,13 @@ export class EventsService {
 
     const eventIds = events.map((e) => e.id);
 
-    // Fetch PAID orders containing items from these events
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    // PAID orders with items from these events, as far back as the chart goes
+    const since = new Date();
+    since.setDate(since.getDate() - CHART_DAYS);
 
     const paidOrders = await this.eventsRepository.getPaidOrdersForEvents(
       eventIds,
-      thirtyDaysAgo,
+      since,
     );
     const totalRevenue =
       await this.eventsRepository.sumPaidTicketAmountForOrganizer(userId);
@@ -799,7 +799,7 @@ export class EventsService {
       activeEvents: events.filter(
         (e) => e.status === 'PUBLISHED' && e.deletedAt === null,
       ).length,
-      chartData, // Returns last 30 days of real revenue
+      chartData, // Revenue per day of the last CHART_DAYS days
       recentTransactions,
     };
   }
