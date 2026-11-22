@@ -24,7 +24,8 @@ describe('Límites por minuto', () => {
 
   const server = () => t.app.getHttpServer();
 
-  // The in-memory counters outlive resetDb: every test uses its own addresses.
+  // The counters live in Redis and outlive resetDb: every test uses its own
+  // addresses.
   let nextAddress = 1;
   const newAddress = () => `181.45.0.${nextAddress++}`;
 

@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
+import { ScheduledTurns } from '../redis/scheduled-turns';
 import { PaymentsRepository } from './repositories/payments.repository';
 import {
   MercadoPagoTokenResponse,
@@ -20,6 +21,7 @@ export class MercadoPagoOAuthService implements OnApplicationBootstrap {
   constructor(
     private readonly paymentsRepository: PaymentsRepository,
     private readonly config: ConfigService,
+    private readonly turns: ScheduledTurns,
   ) {}
 
   // Tokens linked before they were stored encrypted get encrypted before the
@@ -71,10 +73,15 @@ export class MercadoPagoOAuthService implements OnApplicationBootstrap {
     }
   }
 
-  // Every day at 06:00 UTC (03:00 in Argentina).
+  // Every day at 06:00 UTC (03:00 in Argentina). With several replicas, only
+  // one of them renews: two renewals with the same refresh token would step on
+  // each other.
   @Cron('0 6 * * *')
   async handleTokenRenewal() {
     try {
+      if (!(await this.turns.claim('renew-mercadopago-tokens', DAY_MS))) {
+        return;
+      }
       await this.refreshExpiringTokens(new Date());
     } catch (error) {
       this.logger.error('Error renewing Mercado Pago tokens', error);
