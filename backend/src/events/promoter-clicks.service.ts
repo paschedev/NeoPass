@@ -1,43 +1,48 @@
+import { createHash } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
+import { RedisService } from '../redis/redis.service';
 import { EventsRepository } from './repositories/events.repository';
 
 const CLICK_WINDOW_MS = 60 * 60 * 1000;
 
 // Counts visits to a promoter's link: once per visitor (IP) and promoter per
 // hour, and only for an accepted promoter of the event, so reloading the page
-// does not inflate the counter. The recent visits live in memory: a deploy
-// forgets them, which lets at most one extra click per visitor through.
+// does not inflate the counter. The recent visits live in Redis, shared by
+// every replica and under a hash instead of the IP. If Redis does not answer,
+// the visit is not counted.
 @Injectable()
 export class PromoterClicksService {
-  // Key → when it expires. Every entry lasts the same, so the insertion order
-  // is also the expiration order.
-  private readonly recentVisits = new Map<string, number>();
+  constructor(
+    private readonly eventsRepository: EventsRepository,
+    private readonly redis: RedisService,
+  ) {}
 
-  constructor(private readonly eventsRepository: EventsRepository) {}
+  async register(eventId: string, promoterId: string, visitorIp: string) {
+    const visit = `promoter-click:${createHash('sha256')
+      .update(`${promoterId}:${visitorIp}`)
+      .digest('hex')}`;
+    let firstThisHour: boolean;
+    try {
+      firstThisHour =
+        (await this.redis.client.set(visit, 1, 'PX', CLICK_WINDOW_MS, 'NX')) ===
+        'OK';
+    } catch (error) {
+      this.redis.warnUnavailable('promoter clicks', error);
+      return;
+    }
+    if (!firstThisHour) return;
 
-  async register(
-    eventId: string,
-    promoterId: string,
-    visitorIp: string,
-    now = Date.now(),
-  ) {
-    this.forgetExpired(now);
-    const key = `${promoterId}:${visitorIp}`;
-    if (this.recentVisits.has(key)) return;
-
-    this.recentVisits.set(key, now + CLICK_WINDOW_MS);
     const counted = await this.eventsRepository.incrementAcceptedPromoterClicks(
       eventId,
       promoterId,
     );
     // Not a promoter of this event: nothing to remember.
-    if (!counted) this.recentVisits.delete(key);
-  }
-
-  private forgetExpired(now: number) {
-    for (const [key, expiresAt] of this.recentVisits) {
-      if (expiresAt > now) break;
-      this.recentVisits.delete(key);
+    if (!counted) {
+      await this.redis.client
+        .del(visit)
+        .catch((error: unknown) =>
+          this.redis.warnUnavailable('promoter clicks', error),
+        );
     }
   }
 }

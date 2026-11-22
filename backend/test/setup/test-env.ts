@@ -11,8 +11,11 @@ export const testEnv = {
   JWT_SECRET: 'test-jwt-secret',
   FRONTEND_URL: 'https://app.neopass.test',
   BACKEND_URL: 'https://api.neopass.test',
-  // BullMQ nunca se conecta: las colas están simuladas en createTestApp().
-  REDIS_URL: 'redis://localhost:6379',
+  // El Redis de prueba (redis-test de docker-compose; en la CI, un servicio en
+  // el mismo puerto): lo usan el límite de pedidos, los clicks de RRPP y los
+  // turnos de los crons. BullMQ nunca se conecta: las colas están simuladas en
+  // createTestApp().
+  REDIS_URL: 'redis://localhost:6380',
   MERCADOPAGO_ACCESS_TOKEN: 'TEST-platform-access-token',
   MERCADOPAGO_CLIENT_ID: 'test-client-id',
   MERCADOPAGO_CLIENT_SECRET: 'test-client-secret',

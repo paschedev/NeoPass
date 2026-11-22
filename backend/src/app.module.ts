@@ -19,16 +19,9 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { validateEnv } from './config/env.validation';
-
-function redisConnection(redisUrl: string) {
-  const url = new URL(redisUrl);
-  return {
-    host: url.hostname,
-    port: parseInt(url.port, 10),
-    username: url.username || undefined,
-    password: url.password || undefined,
-  };
-}
+import { RedisModule } from './redis/redis.module';
+import { RedisThrottlerStorage } from './redis/redis-throttler.storage';
+import { redisConnection } from './redis/redis-connection';
 
 @Module({
   imports: [
@@ -37,10 +30,17 @@ function redisConnection(redisUrl: string) {
       cache: true,
       validate: validateEnv,
     }),
-    // Per route and per client: each route has its own count.
-    ThrottlerModule.forRoot({
-      throttlers: [{ ttl: 60_000, limit: 100 }],
-      errorMessage: BUSY_MESSAGE,
+    RedisModule,
+    // Per route and per client: each route has its own count, shared by
+    // every replica through Redis.
+    ThrottlerModule.forRootAsync({
+      imports: [RedisModule],
+      inject: [RedisThrottlerStorage],
+      useFactory: (storage: RedisThrottlerStorage) => ({
+        throttlers: [{ ttl: 60_000, limit: 100 }],
+        errorMessage: BUSY_MESSAGE,
+        storage,
+      }),
     }),
     BullModule.forRootAsync({
       inject: [ConfigService],
