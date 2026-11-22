@@ -18,6 +18,9 @@ import {
 } from './utils/factories';
 import { createTestApp, TestApp } from './utils/test-app';
 import { resetDb } from './utils/test-database';
+import { emptyTestRedis } from './utils/test-redis';
+
+const HOUR_MS = 60 * 60 * 1000;
 
 type PromoterEventStats = {
   totalEarned: number;
@@ -167,6 +170,38 @@ describe('RRPP', () => {
 
       await visit(event.id, staff.id, '181.45.2.3, 34.120.0.1').expect(200);
       await visit(event.id, staff.id, '181.45.2.3, 34.120.0.2').expect(200);
+
+      expect(await clicks(staff.id)).toBe(1);
+    });
+
+    it('la marca del visitante dura una hora y, vencida, vuelve a sumar', async () => {
+      const { event } = await createOrganizerWithEvent(t.prisma);
+      const { staff } = await addStaff(event.id);
+      await emptyTestRedis(t.redis);
+      await visit(event.id, staff.id).expect(200);
+
+      const [mark] = await t.redis.keys('promoter-click:*');
+      const timeLeft = await t.redis.pttl(mark);
+      expect(timeLeft).toBeGreaterThan(HOUR_MS - 60_000);
+      expect(timeLeft).toBeLessThanOrEqual(HOUR_MS);
+
+      // As if the hour had passed.
+      await t.redis.del(mark);
+      await visit(event.id, staff.id).expect(200);
+
+      expect(await clicks(staff.id)).toBe(2);
+    });
+
+    it('una visita que no contó no frena la siguiente cuando el RRPP acepta la invitación', async () => {
+      const { event } = await createOrganizerWithEvent(t.prisma);
+      const { staff } = await addStaff(event.id, { status: 'PENDING' });
+      await visit(event.id, staff.id).expect(200);
+      await t.prisma.eventStaff.update({
+        where: { id: staff.id },
+        data: { status: 'ACCEPTED' },
+      });
+
+      await visit(event.id, staff.id).expect(200);
 
       expect(await clicks(staff.id)).toBe(1);
     });
