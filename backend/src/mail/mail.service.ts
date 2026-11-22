@@ -85,7 +85,10 @@ export class MailService {
     config: ConfigService,
     @InjectQueue('mail') private readonly mailQueue: Queue,
   ) {
-    this.resend = new Resend(config.getOrThrow<string>('RESEND_API_KEY'));
+    // RESEND_BASE_URL: the simulated Resend of a load test (never in production).
+    this.resend = new Resend(config.getOrThrow<string>('RESEND_API_KEY'), {
+      baseUrl: config.get<string>('RESEND_BASE_URL'),
+    });
     this.frontendUrl = config.getOrThrow<string>('FRONTEND_URL');
     this.ticketsUrl = new URL('/panel/tickets', this.frontendUrl).toString();
   }

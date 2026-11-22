@@ -2,6 +2,7 @@ import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import { ScheduledTurns } from '../redis/scheduled-turns';
+import { mercadoPagoApiUrl } from './mercadopago-api';
 import { PaymentsRepository } from './repositories/payments.repository';
 import {
   MercadoPagoTokenResponse,
@@ -129,7 +130,8 @@ export class MercadoPagoOAuthService implements OnApplicationBootstrap {
   private async requestToken(
     params: Record<string, string>,
   ): Promise<MercadoPagoTokenResponse> {
-    const response = await fetch('https://api.mercadopago.com/oauth/token', {
+    const tokenUrl = `${mercadoPagoApiUrl(this.config)}/oauth/token`;
+    const response = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
