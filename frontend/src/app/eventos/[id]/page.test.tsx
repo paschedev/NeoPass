@@ -9,10 +9,11 @@ import {
 import { apiFetch } from '@/utils/api';
 import EventPage from './page';
 
+const nav = vi.hoisted(() => ({ search: '' }));
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: 'e1' }),
   useRouter: () => ({ push: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => new URLSearchParams(nav.search),
 }));
 vi.mock('@/utils/api', () => ({ apiFetch: vi.fn() }));
 vi.mock('@/hooks/useCurrentUser', () => ({
@@ -148,7 +149,7 @@ describe('Página del evento', () => {
     );
 
     render(<EventPage />);
-    fireEvent.click(await screen.findByRole('button', { name: '+' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Sumar una General' }));
 
     const fee = screen.getByText('Cargo de servicio');
     expect(fee.nextElementSibling).toHaveTextContent('$1.815');
@@ -165,7 +166,7 @@ describe('Página del evento', () => {
     );
 
     render(<EventPage />);
-    fireEvent.click(await screen.findByRole('button', { name: '+' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Sumar una General' }));
 
     const fee = screen.getByText('Cargo de servicio');
     expect(fee.nextElementSibling).toHaveTextContent('$1.067');
@@ -192,7 +193,7 @@ describe('Página del evento', () => {
     });
 
     render(<EventPage />);
-    fireEvent.click(await screen.findByRole('button', { name: '+' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Sumar una General' }));
     fireEvent.click(screen.getByRole('button', { name: 'Resolver captcha' }));
     fireEvent.click(screen.getByRole('button', { name: /Comprar/ }));
 
@@ -205,6 +206,153 @@ describe('Página del evento', () => {
 
     await waitFor(() => expect(sentTokens).toHaveLength(2));
     expect(sentTokens[0]).not.toBe(sentTokens[1]);
+  });
+
+  describe('la compra', () => {
+    afterEach(() => {
+      nav.search = '';
+    });
+
+    const withBatches = {
+      ...event,
+      buyerFeePercentage: '10',
+      ticketBatches: [
+        {
+          id: 'b1',
+          name: 'Tanda 1',
+          saleStatus: 'SOLD_OUT',
+          publishAt: null,
+          ticketTypes: [],
+        },
+        {
+          id: 'b2',
+          name: 'Tanda 2',
+          saleStatus: 'ON_SALE',
+          publishAt: null,
+          ticketTypes: [
+            { id: 't1', name: 'General', price: '30000.00', available: 184 },
+            { id: 't2', name: 'VIP', price: '40000.00', available: 1 },
+          ],
+        },
+        {
+          id: 'b3',
+          name: 'Tanda 3',
+          saleStatus: 'UPCOMING',
+          publishAt: '2026-12-05T23:00:00.000Z',
+          ticketTypes: [],
+        },
+      ],
+    };
+
+    const renderWithBatches = () => {
+      vi.mocked(apiFetch).mockImplementation(async (path) =>
+        path === '/events/e1'
+          ? Response.json(withBatches)
+          : Response.json([]),
+      );
+      render(<EventPage />);
+    };
+
+    it('tiene su título y cada tanda como subtítulo', async () => {
+      renderWithBatches();
+
+      expect(
+        await screen.findByRole('heading', { name: 'Comprar entradas' }),
+      ).toBeVisible();
+      for (const name of ['Tanda 1', 'Tanda 2', 'Tanda 3']) {
+        expect(screen.getByRole('heading', { name })).toBeVisible();
+      }
+    });
+
+    it('una tanda agotada o que todavía no salió es una sola línea', async () => {
+      renderWithBatches();
+
+      const soldOut = await screen.findByRole('heading', { name: 'Tanda 1' });
+      expect(soldOut.parentElement).toHaveTextContent(/^Tanda 1Agotada$/);
+      expect(
+        screen.getByRole('heading', { name: 'Tanda 3' }).parentElement,
+      ).toHaveTextContent(/^Tanda 3Próximamente · desde 5\/12 20:00 hs$/);
+    });
+
+    it('cada entrada muestra su precio y cuántas quedan', async () => {
+      renderWithBatches();
+
+      expect(
+        (await screen.findByText('General')).nextElementSibling,
+      ).toHaveTextContent('$30.000 · 184 disponibles');
+      expect(screen.getByText('VIP').nextElementSibling).toHaveTextContent(
+        '$40.000 · 1 disponible',
+      );
+    });
+
+    it('los botones de cantidad dicen qué entrada suman o quitan', async () => {
+      renderWithBatches();
+
+      const add = await screen.findByRole('button', { name: 'Sumar una VIP' });
+      const remove = screen.getByRole('button', { name: 'Quitar una VIP' });
+      expect(remove).toBeDisabled();
+
+      fireEvent.click(add);
+
+      expect(remove).toBeEnabled();
+      // Era la última VIP: no deja sumar otra.
+      expect(add).toBeDisabled();
+      expect(screen.getByRole('button', { name: /Comprar/ })).toHaveTextContent(
+        'Comprar(1)',
+      );
+    });
+
+    it('subtotal, cargo, total y el tope se ven desde el principio, en $0', async () => {
+      renderWithBatches();
+
+      expect(
+        (await screen.findByText('Subtotal')).nextElementSibling,
+      ).toHaveTextContent('$0');
+      expect(
+        screen.getByText('Cargo de servicio').nextElementSibling,
+      ).toHaveTextContent('$0');
+      expect(screen.getByText('Total').nextElementSibling).toHaveTextContent(
+        '$0',
+      );
+      expect(screen.getByText('Hasta 10 entradas por compra')).toBeVisible();
+      expect(screen.getByRole('button', { name: /Comprar/ })).toBeDisabled();
+    });
+
+    it('al llegar a 10 entradas no deja sumar más', async () => {
+      renderWithBatches();
+
+      const add = await screen.findByRole('button', {
+        name: 'Sumar una General',
+      });
+      for (let i = 0; i < 10; i += 1) fireEvent.click(add);
+
+      expect(add).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Sumar una VIP' })).toBeDisabled();
+      expect(screen.getByText('Hasta 10 entradas por compra')).toBeVisible();
+      expect(screen.getByText('Subtotal').nextElementSibling).toHaveTextContent(
+        '$300.000',
+      );
+      expect(screen.getByText('Total').nextElementSibling).toHaveTextContent(
+        '$330.000',
+      );
+    });
+
+    it('si llegó por el link de un promotor lo avisa y no deja cambiarlo', async () => {
+      nav.search = 'rpp=p1';
+      vi.mocked(apiFetch).mockImplementation(async (path) => {
+        if (path === '/events/e1?rpp=p1') return Response.json(withBatches);
+        if (path === '/events/e1/promoters')
+          return Response.json([{ id: 'p1', name: 'Juli' }]);
+        return Response.json([]);
+      });
+
+      render(<EventPage />);
+
+      expect(
+        await screen.findByText('✓ Llegaste por el link de este promotor'),
+      ).toBeVisible();
+      expect(screen.getByRole('button', { name: 'Juli' })).toBeDisabled();
+    });
   });
 
   describe('con mucha demanda', () => {
