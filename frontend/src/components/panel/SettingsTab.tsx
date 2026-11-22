@@ -1,50 +1,30 @@
 'use client';
 
-import Link from 'next/link';
-import { motion } from 'framer-motion';
-import { Ticket } from 'lucide-react';
+import { useCurrentUser } from '@/hooks/useCurrentUser';
+import MercadoPagoSection from '@/components/settings/MercadoPagoSection';
+import PresetsLinkSection from '@/components/settings/PresetsLinkSection';
 
-// Pestaña "Ajustes" del panel del organizador.
+// Pestaña "Ajustes" del panel del organizador: la misma lista que
+// Configuración, con las filas que tocan a quien organiza.
 export default function SettingsTab() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      <div className="bg-neutral-900 border border-white/5 rounded-3xl p-8 shadow-2xl">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h2 className="font-outfit text-2xl font-bold">
-              Ajustes del organizador
-            </h2>
-            <p className="text-sm text-neutral-400">
-              Configurá tu perfil de organizador y tus herramientas.
-            </p>
-          </div>
-        </div>
+  const { user } = useCurrentUser();
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col items-start hover:border-white/20 transition-colors">
-            <div className="w-12 h-12 bg-pink-500/20 rounded-xl flex items-center justify-center text-pink-400 mb-4">
-              <Ticket className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-white mb-2">
-              Plantillas de entradas
-            </h3>
-            <p className="text-sm text-neutral-400 mb-6 flex-1">
-              Gestioná tus plantillas para cargar entradas en segundos al crear
-              nuevos eventos.
-            </p>
-            <Link
-              href="/panel/configuracion/presets"
-              className="w-full text-center bg-white/10 hover:bg-white/20 text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
-            >
-              Administrar plantillas
-            </Link>
-          </div>
-        </div>
+  return (
+    <section aria-labelledby="ajustes-organizador">
+      <h2
+        id="ajustes-organizador"
+        className="font-outfit text-2xl font-bold text-white"
+      >
+        Ajustes del organizador
+      </h2>
+      <p className="mt-1 mb-6 text-sm text-neutral-400">
+        La cuenta donde cobrás y tus plantillas de entradas.
+      </p>
+
+      <div className="bg-white/[0.02] border border-white/10 rounded-2xl divide-y divide-white/10">
+        <MercadoPagoSection linked={!!user?.hasLinkedMp} />
+        <PresetsLinkSection />
       </div>
-    </motion.div>
+    </section>
   );
 }
