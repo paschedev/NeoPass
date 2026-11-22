@@ -20,6 +20,7 @@ import {
   sumMercadoPagoFees,
 } from './mercado-pago-fee';
 import { feeDeviationOf } from '../orders/fee-adjustment';
+import { useMercadoPagoApi } from './mercadopago-api';
 
 type PreferenceBody = Parameters<Preference['create']>[0]['body'];
 export type PreferenceItem = PreferenceBody['items'][number];
@@ -42,6 +43,7 @@ export class PaymentsService {
     @InjectQueue('payments') private readonly paymentsQueue: Queue,
     private readonly notificationsService: NotificationsService,
   ) {
+    useMercadoPagoApi(this.config);
     this.client = new MercadoPagoConfig({
       accessToken: this.config.getOrThrow<string>('MERCADOPAGO_ACCESS_TOKEN'),
     });
