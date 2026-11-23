@@ -217,4 +217,72 @@ describe('Límites por minuto', () => {
       expect(res.headers['x-ratelimit-limit']).toBe('100');
     });
   });
+
+  // A load test runs from a single generator inside Railway: every simulated
+  // buyer reaches the app from the same address, so LOAD_TEST_CLIENT_HEADER
+  // (forbidden in production by validateEnv) names each one.
+  describe('generador de una prueba de carga', () => {
+    const LOAD_TEST_HEADER = 'x-load-test-client';
+    const EDGE = '34.120.0.1';
+    let nextClient = 1;
+    const newClient = () => `comprador-${nextClient++}`;
+
+    function fromGenerator(app: TestApp, ip: string, client?: string) {
+      const req = request(app.app.getHttpServer())
+        .get('/')
+        .set('X-Forwarded-For', `${ip}, ${EDGE}`);
+      return client ? req.set(LOAD_TEST_HEADER, client) : req;
+    }
+    const remaining = (res: request.Response) =>
+      Number(res.headers['x-ratelimit-remaining']);
+
+    it('sin LOAD_TEST_CLIENT_HEADER, inventar el encabezado no abre un límite nuevo', async () => {
+      const ip = newAddress();
+
+      const first = await fromGenerator(t, ip, newClient()).expect(200);
+      const second = await fromGenerator(t, ip, newClient()).expect(200);
+
+      expect(remaining(first)).toBe(99);
+      expect(remaining(second)).toBe(98);
+    });
+
+    describe('con LOAD_TEST_CLIENT_HEADER (solo fuera de producción)', () => {
+      let loadTest: TestApp;
+
+      beforeAll(async () => {
+        process.env.LOAD_TEST_CLIENT_HEADER = LOAD_TEST_HEADER;
+        loadTest = await createTestApp();
+      });
+
+      afterAll(async () => {
+        await loadTest.close();
+        delete process.env.LOAD_TEST_CLIENT_HEADER;
+      });
+
+      it('cada comprador simulado tiene su propio límite aunque lleguen desde la misma IP', async () => {
+        const ip = newAddress();
+        const [buyer, other] = [newClient(), newClient()];
+
+        await fromGenerator(loadTest, ip, buyer).expect(200);
+        const buyerAgain = await fromGenerator(loadTest, ip, buyer).expect(200);
+        const otherBuyer = await fromGenerator(loadTest, ip, other).expect(200);
+
+        expect(remaining(buyerAgain)).toBe(98);
+        expect(remaining(otherBuyer)).toBe(99);
+      });
+
+      it('un pedido sin el encabezado sigue contando por IP', async () => {
+        const ip = newAddress();
+
+        await fromGenerator(loadTest, ip).expect(200);
+        const again = await fromGenerator(loadTest, ip).expect(200);
+        const simulated = await fromGenerator(loadTest, ip, newClient()).expect(
+          200,
+        );
+
+        expect(remaining(again)).toBe(98);
+        expect(remaining(simulated)).toBe(99);
+      });
+    });
+  });
 });

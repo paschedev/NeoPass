@@ -104,4 +104,68 @@ describe('validateEnv', () => {
         .CAPTCHA_DISABLED,
     ).toBe(false);
   });
+
+  describe('variables de las pruebas de carga', () => {
+    const LOAD_TEST_ENV = {
+      MERCADOPAGO_API_URL: 'https://carga.neopass.test',
+      RESEND_BASE_URL: 'https://carga.neopass.test',
+      LOAD_TEST_CLIENT_HEADER: 'x-load-test-client',
+    };
+    const LOAD_TEST_VARIABLES = Object.entries(LOAD_TEST_ENV);
+    const OUTSIDE_PRODUCTION = {
+      ...PRODUCTION_ENV,
+      NODE_ENV: 'development',
+      RAILWAY_ENVIRONMENT_NAME: 'carga',
+    };
+
+    it('fuera de producción se aceptan junto con el captcha desactivado', () => {
+      const env = validateEnv({
+        ...OUTSIDE_PRODUCTION,
+        ...LOAD_TEST_ENV,
+        CAPTCHA_DISABLED: 'true',
+      });
+
+      expect(env).toMatchObject(LOAD_TEST_ENV);
+    });
+
+    it.each(LOAD_TEST_VARIABLES)(
+      'con NODE_ENV=production la app no arranca con %s',
+      (name, value) => {
+        expect(() => validateEnv({ ...PRODUCTION_ENV, [name]: value })).toThrow(
+          name,
+        );
+      },
+    );
+
+    it.each([...LOAD_TEST_VARIABLES, ['CAPTCHA_DISABLED', 'true']])(
+      'en el entorno production de Railway la app no arranca con %s aunque falte NODE_ENV',
+      (name, value) => {
+        const env = {
+          ...without('NODE_ENV'),
+          RAILWAY_ENVIRONMENT_NAME: 'production',
+          [name]: value,
+        };
+
+        expect(() => validateEnv(env)).toThrow(name);
+      },
+    );
+
+    it.each(['MERCADOPAGO_API_URL', 'RESEND_BASE_URL'])(
+      '%s tiene que ser una URL http(s)',
+      (name) => {
+        expect(() =>
+          validateEnv({ ...OUTSIDE_PRODUCTION, [name]: 'carga.neopass.test' }),
+        ).toThrow(name);
+      },
+    );
+
+    it('LOAD_TEST_CLIENT_HEADER tiene que ser un nombre de encabezado', () => {
+      expect(() =>
+        validateEnv({
+          ...OUTSIDE_PRODUCTION,
+          LOAD_TEST_CLIENT_HEADER: 'x load test',
+        }),
+      ).toThrow('LOAD_TEST_CLIENT_HEADER');
+    });
+  });
 });

@@ -86,6 +86,45 @@ export class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   TURNSTILE_SECRET_KEY?: string;
+
+  // Load tests only: Mercado Pago's and Resend's APIs replaced by simulated
+  // ones (Resend's SDK also reads it on its own), and a header that names
+  // each simulated buyer for the request limits, since they all come from
+  // the same generator.
+  @IsOptional()
+  @IsUrl(HTTP_URL)
+  MERCADOPAGO_API_URL?: string;
+
+  @IsOptional()
+  @IsUrl(HTTP_URL)
+  RESEND_BASE_URL?: string;
+
+  @IsOptional()
+  @Matches(/^[a-z0-9-]{1,64}$/)
+  LOAD_TEST_CLIENT_HEADER?: string;
+
+  // Set by Railway in every environment.
+  @IsOptional()
+  @IsString()
+  RAILWAY_ENVIRONMENT_NAME?: string;
+}
+
+// Only for local development and load tests: they turn off the captcha or
+// point the app at simulated services.
+const TEST_ONLY_VARIABLES = [
+  'CAPTCHA_DISABLED',
+  'MERCADOPAGO_API_URL',
+  'RESEND_BASE_URL',
+  'LOAD_TEST_CLIENT_HEADER',
+] as const;
+
+// Railway names the environment on its own, so production is recognized even
+// if NODE_ENV went missing.
+function isProduction(env: EnvironmentVariables) {
+  return (
+    env.NODE_ENV === 'production' ||
+    env.RAILWAY_ENVIRONMENT_NAME?.toLowerCase() === 'production'
+  );
 }
 
 // Runs at startup through ConfigModule: a missing or invalid variable stops the
@@ -95,8 +134,8 @@ export function validateEnv(
 ): EnvironmentVariables {
   const env = plainToInstance(EnvironmentVariables, config);
   const invalid = validateSync(env).map((error) => error.property);
-  if (env.NODE_ENV === 'production' && env.CAPTCHA_DISABLED) {
-    invalid.push('CAPTCHA_DISABLED');
+  if (isProduction(env)) {
+    invalid.push(...TEST_ONLY_VARIABLES.filter((name) => env[name]));
   }
   if (invalid.length > 0) {
     throw new Error(`Invalid environment variables: ${invalid.join(', ')}`);
