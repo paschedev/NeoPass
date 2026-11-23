@@ -19,9 +19,18 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { Throttle } from '@nestjs/throttler';
 
 // Signed with the session secret: `purpose` keeps a login token from being used as state.
 type OAuthState = { sub?: string; purpose?: string };
+
+// Mercado Pago sends the notices of every sale from a few addresses of its own
+// (it does not say how many), so the general 100 per minute per IP made them
+// wait for its retries. Each payment brings 2 or 3 notices (created, updated
+// and the retries), so 3000 per minute (50 per second) covers about 1000
+// payments a minute from one address, well above a busy sale of a few hundred.
+// A forged notice costs one HMAC before it is rejected.
+const WEBHOOK_LIMIT = { default: { limit: 3000, ttl: 60_000 } };
 
 @Controller('payments')
 export class PaymentsController {
@@ -35,6 +44,7 @@ export class PaymentsController {
   // The signature covers data.id from the query, not the body: the body is only
   // used to pick the seller's token when reading the payment.
   @Post('webhook')
+  @Throttle(WEBHOOK_LIMIT)
   @HttpCode(200)
   async handleWebhook(
     @Headers('x-signature') signature: string | undefined,

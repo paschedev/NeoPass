@@ -3,6 +3,8 @@ import { User } from '@prisma/client';
 import request from 'supertest';
 import { EventsLifecycleService } from '../src/events/events-lifecycle.service';
 import { EventsRepository } from '../src/events/repositories/events.repository';
+import { OrdersService } from '../src/orders/orders.service';
+import { OrdersRepository } from '../src/orders/repositories/orders.repository';
 import { MercadoPagoOAuthService } from '../src/payments/mercadopago-oauth.service';
 import { authHeader } from './utils/auth';
 import {
@@ -18,7 +20,8 @@ const BUSY_MESSAGE =
 const SEARCHES_PER_MINUTE = 20;
 const SCANS_PER_MINUTE = 300;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const FIVE_MINUTES_MS = 5 * 60 * 1000;
+const MINUTE_MS = 60 * 1000;
+const FIVE_MINUTES_MS = 5 * MINUTE_MS;
 // Lo que dura un token de Mercado Pago: 180 días, en segundos.
 const TOKEN_TTL_S = 15_552_000;
 
@@ -131,6 +134,26 @@ describe('Con dos réplicas', () => {
       expect(calls()).toBe(1);
 
       await bothReplicasAt(turn + FIVE_MINUTES_MS, finishEvents);
+      expect(calls()).toBe(2);
+    });
+
+    it('el barrido de órdenes vencidas corre una sola vez por minuto', async () => {
+      const finds = [first, second].map((replica) =>
+        jest.spyOn(
+          replica.app.get(OrdersRepository),
+          'findPendingOrdersExpiredBefore',
+        ),
+      );
+      const calls = () =>
+        finds.reduce((total, spy) => total + spy.mock.calls.length, 0);
+      const sweep = (replica: TestApp) =>
+        replica.app.get(OrdersService).handleOverdueOrders();
+      const turn = Date.parse('2030-01-01T10:07:00Z');
+
+      await bothReplicasAt(turn, sweep);
+      expect(calls()).toBe(1);
+
+      await bothReplicasAt(turn + MINUTE_MS, sweep);
       expect(calls()).toBe(2);
     });
 

@@ -77,9 +77,9 @@ export class OrdersRepository {
   // took the last tickets in the meantime, the stock CHECK aborts it all.
   // Without `feeAdjustmentOf` (the organizer owes NeoPass nothing) the
   // organizer's row isn't touched, so their purchases don't queue behind each
-  // other. With it, that row is locked first (as payments and refunds do, so
-  // they can't deadlock): two checkouts can't reserve the same balance, and
-  // the adjustment goes on top of NeoPass's share.
+  // other. With it, that row is locked before the ticket types (as payments
+  // and refunds do, so they can't deadlock): two checkouts can't reserve the
+  // same balance, and the adjustment goes on top of NeoPass's share.
   // The tickets are reserved last and in the items' order (ticket type id),
   // so each ticket type stays locked for as short as possible.
   async createPendingOrder(
@@ -134,9 +134,9 @@ export class OrdersRepository {
   }
 
   // PENDING → EXPIRED or CANCELLED, releasing the reservation. Conditional on
-  // PENDING: a payment or a concurrent job that already moved the order makes
-  // this a no-op, so the reservation is released exactly once. Returns whether
-  // the order was released.
+  // PENDING: a payment, a concurrent job or the sweep that already moved the
+  // order makes this a no-op, so the reservation is released exactly once.
+  // Returns whether the order was released.
   async releasePendingOrder(
     orderId: string,
     status: Extract<OrderStatus, 'EXPIRED' | 'CANCELLED'>,
@@ -161,5 +161,17 @@ export class OrdersRepository {
       }
       return true;
     });
+  }
+
+  // Ids of the PENDING orders whose time to pay ran out before `expiredBefore`,
+  // oldest first.
+  async findPendingOrdersExpiredBefore(expiredBefore: Date, take: number) {
+    const orders = await this.prisma.order.findMany({
+      where: { status: 'PENDING', expiresAt: { lt: expiredBefore } },
+      orderBy: { expiresAt: 'asc' },
+      take,
+      select: { id: true },
+    });
+    return orders.map((order) => order.id);
   }
 }
