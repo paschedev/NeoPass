@@ -15,7 +15,10 @@ export interface PaymentPartsCheckJob {
 // Several notifications at once. Two of the same order are safe: paying is a
 // conditional update, an order has one payment, and a reversal that finds
 // nothing yet reads the payment again later (handleNotApprovedPayment).
-@Processor('payments', { concurrency: 5 })
+// Payments of the same organizer only wait for each other at the end of their
+// transaction (PaymentsRepository.payOrderTransaction). Each job holds a
+// database connection while it pays: 20 per replica fit in Prisma's pool.
+@Processor('payments', { concurrency: 20 })
 export class PaymentsProcessor extends WorkerHost {
   private readonly logger = new Logger(PaymentsProcessor.name);
 

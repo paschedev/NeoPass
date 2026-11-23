@@ -77,9 +77,9 @@ export class OrdersRepository {
   // took the last tickets in the meantime, the stock CHECK aborts it all.
   // Without `feeAdjustmentOf` (the organizer owes NeoPass nothing) the
   // organizer's row isn't touched, so their purchases don't queue behind each
-  // other. With it, that row is locked first (as payments and refunds do, so
-  // they can't deadlock): two checkouts can't reserve the same balance, and
-  // the adjustment goes on top of NeoPass's share.
+  // other. With it, that row is locked before the ticket types (as payments
+  // and refunds do, so they can't deadlock): two checkouts can't reserve the
+  // same balance, and the adjustment goes on top of NeoPass's share.
   // The tickets are reserved last and in the items' order (ticket type id),
   // so each ticket type stays locked for as short as possible.
   async createPendingOrder(
