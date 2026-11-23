@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import { authHeader } from './utils/auth';
 import { createOrganizerWithEvent, createUser } from './utils/factories';
+import { signWebhook } from './utils/mercadopago-webhook';
 import { createTestApp, TestApp } from './utils/test-app';
 import { resetDb } from './utils/test-database';
 
@@ -10,6 +11,7 @@ const BUSY_MESSAGE =
 const SEARCHES_PER_MINUTE = 20;
 const SCANS_PER_MINUTE = 300;
 const EVENT_VIEWS_PER_MINUTE = 300;
+const PAYMENT_NOTICES_PER_MINUTE = 3000;
 
 describe('Límites por minuto', () => {
   let t: TestApp;
@@ -215,6 +217,76 @@ describe('Límites por minuto', () => {
         .expect(200);
 
       expect(res.headers['x-ratelimit-limit']).toBe('100');
+    });
+  });
+
+  // Mercado Pago sends the notices of every sale from a few addresses of its
+  // own, so the webhook has a cap of its own instead of the general one.
+  describe('avisos de Mercado Pago', () => {
+    let nextPayment = 1;
+
+    function notify(ip: string, { forged = false } = {}) {
+      const paymentId = String(700000 + nextPayment++);
+      const requestId = `req-${paymentId}`;
+      const signature = forged
+        ? signWebhook(paymentId, requestId, 'otra-clave')
+        : signWebhook(paymentId, requestId);
+      return request(server())
+        .post('/payments/webhook')
+        .query({ 'data.id': paymentId, type: 'payment' })
+        .set('X-Forwarded-For', ip)
+        .set('x-request-id', requestId)
+        .set('x-signature', signature)
+        .send({
+          type: 'payment',
+          action: 'payment.updated',
+          data: { id: paymentId },
+        });
+    }
+
+    async function notifyTimes(ip: string, times: number) {
+      const statuses: number[] = [];
+      for (let i = 0; i < times; i++) {
+        statuses.push((await notify(ip)).status);
+      }
+      return statuses;
+    }
+
+    it('300 avisos válidos en un minuto desde una misma IP se aceptan todos', async () => {
+      const statuses = await notifyTimes(newAddress(), 300);
+
+      expect(statuses.filter((status) => status !== 200)).toHaveLength(0);
+      expect(t.queues.payments.add).toHaveBeenCalledTimes(300);
+    });
+
+    it(`el tope propio es de ${PAYMENT_NOTICES_PER_MINUTE} avisos por minuto por IP`, async () => {
+      const res = await notify(newAddress()).expect(200);
+
+      expect(res.headers['x-ratelimit-limit']).toBe(
+        String(PAYMENT_NOTICES_PER_MINUTE),
+      );
+    });
+
+    it('un aviso con firma inválida se sigue rechazando aunque la IP haya pasado los 100 avisos', async () => {
+      const ip = newAddress();
+      await notifyTimes(ip, 150);
+
+      await notify(ip, { forged: true }).expect(401);
+
+      expect(t.queues.payments.add).toHaveBeenCalledTimes(150);
+    });
+
+    it('los avisos no gastan el límite de 100 por minuto del resto de las rutas', async () => {
+      const ip = newAddress();
+      await notifyTimes(ip, 150);
+
+      const res = await request(server())
+        .get('/')
+        .set('X-Forwarded-For', ip)
+        .expect(200);
+
+      expect(res.headers['x-ratelimit-limit']).toBe('100');
+      expect(res.headers['x-ratelimit-remaining']).toBe('99');
     });
   });
 
