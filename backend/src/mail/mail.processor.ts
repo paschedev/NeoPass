@@ -11,6 +11,15 @@ import {
   TicketsEmailJob,
 } from './mail.service';
 
+type MailJob = Job<
+  | TicketsEmailJob
+  | FreeTicketsEmailJob
+  | PasswordResetEmailJob
+  | EmailCodeJob
+  | EmailChangedJob
+  | GoogleLinkedJob
+>;
+
 // Several sends at once, capped for the whole queue (every replica counts)
 // below Resend's limit of 10 requests per second per team: one every 125 ms
 // is 8 per second. The limiter counts in fixed windows, so 8 per 1000 ms
@@ -24,18 +33,30 @@ export class MailProcessor extends WorkerHost {
   }
 
   // Errors propagate: BullMQ retries the job with the options it was queued with.
-  async process(
-    job: Job<
-      | TicketsEmailJob
-      | FreeTicketsEmailJob
-      | PasswordResetEmailJob
-      | EmailCodeJob
-      | EmailChangedJob
-      | GoogleLinkedJob
-    >,
-  ) {
+  async process(job: MailJob) {
     this.logger.log(`Processing job ${job.id} of type ${job.name}`);
 
+    try {
+      await this.send(job);
+    } catch (error) {
+      this.logFailure(job, error);
+      throw error;
+    }
+  }
+
+  // Every failed send leaves a trace with the mail type and the attempt, never
+  // the recipient or the content. After the last attempt the mail is lost, so
+  // that one is an error.
+  private logFailure(job: MailJob, error: unknown) {
+    const attempt = job.attemptsMade + 1;
+    const attempts = job.opts.attempts ?? 1;
+    const reason = error instanceof Error ? error.message : String(error);
+    const message = `Mail job ${job.id} of type ${job.name} failed on attempt ${attempt} of ${attempts}: ${reason}`;
+    if (attempt >= attempts) this.logger.error(message);
+    else this.logger.warn(message);
+  }
+
+  private async send(job: MailJob) {
     switch (job.name) {
       case 'send-tickets': {
         const { to, name, tickets } = job.data as TicketsEmailJob;
