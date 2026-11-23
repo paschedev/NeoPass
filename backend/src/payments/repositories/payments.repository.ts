@@ -7,6 +7,12 @@ import {
   MercadoPagoTokenCipher,
 } from '../mercadopago-token-cipher';
 
+// A payment can wait for the organizer's row or a ticket type's row while
+// other payments of the same sale go through (PaymentsProcessor runs several
+// at once). Waiting is fine: with Prisma's default of 5 s, a burst for one
+// organizer timed jobs out and BullMQ retried them (load test, 2026-11-22).
+const PAY_TRANSACTION_TIMEOUT_MS = 15_000;
+
 // The organizers' Mercado Pago tokens are encrypted here, at the database
 // boundary: every method takes and returns them readable.
 @Injectable()
@@ -226,6 +232,12 @@ export class PaymentsRepository {
   // sale collected, never below zero. Returns false if the order wasn't paid
   // here, or the release term the organizer had before, if this payment
   // updated it.
+  // The rows that other payments, purchases and refunds also update (the
+  // organizer, the ticket types, the promoter) are updated last, so each one
+  // stays locked for as short as possible and payments of the same organizer
+  // don't wait for each other's tickets. They are locked in the same order as
+  // a checkout and a refund, so none of them can deadlock: the organizer,
+  // then the ticket types by id, then the promoter.
   async payOrderTransaction(
     {
       orderId,
@@ -255,87 +267,83 @@ export class PaymentsRepository {
     },
     generateTicketsCallback: (tx: Prisma.TransactionClient) => Promise<void>,
   ) {
-    return this.prisma.$transaction(async (tx) => {
-      const { count } = await tx.order.updateMany({
-        where: { id: orderId, status: fromStatus },
-        data: {
-          status: 'PAID',
-          promoterCommission: promoterCommission?.amount,
-          mercadoPagoFee: payment.mercadoPagoFee,
-          feeDeviation,
-        },
-      });
-      if (count === 0) return false;
-
-      await moveFeeBalance(tx, orderId, 'pay');
-
-      // The release term the organizer had before this payment updated it;
-      // undefined if it didn't (an older payment, or no fee reported).
-      let previousReleaseDays: number | null | undefined;
-      if (organizerTerms) {
-        const { organizerId, feeRate, releaseDays, approvedAt } =
-          organizerTerms;
-        const before = await tx.user.findUniqueOrThrow({
-          where: { id: organizerId },
-          select: { mercadoPagoReleaseDays: true },
-        });
-        const { count: updated } = await tx.user.updateMany({
-          where: {
-            id: organizerId,
-            OR: [
-              { mercadoPagoFeeRateAt: null },
-              { mercadoPagoFeeRateAt: { lt: approvedAt } },
-            ],
-          },
+    return this.prisma.$transaction(
+      async (tx) => {
+        const { count } = await tx.order.updateMany({
+          where: { id: orderId, status: fromStatus },
           data: {
-            mercadoPagoFeeRate: feeRate,
-            mercadoPagoReleaseDays: releaseDays,
-            mercadoPagoFeeRateAt: approvedAt,
+            status: 'PAID',
+            promoterCommission: promoterCommission?.amount,
+            mercadoPagoFee: payment.mercadoPagoFee,
+            feeDeviation,
           },
         });
-        if (updated > 0) previousReleaseDays = before.mercadoPagoReleaseDays;
-      }
+        if (count === 0) return false;
 
-      // Same lock order as a checkout (OrdersRepository.createPendingOrder).
-      const items = await tx.orderItem.findMany({
-        where: { orderId },
-        orderBy: { ticketTypeId: 'asc' },
-      });
-      const hadReservation = fromStatus === 'PENDING';
-      for (const item of items) {
-        await tx.ticketType.update({
-          where: { id: item.ticketTypeId },
-          data: hadReservation
-            ? {
-                reserved: { decrement: item.quantity },
-                sold: { increment: item.quantity },
-              }
-            : { sold: { increment: item.quantity } },
+        await tx.payment.create({
+          data: {
+            orderId,
+            provider: 'MERCADO_PAGO',
+            providerPaymentId: payment.providerPaymentId,
+            status: 'APPROVED',
+            amount: payment.amount,
+          },
         });
-      }
-
-      await tx.payment.create({
-        data: {
-          orderId,
-          provider: 'MERCADO_PAGO',
-          providerPaymentId: payment.providerPaymentId,
-          status: 'APPROVED',
-          amount: payment.amount,
-        },
-      });
-
-      // Execute callback to generate tickets
-      await generateTicketsCallback(tx);
-
-      if (promoterCommission) {
-        await tx.eventStaff.update({
-          where: { id: promoterCommission.promoterId },
-          data: { totalEarned: { increment: promoterCommission.amount } },
+        await generateTicketsCallback(tx);
+        const items = await tx.orderItem.findMany({
+          where: { orderId },
+          orderBy: { ticketTypeId: 'asc' },
         });
-      }
 
-      return { previousReleaseDays };
-    });
+        // From here on, only the shared rows (see above).
+        const releaseDays = await moveFeeBalance(tx, orderId, 'pay');
+
+        // The release term the organizer had before this payment updated it;
+        // undefined if it didn't (an older payment, or no fee reported).
+        let previousReleaseDays: number | null | undefined;
+        if (organizerTerms) {
+          const { organizerId, feeRate, approvedAt } = organizerTerms;
+          const { count: updated } = await tx.user.updateMany({
+            where: {
+              id: organizerId,
+              OR: [
+                { mercadoPagoFeeRateAt: null },
+                { mercadoPagoFeeRateAt: { lt: approvedAt } },
+              ],
+            },
+            data: {
+              mercadoPagoFeeRate: feeRate,
+              mercadoPagoReleaseDays: organizerTerms.releaseDays,
+              mercadoPagoFeeRateAt: approvedAt,
+            },
+          });
+          if (updated > 0) previousReleaseDays = releaseDays;
+        }
+
+        const hadReservation = fromStatus === 'PENDING';
+        for (const item of items) {
+          await tx.ticketType.update({
+            where: { id: item.ticketTypeId },
+            data: hadReservation
+              ? {
+                  reserved: { decrement: item.quantity },
+                  sold: { increment: item.quantity },
+                }
+              : { sold: { increment: item.quantity } },
+          });
+        }
+
+        if (promoterCommission) {
+          await tx.eventStaff.update({
+            where: { id: promoterCommission.promoterId },
+            data: { totalEarned: { increment: promoterCommission.amount } },
+          });
+        }
+
+        return { previousReleaseDays };
+      },
+      { timeout: PAY_TRANSACTION_TIMEOUT_MS },
+    );
   }
 
   // Reverses the order paid by a payment that Mercado Pago refunded, charged
@@ -404,14 +412,15 @@ export class PaymentsRepository {
 // assuming Mercado Pago returns the marketplace_fee: VER-08). Never below
 // zero: a deviation in the organizer's favor lowers a debt, it never leaves
 // them credit. It runs before any ticket type is touched, so it locks the
-// organizer's row in the same order as a checkout.
-function moveFeeBalance(
+// organizer's row in the same order as a checkout. Returns the organizer's
+// release term, read with their row already locked.
+async function moveFeeBalance(
   tx: Prisma.TransactionClient,
   orderId: string,
   change: 'pay' | 'refund',
 ) {
   const sign = change === 'pay' ? 1 : -1;
-  return tx.$executeRaw`
+  const [organizer] = await tx.$queryRaw<{ releaseDays: number | null }[]>`
     UPDATE "User" u
     SET "mercadoPagoFeeBalance" = GREATEST(0, u."mercadoPagoFeeBalance"
       + ${sign} * (COALESCE(o."feeDeviation", 0) - o."feeAdjustment"))
@@ -419,7 +428,9 @@ function moveFeeBalance(
     JOIN "OrderItem" oi ON oi."orderId" = o.id
     JOIN "TicketType" tt ON tt.id = oi."ticketTypeId"
     JOIN "Event" e ON e.id = tt."eventId"
-    WHERE o.id = ${orderId} AND u.id = e."organizerId"`;
+    WHERE o.id = ${orderId} AND u.id = e."organizerId"
+    RETURNING u."mercadoPagoReleaseDays" AS "releaseDays"`;
+  return organizer?.releaseDays ?? null;
 }
 
 const APPROVED_PART_FIELDS = {
