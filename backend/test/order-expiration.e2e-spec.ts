@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { Prisma, TicketType, User } from '@prisma/client';
+import { Prisma, TicketType } from '@prisma/client';
 import { Job } from 'bullmq';
 import request from 'supertest';
 import { OrdersProcessor } from '../src/orders/orders.processor';
@@ -49,7 +49,10 @@ describe('Vencimiento de órdenes impagas', () => {
 
   const repository = () => t.app.get(OrdersRepository);
 
-  function checkout(buyer: Pick<User, 'id'>, ticketType: TicketType) {
+  function checkout(
+    buyer: Parameters<typeof authHeader>[1],
+    ticketType: TicketType,
+  ) {
     mockTurnstile(true);
     return request(t.app.getHttpServer())
       .post('/orders/checkout')
