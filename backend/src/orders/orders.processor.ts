@@ -20,6 +20,8 @@ export class OrdersProcessor extends WorkerHost {
     try {
       await this.ordersService.expireOrder(orderId);
     } catch (error) {
+      // Rethrows so BullMQ retries with the job's backoff; if every attempt
+      // fails, the overdue orders sweep releases it.
       this.logger.error(`Error expiring order ${orderId}`, error);
       throw error;
     }
