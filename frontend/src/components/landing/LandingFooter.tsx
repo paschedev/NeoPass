@@ -6,12 +6,11 @@ import { TelaSuperior } from '@/components/brand/Telas';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { LEGAL_DOCUMENTS } from '@/utils/legal';
 import { isOrganizer } from '@/utils/roles';
+import { INSTAGRAM_URL } from '@/utils/site';
 import { SUPPORT_EMAIL } from '@/utils/support';
 
 const TITLE = 'text-sm font-semibold text-white mb-4';
 const LINK = 'text-neutral-300 hover:text-white transition-colors';
-
-const INSTAGRAM_URL = 'https://www.instagram.com/neopass.ar/';
 
 // La Ventanilla Única Federal, con el texto que exige la Res. 274/2021.
 const CONSUMER_DEFENSE_URL =

@@ -23,6 +23,11 @@ export function configureApp(app: INestApplication) {
   const server = app.getHttpAdapter().getInstance() as Express;
   server.set('trust proxy', 2);
   app.use(helmet());
+  // La API no es para buscadores: que Google no muestre sus respuestas.
+  server.use((_req, res, next) => {
+    res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+    next();
+  });
   app.useGlobalPipes(
     new NullCharactersPipe(),
     new ValidationPipe({

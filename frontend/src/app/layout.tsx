@@ -5,14 +5,18 @@ import Navbar from '@/components/Navbar';
 import BottomNav from '@/components/BottomNav';
 import ClientLayoutWrapper from '@/components/ClientLayoutWrapper';
 import { Toaster } from 'react-hot-toast';
+import { SITE_URL } from '@/utils/site';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
 
 export const metadata: Metadata = {
-  // La pestaña muestra solo la marca; la descripción la usan Google y las
-  // vistas previas de los links.
-  title: 'NeoPass',
+  // Completa las direcciones relativas (canónicas e imágenes al compartir).
+  metadataBase: new URL(SITE_URL),
+  // La pestaña muestra la marca; las páginas públicas suman su nombre
+  // («Eventos · NeoPass»). La descripción la usan Google y las vistas previas
+  // de los links.
+  title: { default: 'NeoPass', template: '%s · NeoPass' },
   description:
     'Comprá tus entradas de forma rápida y segura, y organizá tus eventos desde un solo lugar.',
 };

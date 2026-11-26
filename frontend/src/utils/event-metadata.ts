@@ -1,13 +1,33 @@
 import type { Metadata } from 'next';
+import { cache } from 'react';
 import { SHARE_IMAGE_SIZE, shareImageUrl } from './cloudinary';
 import { formatWeekdayDateTime } from './format';
+import { eventPath, serverApiUrl } from './site';
 
-// Lo que usa la vista previa de GET /events/:id.
-type SharedEvent = {
+// Lo que usan la vista previa y la ficha para Google de GET /events/:id.
+export type PublicEvent = {
   title: string;
+  description?: string | null;
   imageUrl: string | null;
   startDate: string;
+  endDate?: string;
   venueName: string;
+  venueAddress?: string | null;
+  venueCity?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  organizerName?: string | null;
+  buyerFeePercentage?: string | number;
+  ticketBatches?: {
+    name: string;
+    publishAt: string | null;
+    saleStatus: 'UPCOMING' | 'ON_SALE' | 'SOLD_OUT';
+    ticketTypes: {
+      name: string;
+      price: string | number;
+      available: number;
+    }[];
+  }[];
 };
 
 const EVENT_TIME_ZONE = 'America/Argentina/Buenos_Aires';
@@ -22,7 +42,7 @@ const GENERAL_IMAGE = {
   alt: 'NeoPass',
 };
 
-function buildEventMetadata(event: SharedEvent): Metadata {
+function buildEventMetadata(event: PublicEvent, id: string): Metadata {
   const description = `${formatWeekdayDateTime(event.startDate, EVENT_TIME_ZONE)} hs · ${event.venueName}`;
   const image = event.imageUrl
     ? {
@@ -34,30 +54,42 @@ function buildEventMetadata(event: SharedEvent): Metadata {
   return {
     title: { absolute: `${event.title} · NeoPass` },
     description,
+    // Cada RRPP comparte el evento con su ?rpp=: para Google son todos la
+    // misma página, la que no lo lleva.
+    alternates: { canonical: eventPath(id) },
     openGraph: { title: event.title, description, images: [image] },
   };
 }
 
+// El evento publicado, o null si no existe, no es público o la API no
+// responde. Una sola consulta por página: la comparten los metadatos y la
+// ficha para Google.
+export const fetchPublicEvent = cache(
+  async (id: string): Promise<PublicEvent | null> => {
+    if (!UUID.test(id)) return null;
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+    try {
+      // Nunca con el ?rpp= del link: la API le sumaría la visita al RRPP.
+      const res = await fetch(`${serverApiUrl()}/events/${id}`, {
+        signal: controller.signal,
+        next: { revalidate: 60 },
+      });
+      if (!res.ok) return null;
+      return (await res.json()) as PublicEvent;
+    } catch (error) {
+      console.warn(`Share preview without event data for ${id}`, error);
+      return null;
+    } finally {
+      clearTimeout(timeout);
+    }
+  },
+);
+
 // La vista previa de un evento al compartir su link (WhatsApp, Instagram,
 // X). Si no se puede armar, devuelve {} y queda la general de NeoPass.
 export async function fetchEventMetadata(id: string): Promise<Metadata> {
-  if (!UUID.test(id)) return {};
-
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
-  try {
-    // Nunca con el ?rpp= del link: la API le sumaría la visita al RRPP.
-    const res = await fetch(`${apiUrl}/events/${id}`, {
-      signal: controller.signal,
-      next: { revalidate: 60 },
-    });
-    if (!res.ok) return {};
-    return buildEventMetadata((await res.json()) as SharedEvent);
-  } catch (error) {
-    console.warn(`Share preview without event data for ${id}`, error);
-    return {};
-  } finally {
-    clearTimeout(timeout);
-  }
+  const event = await fetchPublicEvent(id);
+  return event ? buildEventMetadata(event, id) : {};
 }

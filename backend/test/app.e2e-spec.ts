@@ -24,6 +24,16 @@ describe('App configurada como en producción (e2e)', () => {
     expect(res.headers['x-content-type-options']).toBe('nosniff');
   });
 
+  it('les pide a los buscadores que no indexen la API, también en los errores', async () => {
+    const ok = await request(t.app.getHttpServer()).get('/').expect(200);
+    const missing = await request(t.app.getHttpServer())
+      .get('/ruta-que-no-existe')
+      .expect(404);
+
+    expect(ok.headers['x-robots-tag']).toBe('noindex, nofollow');
+    expect(missing.headers['x-robots-tag']).toBe('noindex, nofollow');
+  });
+
   it('habilita CORS para el frontend configurado y no para otros orígenes', async () => {
     const allowed = await request(t.app.getHttpServer())
       .get('/')
