@@ -4,11 +4,6 @@
       "count": 4
     }
   },
-  "src/app/eventos/page.tsx": {
-    "react/no-unescaped-entities": {
-      "count": 2
-    }
-  },
   "src/app/login/page.tsx": {
     "react-hooks/set-state-in-effect": {
       "count": 1

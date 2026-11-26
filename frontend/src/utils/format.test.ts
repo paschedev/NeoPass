@@ -4,6 +4,7 @@ import {
   formatCompactNumber,
   formatCurrency,
   formatDayMonthTime,
+  EVENT_TIME_ZONE,
   formatEventRange,
   formatRelativeDate,
   formatShortDateTime,
@@ -120,6 +121,31 @@ describe('formatEventRange', () => {
     expect(
       formatEventRange('2026-10-10T23:00:00Z', '2026-10-11T02:30:00Z'),
     ).toBe('sáb, 10 oct, 20:00 a 23:30');
+  });
+
+  it('con la zona de los eventos sale en hora argentina aunque el servidor esté en UTC', () => {
+    const previousTimeZone = process.env.TZ;
+    process.env.TZ = 'UTC';
+    try {
+      // 23:00 a 02:30 en Argentina: otro día en UTC, el mismo en Argentina no.
+      expect(
+        formatEventRange(
+          '2026-10-11T02:00:00Z',
+          '2026-10-11T05:30:00Z',
+          EVENT_TIME_ZONE,
+        ),
+      ).toBe('sáb, 10 oct, 23:00 a dom, 11 oct, 02:30');
+      // 20:00 a 23:30 en Argentina: el mismo día allá, otro en UTC.
+      expect(
+        formatEventRange(
+          '2026-10-10T23:00:00Z',
+          '2026-10-11T02:30:00Z',
+          EVENT_TIME_ZONE,
+        ),
+      ).toBe('sáb, 10 oct, 20:00 a 23:30');
+    } finally {
+      process.env.TZ = previousTimeZone;
+    }
   });
 });
 
