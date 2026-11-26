@@ -94,6 +94,22 @@ describe('formatShortDateTime', () => {
   it('muestra día/mes y hora en la hora de Argentina', () => {
     expect(formatShortDateTime('2026-10-12T23:05:00Z')).toBe('12/10 20:05');
   });
+
+  it('la medianoche sale 00 y no 24', () => {
+    expect(formatShortDateTime('2026-10-13T03:00:00Z')).toBe('13/10 00:00');
+  });
+
+  it('con la zona de los eventos sale en hora argentina aunque el servidor esté en UTC', () => {
+    const previousTimeZone = process.env.TZ;
+    process.env.TZ = 'UTC';
+    try {
+      expect(
+        formatShortDateTime('2026-10-13T02:05:00Z', EVENT_TIME_ZONE),
+      ).toBe('12/10 23:05');
+    } finally {
+      process.env.TZ = previousTimeZone;
+    }
+  });
 });
 
 describe('formatDayMonthTime', () => {

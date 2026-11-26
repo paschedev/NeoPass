@@ -131,7 +131,7 @@ describe('Ficha del evento para Google', () => {
 });
 
 describe('Datos del sitio para Google', () => {
-  it('se llama NeoPass, tiene logo y el Instagram de la marca', () => {
+  it('se llama NeoPass, dice qué es y tiene logo, contacto, país y el Instagram de la marca', () => {
     expect(homeJsonLd()).toEqual({
       '@context': 'https://schema.org',
       '@graph': [
@@ -140,12 +140,16 @@ describe('Datos del sitio para Google', () => {
           name: 'NeoPass',
           alternateName: 'neopass.ar',
           url: 'https://neopass.ar/',
+          inLanguage: 'es-AR',
         },
         {
           '@type': 'Organization',
           name: 'NeoPass',
           url: 'https://neopass.ar/',
           logo: 'https://neopass.ar/apple-icon.png',
+          description: expect.stringMatching(/^Ticketera argentina/),
+          email: 'soporte@neopass.ar',
+          areaServed: { '@type': 'Country', name: 'Argentina' },
           sameAs: ['https://www.instagram.com/neopass.ar/'],
         },
       ],

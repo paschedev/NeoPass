@@ -1,12 +1,13 @@
 import { Module } from '@nestjs/common';
 import { MailModule } from '../mail/mail.module';
+import { SearchIndexingModule } from '../search-indexing/search-indexing.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { AdminRepository } from './repositories/admin.repository';
 
 @Module({
-  imports: [NotificationsModule, MailModule],
+  imports: [NotificationsModule, MailModule, SearchIndexingModule],
   controllers: [AdminController],
   providers: [AdminService, AdminRepository],
 })

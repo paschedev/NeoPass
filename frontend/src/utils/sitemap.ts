@@ -7,6 +7,8 @@ import { SITE_URL, eventPath } from './site';
 const PUBLIC_PAGES = [
   '/',
   '/eventos',
+  '/organizadores',
+  '/preguntas-frecuentes',
   '/terminos',
   '/terminos/organizadores',
   '/privacidad',

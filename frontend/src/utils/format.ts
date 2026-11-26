@@ -42,11 +42,21 @@ export function formatRelativeDate(value: string, now = new Date()): string {
   return `${date.getDate()} ${MONTHS[date.getMonth()]}`;
 }
 
-// "12/10 20:05", en la hora local del navegador.
-export function formatShortDateTime(value: string): string {
-  const date = new Date(value);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getDate()}/${date.getMonth() + 1} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+// "12/10 20:05", en la hora local del navegador o en la zona que se pida.
+export function formatShortDateTime(value: string, timeZone?: string): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('es-AR', {
+      day: 'numeric',
+      month: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+      timeZone,
+    })
+      .formatToParts(new Date(value))
+      .map((part) => [part.type, part.value]),
+  );
+  return `${parts.day}/${parts.month} ${parts.hour}:${parts.minute}`;
 }
 
 // "2 oct, 12:00", en la hora local del navegador.
