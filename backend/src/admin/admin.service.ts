@@ -10,6 +10,7 @@ import { getEventPhase } from '../events/event-phase';
 import { MailService } from '../mail/mail.service';
 import { ticketCode } from '../mail/tickets-pdf';
 import { NotificationsService } from '../notifications/notifications.service';
+import { SearchIndexingService } from '../search-indexing/search-indexing.service';
 import { eventForMail } from '../tickets/event-for-mail';
 import { AdminRepository } from './repositories/admin.repository';
 
@@ -63,6 +64,7 @@ export class AdminService {
     private readonly adminRepository: AdminRepository,
     private readonly notificationsService: NotificationsService,
     private readonly mailService: MailService,
+    private readonly searchIndexing: SearchIndexingService,
   ) {}
 
   async listEvents(q: string | undefined, page: number) {
@@ -192,6 +194,8 @@ export class AdminService {
       throw new ConflictException('El evento no está eliminado.');
     }
     this.logger.log(`Admin ${adminId} restored event ${eventId}`);
+    // Si estaba publicado, su página vuelve a existir.
+    await this.searchIndexing.eventChanged(eventId, [event.status]);
 
     const ticketsWorkAgain =
       getEventPhase({ ...event, deletedAt: null }, new Date()) !== 'CLOSED';

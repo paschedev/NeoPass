@@ -5,6 +5,8 @@ import { buildSitemap } from './sitemap';
 const PAGES = [
   'https://neopass.ar/',
   'https://neopass.ar/eventos',
+  'https://neopass.ar/organizadores',
+  'https://neopass.ar/preguntas-frecuentes',
   'https://neopass.ar/terminos',
   'https://neopass.ar/terminos/organizadores',
   'https://neopass.ar/privacidad',

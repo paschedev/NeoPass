@@ -1,6 +1,14 @@
 import { calculateCheckoutTotals } from './checkout';
 import type { PublicEvent } from './event-metadata';
-import { INSTAGRAM_URL, SITE_NAME, SITE_URL, eventPath } from './site';
+import type { FaqSection } from './faq';
+import {
+  INSTAGRAM_URL,
+  SITE_DESCRIPTION,
+  SITE_NAME,
+  SITE_URL,
+  eventPath,
+} from './site';
+import { SUPPORT_EMAIL } from './support';
 
 // Datos para Google (schema.org, en JSON-LD). No cambian nada de lo que se
 // ve: le dicen a Google cómo se llama el sitio y cuál es su logo, y de cada
@@ -9,7 +17,8 @@ import { INSTAGRAM_URL, SITE_NAME, SITE_URL, eventPath } from './site';
 const SCHEMA = 'https://schema.org';
 
 // En la home: el nombre que Google pone arriba del resultado («NeoPass» en
-// lugar de «neopass.ar»), el logo y las redes de la marca.
+// lugar de «neopass.ar»), qué es, el logo, el contacto y las redes de la
+// marca. Los buscadores con IA usan estos datos para describirla.
 export function homeJsonLd() {
   return {
     '@context': SCHEMA,
@@ -19,15 +28,35 @@ export function homeJsonLd() {
         name: SITE_NAME,
         alternateName: 'neopass.ar',
         url: `${SITE_URL}/`,
+        inLanguage: 'es-AR',
       },
       {
         '@type': 'Organization',
         name: SITE_NAME,
         url: `${SITE_URL}/`,
         logo: `${SITE_URL}/apple-icon.png`,
+        description: SITE_DESCRIPTION,
+        email: SUPPORT_EMAIL,
+        areaServed: { '@type': 'Country', name: 'Argentina' },
         sameAs: [INSTAGRAM_URL],
       },
     ],
+  };
+}
+
+// Las preguntas frecuentes: Google ya casi no las muestra como resultado
+// enriquecido, pero los buscadores con IA las leen tal cual.
+export function faqJsonLd(sections: FaqSection[]) {
+  return {
+    '@context': SCHEMA,
+    '@type': 'FAQPage',
+    mainEntity: sections.flatMap((section) =>
+      section.items.map(({ question, answer }) => ({
+        '@type': 'Question',
+        name: question,
+        acceptedAnswer: { '@type': 'Answer', text: answer },
+      })),
+    ),
   };
 }
 
