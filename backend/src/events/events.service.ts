@@ -80,6 +80,7 @@ import {
   promoterFreeTicketsNotice,
 } from './promoter-free-tickets';
 import { splitServiceFee } from '../orders/service-fee-split';
+import { SearchIndexingService } from '../search-indexing/search-indexing.service';
 
 // Role names as the organizer reads them (errors and notices in their panel).
 const STAFF_ROLE_LABEL: Record<StaffRole, string> = {
@@ -349,6 +350,7 @@ export class EventsService {
     private readonly notificationsService: NotificationsService,
     private readonly promoterClicks: PromoterClicksService,
     private readonly eventAccess: EventAccessService,
+    private readonly searchIndexing: SearchIndexingService,
     config: ConfigService,
   ) {
     this.cloudinaryUrl = config.getOrThrow<string>('CLOUDINARY_URL');
@@ -439,10 +441,12 @@ export class EventsService {
     assertEndAfterStart(startDate, endDate);
     assertBatchWindows(batches, [], endDate, new Date());
 
-    return this.eventsRepository.createWithBatches(
+    const created = await this.eventsRepository.createWithBatches(
       { ...eventData, organizerId: userId },
       planBatchChanges([], batches),
     );
+    await this.searchIndexing.eventChanged(created.id, [created.status]);
+    return created;
   }
 
   // The event in any status, for its owner or an accepted co-organizer with
@@ -544,6 +548,8 @@ export class EventsService {
         )
       : await this.eventsRepository.update(id, eventData, activity);
 
+    // Publicar, editar uno publicado o pasarlo a borrador cambia su página.
+    await this.searchIndexing.eventChanged(id, [event.status, updated.status]);
     if (holderChanges && updated.status === 'PUBLISHED') {
       await this.notifyTicketHolders(updated, userId, holderChanges);
     }
@@ -574,6 +580,8 @@ export class EventsService {
     });
     if (!deleted) throw new ConflictException('El evento ya fue eliminado');
 
+    // Su página pasa a responder 404: que los buscadores la saquen.
+    await this.searchIndexing.eventChanged(id, [event.status]);
     try {
       await this.notificationsService.notifyEventDeleted(
         event,
@@ -685,7 +693,7 @@ export class EventsService {
       batchesData,
     );
 
-    return this.eventsRepository.updateBatchesTransaction(
+    const updated = await this.eventsRepository.updateBatchesTransaction(
       eventId,
       planBatchChanges(eventContext.ticketBatches, batchesData),
       editActivity(
@@ -694,6 +702,9 @@ export class EventsService {
         describeBatchChanges(eventContext.ticketBatches, batchesData),
       ),
     );
+    // Las tandas cambian los precios y la disponibilidad de su página.
+    await this.searchIndexing.eventChanged(eventId, [eventContext.status]);
+    return updated;
   }
 
   // Ends or reopens the sale of one batch, or hides or shows it, right away.
@@ -712,12 +723,19 @@ export class EventsService {
 
     const change = planBatchSaleAction(batch, action, now);
     if (!change) throw new ConflictException(ALREADY_APPLIED_MESSAGE[action]);
-    return this.eventsRepository.updateBatchSale(eventId, batchId, change, {
+    const updated = await this.eventsRepository.updateBatchSale(
       eventId,
-      actorId: userId,
-      type: 'BATCH_SALE_CHANGED',
-      summary: BATCH_SALE_SUMMARY[action](batch.name),
-    });
+      batchId,
+      change,
+      {
+        eventId,
+        actorId: userId,
+        type: 'BATCH_SALE_CHANGED',
+        summary: BATCH_SALE_SUMMARY[action](batch.name),
+      },
+    );
+    await this.searchIndexing.eventChanged(eventId, [event.status]);
+    return updated;
   }
 
   // Sold and reserved tickets keep their place in the stock, and a ticket type

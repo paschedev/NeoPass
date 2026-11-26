@@ -118,4 +118,15 @@ describe('Pie de la landing', () => {
       footer.getByRole('link', { name: 'soporte@neopass.ar' }),
     ).toHaveAttribute('href', 'mailto:soporte@neopass.ar');
   });
+
+  it('lleva a la página para organizadores y a las preguntas frecuentes', () => {
+    const footer = renderFooter();
+
+    expect(
+      footer.getByRole('link', { name: 'Para organizadores' }),
+    ).toHaveAttribute('href', '/organizadores');
+    expect(
+      footer.getByRole('link', { name: 'Preguntas frecuentes' }),
+    ).toHaveAttribute('href', '/preguntas-frecuentes');
+  });
 });

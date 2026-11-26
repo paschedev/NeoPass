@@ -97,6 +97,11 @@ export default function LandingFooter() {
                   Cómo funciona
                 </a>
               </li>
+              <li>
+                <Link href="/organizadores" className={LINK}>
+                  Para organizadores
+                </Link>
+              </li>
             </ul>
           </nav>
 
@@ -141,9 +146,18 @@ export default function LandingFooter() {
 
           <div className="col-span-2 md:col-span-1">
             <h2 className={TITLE}>Ayuda</h2>
-            <a href={`mailto:${SUPPORT_EMAIL}`} className={LINK}>
-              {SUPPORT_EMAIL}
-            </a>
+            <ul className="space-y-3">
+              <li>
+                <Link href="/preguntas-frecuentes" className={LINK}>
+                  Preguntas frecuentes
+                </Link>
+              </li>
+              <li>
+                <a href={`mailto:${SUPPORT_EMAIL}`} className={LINK}>
+                  {SUPPORT_EMAIL}
+                </a>
+              </li>
+            </ul>
           </div>
 
           <nav aria-labelledby="pie-legal" className="col-span-2 md:col-span-1">

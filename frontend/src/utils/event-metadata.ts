@@ -60,12 +60,18 @@ function buildEventMetadata(event: PublicEvent, id: string): Metadata {
   };
 }
 
-// El evento publicado, o null si no existe, no es público o la API no
-// responde. Una sola consulta por página: la comparten los metadatos y la
-// ficha para Google.
-export const fetchPublicEvent = cache(
-  async (id: string): Promise<PublicEvent | null> => {
-    if (!UUID.test(id)) return null;
+// El evento publicado; "missing" si la API dice que no existe o no es público
+// (borrador, terminado, cancelado) o si el id no es válido; "unavailable" si
+// la API falló o tardó, y entonces no se sabe. Una sola consulta por página:
+// la comparten la página, los metadatos y la ficha para Google.
+export type PublicEventResult =
+  | { kind: 'found'; event: PublicEvent }
+  | { kind: 'missing' }
+  | { kind: 'unavailable' };
+
+export const fetchPublicEventResult = cache(
+  async (id: string): Promise<PublicEventResult> => {
+    if (!UUID.test(id)) return { kind: 'missing' };
 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
@@ -75,16 +81,25 @@ export const fetchPublicEvent = cache(
         signal: controller.signal,
         next: { revalidate: 60 },
       });
-      if (!res.ok) return null;
-      return (await res.json()) as PublicEvent;
+      if (res.status === 404) return { kind: 'missing' };
+      if (!res.ok) return { kind: 'unavailable' };
+      return { kind: 'found', event: (await res.json()) as PublicEvent };
     } catch (error) {
-      console.warn(`Share preview without event data for ${id}`, error);
-      return null;
+      console.warn(`Event page without event data for ${id}`, error);
+      return { kind: 'unavailable' };
     } finally {
       clearTimeout(timeout);
     }
   },
 );
+
+// El evento publicado, o null si no existe o la API no responde.
+export async function fetchPublicEvent(
+  id: string,
+): Promise<PublicEvent | null> {
+  const result = await fetchPublicEventResult(id);
+  return result.kind === 'found' ? result.event : null;
+}
 
 // La vista previa de un evento al compartir su link (WhatsApp, Instagram,
 // X). Si no se puede armar, devuelve {} y queda la general de NeoPass.

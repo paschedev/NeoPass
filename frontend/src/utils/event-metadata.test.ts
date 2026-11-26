@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fetchEventMetadata } from './event-metadata';
+import { fetchEventMetadata, fetchPublicEventResult } from './event-metadata';
 
 const EVENT_ID = '3f1c2b6e-8a4d-4c1e-9b7a-2d5e6f708192';
 
@@ -146,6 +146,22 @@ describe('Vista previa al compartir un evento', () => {
     await vi.advanceTimersByTimeAsync(3000);
 
     await expect(preview).resolves.toEqual({});
+  });
+
+  it('distingue un evento que no existe de una API que no respondió', async () => {
+    respondWith({ message: 'No encontramos lo que buscás' }, 404);
+    expect(await fetchPublicEventResult(EVENT_ID)).toEqual({ kind: 'missing' });
+
+    respondWith({ message: 'Error' }, 503);
+    expect(await fetchPublicEventResult(EVENT_ID)).toEqual({
+      kind: 'unavailable',
+    });
+
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('x')));
+    expect(await fetchPublicEventResult(EVENT_ID)).toEqual({
+      kind: 'unavailable',
+    });
   });
 
   it('un id que no es un UUID no llama a la API', async () => {

@@ -128,6 +128,7 @@ export class EventsRepository {
       select: {
         id: true,
         title: true,
+        status: true,
         organizerId: true,
         organizer: { select: { email: true } },
       },

@@ -1,9 +1,4 @@
 {
-  "src/app/eventos/[id]/page.tsx": {
-    "@typescript-eslint/no-explicit-any": {
-      "count": 4
-    }
-  },
   "src/app/login/page.tsx": {
     "react-hooks/set-state-in-effect": {
       "count": 1
@@ -32,6 +27,11 @@
   "src/components/Navbar.tsx": {
     "react-hooks/set-state-in-effect": {
       "count": 1
+    }
+  },
+  "src/components/events/EventDetail.tsx": {
+    "@typescript-eslint/no-explicit-any": {
+      "count": 4
     }
   }
 }

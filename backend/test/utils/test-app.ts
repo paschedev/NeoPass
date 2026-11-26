@@ -9,6 +9,8 @@ import { configureApp } from '../../src/configure-app';
 import { MailProcessor } from '../../src/mail/mail.processor';
 import { OrdersProcessor } from '../../src/orders/orders.processor';
 import { PaymentsProcessor } from '../../src/payments/payments.processor';
+import { SearchIndexingProcessor } from '../../src/search-indexing/search-indexing.processor';
+import { SEARCH_INDEXING_QUEUE } from '../../src/search-indexing/search-indexing.service';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import { RedisService } from '../../src/redis/redis.service';
 import { emptyTestRedis } from './test-redis';
@@ -20,7 +22,12 @@ export interface TestApp {
   prisma: PrismaService;
   // The app's own connection to the test Redis.
   redis: Redis;
-  queues: { mail: QueueMock; orders: QueueMock; payments: QueueMock };
+  queues: {
+    mail: QueueMock;
+    orders: QueueMock;
+    payments: QueueMock;
+    searchIndexing: QueueMock;
+  };
   close: () => Promise<void>;
 }
 
@@ -34,6 +41,7 @@ export async function createTestApp(): Promise<TestApp> {
     mail: { add: jest.fn() },
     orders: { add: jest.fn() },
     payments: { add: jest.fn() },
+    searchIndexing: { add: jest.fn() },
   };
 
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -43,11 +51,15 @@ export async function createTestApp(): Promise<TestApp> {
     .useValue(queues.orders)
     .overrideProvider(getQueueToken('payments'))
     .useValue(queues.payments)
+    .overrideProvider(getQueueToken(SEARCH_INDEXING_QUEUE))
+    .useValue(queues.searchIndexing)
     .overrideProvider(MailProcessor)
     .useValue({})
     .overrideProvider(OrdersProcessor)
     .useValue({})
     .overrideProvider(PaymentsProcessor)
+    .useValue({})
+    .overrideProvider(SearchIndexingProcessor)
     .useValue({})
     .compile();
 

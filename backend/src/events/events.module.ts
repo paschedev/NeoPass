@@ -12,9 +12,15 @@ import { CoOrganizersService } from './co-organizers.service';
 import { CoOrganizersRepository } from './repositories/co-organizers.repository';
 import { EventAccessService } from './event-access.service';
 import { EventAccessRepository } from './repositories/event-access.repository';
+import { SearchIndexingModule } from '../search-indexing/search-indexing.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, NotificationsModule],
+  imports: [
+    PrismaModule,
+    AuthModule,
+    NotificationsModule,
+    SearchIndexingModule,
+  ],
   controllers: [EventsController, CoOrganizersController],
   providers: [
     EventsLifecycleService,
