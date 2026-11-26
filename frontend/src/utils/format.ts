@@ -77,19 +77,30 @@ export function formatWeekdayDateTime(
   });
 }
 
-// Cuándo empieza y termina un evento, en la hora local del navegador:
-// "sáb, 10 oct, 22:00 a dom, 11 oct, 06:00", o "sáb, 10 oct, 20:00 a 23:30"
-// si termina el mismo día.
-export function formatEventRange(start: string, end: string): string {
-  const sameDay = new Date(start).toDateString() === new Date(end).toDateString();
-  const until = sameDay
-    ? new Date(end).toLocaleTimeString('es-AR', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      })
-    : formatWeekdayDateTime(end);
-  return `${formatWeekdayDateTime(start)} a ${until}`;
+// La hora de los eventos: lo que se arma en el servidor (Vercel corre en UTC)
+// se muestra en la hora del lugar.
+export const EVENT_TIME_ZONE = 'America/Argentina/Buenos_Aires';
+
+// Cuándo empieza y termina un evento, en la hora local del navegador o en la
+// zona que se pida: "sáb, 10 oct, 22:00 a dom, 11 oct, 06:00", o
+// "sáb, 10 oct, 20:00 a 23:30" si termina el mismo día.
+export function formatEventRange(
+  start: string,
+  end: string,
+  timeZone?: string,
+): string {
+  const day = (value: string) =>
+    new Date(value).toLocaleDateString('en-CA', { timeZone });
+  const until =
+    day(start) === day(end)
+      ? new Date(end).toLocaleTimeString('es-AR', {
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+          timeZone,
+        })
+      : formatWeekdayDateTime(end, timeZone);
+  return `${formatWeekdayDateTime(start, timeZone)} a ${until}`;
 }
 
 // "23:41:08", en la hora local del navegador.
