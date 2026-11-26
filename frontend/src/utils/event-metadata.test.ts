@@ -63,6 +63,16 @@ describe('Vista previa al compartir un evento', () => {
     expect(metadata.title).toEqual({ absolute: 'Noche de Techno · NeoPass' });
   });
 
+  it('declara como dirección principal la del evento sin el ?rpp= de cada RRPP', async () => {
+    respondWith(event);
+
+    const metadata = await fetchEventMetadata(EVENT_ID);
+
+    expect(metadata.alternates).toEqual({
+      canonical: `/eventos/${EVENT_ID}`,
+    });
+  });
+
   it('la fecha sale en hora argentina aunque el servidor esté en UTC', async () => {
     const previousTimeZone = process.env.TZ;
     process.env.TZ = 'UTC';
