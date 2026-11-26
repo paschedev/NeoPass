@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { cache } from 'react';
 import { SHARE_IMAGE_SIZE, shareImageUrl } from './cloudinary';
-import { formatWeekdayDateTime } from './format';
+import { EVENT_TIME_ZONE, formatWeekdayDateTime } from './format';
 import { eventPath, serverApiUrl } from './site';
 
 // Lo que usan la vista previa y la ficha para Google de GET /events/:id.
@@ -30,7 +30,6 @@ export type PublicEvent = {
   }[];
 };
 
-const EVENT_TIME_ZONE = 'America/Argentina/Buenos_Aires';
 const API_TIMEOUT_MS = 3000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

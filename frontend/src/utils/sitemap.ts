@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
-import { SITE_URL, eventPath, serverApiUrl } from './site';
+import { fetchPublicEventsPage } from './public-events';
+import { SITE_URL, eventPath } from './site';
 
 // Las páginas públicas que tienen que estar en Google. El panel, el checkout
 // y el ingreso no van: no le sirven a quien busca.
@@ -15,31 +16,16 @@ const PUBLIC_PAGES = [
 // la API respondiera siempre lo mismo.
 const PAGE_SIZE = 50;
 const MAX_PAGES = 20;
-const API_TIMEOUT_MS = 5000;
-
-type EventsPage = { items: { id: string }[]; total: number };
 
 // Los eventos publicados que no terminaron (lo mismo que lista /eventos). Si
 // la API falla, el mapa sale con lo que haya juntado: mejor eso que nada.
 async function fetchPublicEventIds(revalidate: number): Promise<string[]> {
   const ids: string[] = [];
   for (let page = 1; page <= MAX_PAGES; page++) {
-    try {
-      const res = await fetch(
-        `${serverApiUrl()}/events?page=${page}&limit=${PAGE_SIZE}`,
-        {
-          signal: AbortSignal.timeout(API_TIMEOUT_MS),
-          next: { revalidate },
-        },
-      );
-      if (!res.ok) break;
-      const { items, total } = (await res.json()) as EventsPage;
-      ids.push(...items.map((event) => event.id));
-      if (items.length === 0 || ids.length >= total) break;
-    } catch (error) {
-      console.warn('Sitemap without the events of page', page, error);
-      break;
-    }
+    const result = await fetchPublicEventsPage(page, PAGE_SIZE, revalidate);
+    if (!result) break;
+    ids.push(...result.items.map((event) => event.id));
+    if (result.items.length === 0 || ids.length >= result.total) break;
   }
   return ids;
 }
